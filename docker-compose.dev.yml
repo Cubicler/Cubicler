@@ -1,6 +1,6 @@
 # Docker Compose for development with live reload
 services:
-  cubicle-dev:
+  cubicler-dev:
     build: 
       context: .
       target: development
@@ -9,8 +9,8 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=1503
-      - CUBICLE_SPEC_SOURCE=spec.example.yaml
-      - CUBICLE_PROMPT_SOURCE=prompt.example.md
+      - CUBICLER_SPEC_SOURCE=spec.example.yaml
+      - CUBICLER_PROMPT_SOURCE=prompt.example.md
     volumes:
       # Mount source code for live development
       - ./src:/app/src:ro

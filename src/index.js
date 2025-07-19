@@ -1,4 +1,4 @@
-// Entry point for the Cubicle framework
+// Entry point for the Cubicler framework
 
 // Import core services
 import promptService from './core/promptService.js';
@@ -90,6 +90,6 @@ const isMainModule = process.argv[1] && process.argv[1].endsWith('index.js');
 if (isMainModule) {
   const port = process.env.PORT || 1503;
   app.listen(port, () => {
-    console.log(`Cubicle server is running on port ${port}`);
+    console.log(`Cubicler server is running on port ${port}`);
   });
 }

@@ -1,6 +1,6 @@
-# 🐳 Docker Setup for Cubicle
+# 🐳 Docker Setup for Cubicler
 
-This document explains how to run Cubicle using Docker.
+This document explains how to run Cubicler using Docker.
 
 ---
 
@@ -8,13 +8,13 @@ This document explains how to run Cubicle using Docker.
 
 ### 🧪 Test with Example Files
 
-Use the provided example files to test Cubicle quickly:
+Use the provided example files to test Cubicler quickly:
 
 ```bash
 npm run docker:example
 ```
 
-This runs Cubicle using `spec.example.yaml` and `prompt.example.md`.
+This runs Cubicler using `spec.example.yaml` and `prompt.example.md`.
 
 ---
 
@@ -47,16 +47,16 @@ Update `.env`:
 **For Remote Files:**
 
 ```env
-CUBICLE_SPEC_SOURCE=https://your-domain.com/specs/agent.yaml
-CUBICLE_PROMPT_SOURCE=https://your-domain.com/prompts/agent.md
+CUBICLER_SPEC_SOURCE=https://your-domain.com/specs/agent.yaml
+CUBICLER_PROMPT_SOURCE=https://your-domain.com/prompts/agent.md
 API_KEY=your_secret_key
 ```
 
 **For Local Files:**
 
 ```env
-CUBICLE_SPEC_SOURCE=/app/config/spec.yaml
-CUBICLE_PROMPT_SOURCE=/app/config/prompt.md
+CUBICLER_SPEC_SOURCE=/app/config/spec.yaml
+CUBICLER_PROMPT_SOURCE=/app/config/prompt.md
 API_KEY=your_secret_key
 ```
 
@@ -150,8 +150,8 @@ npm run docker:logs
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `PORT` | API server port | `1503` |
-| `CUBICLE_SPEC_SOURCE` | YAML function spec path or URL | `spec.example.yaml` |
-| `CUBICLE_PROMPT_SOURCE` | Prompt file path or URL | `prompt.example.md` |
+| `CUBICLER_SPEC_SOURCE` | YAML function spec path or URL | `spec.example.yaml` |
+| `CUBICLER_PROMPT_SOURCE` | Prompt file path or URL | `prompt.example.md` |
 
 ---
 
@@ -168,8 +168,8 @@ npm run docker:logs
 ## 📦 Pushing to Docker Registry
 
 ```bash
-docker build -t your-registry/cubicle:latest .
-docker push your-registry/cubicle:latest
+docker build -t your-registry/cubicler:latest .
+docker push your-registry/cubicler:latest
 ```
 
 Update your deployment config (Docker Compose, Kubernetes, etc.) accordingly.
@@ -229,7 +229,7 @@ The health check verifies both prompt and spec services are working correctly.
 
 ### Permission Issues
 
-- The app runs as non-root user `cubicle` (UID 1001)
+- The app runs as non-root user `cubicler` (UID 1001)
 - Ensure files mounted into the container are readable
 
 ---

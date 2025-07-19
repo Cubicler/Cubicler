@@ -1,18 +1,18 @@
-# 🏢 Cubicle
+# 🏢 Cubicler
 
 > *A modular AI orchestration framework where GPT agents go to work*
 
-[![npm version](https://badge.fury.io/js/cubicle.svg)](https://badge.fury.io/js/cubicle)
+[![npm version](https://badge.fury.io/js/cubicler.svg)](https://badge.fury.io/js/cubicler)
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://opensource.org/licenses/ISC)
-[![Tests](https://github.com/hainayanda/Cubicle/workflows/Tests/badge.svg)](https://github.com/hainayanda/Cubicle/actions)
+[![Tests](https://github.com/hainayanda/Cubicler/workflows/Tests/badge.svg)](https://github.com/hainayanda/Cubicler/actions)
 
-Cubicle is a lightweight, modular AI orchestration framework that connects GPT-based agents to real-world services via a clean REST API. Think of it as providing a **desk or cubicle where AI agents can go to work** — complete with tools, specifications, and function call capabilities.
+Cubicler is a lightweight, modular AI orchestration framework that connects GPT-based agents to real-world services via a clean REST API. Think of it as providing a **desk or cubicle where AI agents can go to work** — complete with tools, specifications, and function call capabilities.
 
 ---
 
-## 💡 What Problem Does Cubicle Solve?
+## 💡 What Problem Does Cubicler Solve?
 
-Modern AI agents often need to interact with external systems, but many frameworks tightly couple prompt logic, function specs, and code, making updates and scaling challenging. Cubicle addresses this by:
+Modern AI agents often need to interact with external systems, but many frameworks tightly couple prompt logic, function specs, and code, making updates and scaling challenging. Cubicler addresses this by:
 
 - Decoupling prompt and function specs from the codebase using YAML/Markdown
 - Enabling hot-swappable configurations—no redeployment required for updates
@@ -21,7 +21,7 @@ Modern AI agents often need to interact with external systems, but many framewor
 
 ---
 
-## 🛠️ What Does Cubicle Do?
+## 🛠️ What Does Cubicler Do?
 
 - Loads system prompts and function specs from local or remote sources
 - Exposes RESTful endpoints for:
@@ -33,15 +33,15 @@ Modern AI agents often need to interact with external systems, but many framewor
 
 ---
 
-## 🚦 How Do I Use Cubicle?
+## 🚦 How Do I Use Cubicler?
 
-1. **Start the Cubicle server** (see "Getting Started" below)
+1. **Start the Cubicler server** (see "Getting Started" below)
 2. **Fetch the system prompt** for your agent via `GET /prompt`
 3. **Retrieve the function spec** via `GET /spec` to view available functions and parameters
 4. **Invoke functions** by sending a `POST` request to `/call/:function_name` with the required parameters
 5. **Update configurations** by modifying the YAML/Markdown sources—no code changes needed
 
-Cubicle is designed to be consumed by AI agents, backend services, or any client that needs a simple, unified API for orchestrating function calls.
+Cubicler is designed to be consumed by AI agents, backend services, or any client that needs a simple, unified API for orchestrating function calls.
 
 ---
 
@@ -55,6 +55,7 @@ Cubicle is designed to be consumed by AI agents, backend services, or any client
 - 🕵️‍♂️ Hidden override parameters (not visible to AI agents)
 - 🔧 **Parameter type validation and conversion** (`string`, `number`, `boolean`, `array`, `object`)
 - 📡 **Separate URL parameters and payload handling**
+- 🎛️ **Enhanced override system** (parameters + payload)
 - 🔄 **Smart parameter merging and type conversion**
 
 ---
@@ -69,8 +70,8 @@ Cubicle is designed to be consumed by AI agents, backend services, or any client
 ### Installation
 
 ```bash
-git clone https://github.com/hainayanda/Cubicle.git
-cd Cubicle
+git clone https://github.com/hainayanda/Cubicler.git
+cd Cubicler
 npm install
 ```
 
@@ -80,10 +81,10 @@ Create a `.env` file:
 
 ```env
 # YAML function + routing spec source
-CUBICLE_SPEC_SOURCE=./spec.example.yaml
+CUBICLER_SPEC_SOURCE=./spec.example.yaml
 
 # System prompt source (Markdown or text)
-CUBICLE_PROMPT_SOURCE=./prompt.example.md
+CUBICLER_PROMPT_SOURCE=./prompt.example.md
 
 # Optional: Port number (default: 1503)
 PORT=1503
@@ -153,8 +154,6 @@ to fetch user data. Always respond politely and helpfully.
 ```
 
 ### 3. Request Flow
-
-**New Enhanced Flow (v2):**
 
 - AI calls: `getUserById({ id: "123", payload: { filters: ["custom"], metadata: { source: "api" } } })`
 - Override parameters add: `{ include_details: true }`
@@ -386,4 +385,4 @@ This project is licensed under the [ISC License](LICENSE).
 
 Made with ❤️ for the AI community.
 
-**Cubicle: Where AI agents go to work** 🏢
+**Cubicler: Where AI agents go to work** 🏢

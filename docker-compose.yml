@@ -1,17 +1,17 @@
 services:
-  cubicle:
+  cubicler:
     build: .
     ports:
       - "1503:1503"
     environment:
       - PORT=1503
       # Option 1: Use URLs (recommended for production)
-      # - CUBICLE_SPEC_SOURCE=https://your-domain.com/specs/agent.yaml
-      # - CUBICLE_PROMPT_SOURCE=https://your-domain.com/prompts/agent.md
+      # - CUBICLER_SPEC_SOURCE=https://your-domain.com/specs/agent.yaml
+      # - CUBICLER_PROMPT_SOURCE=https://your-domain.com/prompts/agent.md
       
       # Option 2: Use local files (mount them as volumes below)
-      - CUBICLE_SPEC_SOURCE=/app/config/spec.yaml
-      - CUBICLE_PROMPT_SOURCE=/app/config/prompt.md
+      - CUBICLER_SPEC_SOURCE=/app/config/spec.yaml
+      - CUBICLER_PROMPT_SOURCE=/app/config/prompt.md
       
       # Add your API keys and other service configurations
       # - API_KEY=${API_KEY}
@@ -26,7 +26,7 @@ services:
       # - ./prompt.example.md:/app/config/prompt.md:ro
       
       # Mount logs directory if needed
-      - cubicle_logs:/app/logs
+      - cubicler_logs:/app/logs
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "-e", "const http = require('http'); const req = http.request('http://localhost:1503/health', res => process.exit(res.statusCode === 200 ? 0 : 1)); req.on('error', () => process.exit(1)); req.end();"]
@@ -43,7 +43,7 @@ services:
   #   volumes:
   #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
   #   depends_on:
-  #     - cubicle
-
+  #     - cubicler
+  
 volumes:
-  cubicle_logs:
+  cubicler_logs:

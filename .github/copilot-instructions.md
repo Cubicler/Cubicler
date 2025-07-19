@@ -1,8 +1,8 @@
-# ⚙️ Cubicle Instructions
+# ⚙️ Cubicler Instructions
 
-You're assisting in improving **Cubicle**, a modular AI orchestration framework designed to run GPT-based agents connected to real-world services.
+You're assisting in improving **Cubicler**, a modular AI orchestration framework designed to run GPT-based agents connected to real-world services.
 
-Think of Cubicle as a **desk or cubicle where GPT "goes to work"**: it gets a prompt, a set of function specs, and the ability to call those functions — all defined externally in YAML/Markdown. Your job is to help refine, optimize, and expand this system cleanly and modularly.
+Think of CuYou're here to help improve and expand Cubicler — a proper desk for AI Agent.icler as a **desk or cubicle where GPT "goes to work"**: it gets a prompt, a set of function specs, and the ability to call those functions — all defined externally in YAML/Markdown. Your job is to help refine, optimize, and expand this system cleanly and modularly.
 
 ---
 
@@ -13,8 +13,8 @@ Think of Cubicle as a **desk or cubicle where GPT "goes to work"**: it gets a pr
   - `GET /prompt` – fetches current system prompt (Markdown/Doc/URL)
   - `GET /spec` – fetches YAML-based OpenAI function spec
   - `POST /call` – handles AI Agent function_call routing
-- Parses a YAML spec from a remote or local location (`env.CUBICLE_SPEC_SOURCE`)
-- Gets a prompt from a remote or local location (`env.CUBICLE_PROMPT_SOURCE`)
+- Parses a YAML spec from a remote or local location (`env.CUBICLER_SPEC_SOURCE`)
+- Gets a prompt from a remote or local location (`env.CUBICLER_PROMPT_SOURCE`)
 - Sends calls to the correct microservice via REST
 
 ---
@@ -25,10 +25,10 @@ These are set via environment variables:
 
 ```env
 # Source of the function + routing spec in YAML format
-CUBICLE_SPEC_SOURCE=https://your-cloud.com/specs/agent.yaml
+CUBICLER_SPEC_SOURCE=https://your-cloud.com/specs/agent.yaml
 
 # Source of the system prompt (Markdown or plain text)
-CUBICLE_PROMPT_SOURCE=https://your-cloud.com/prompts/agent.md
+CUBICLER_PROMPT_SOURCE=https://your-cloud.com/prompts/agent.md
 ```
 
 ---
@@ -39,7 +39,7 @@ CUBICLE_PROMPT_SOURCE=https://your-cloud.com/prompts/agent.md
 version: 2
 services:
   mock_service:
-    base_url: https://api.cubicle.io
+    base_url: https://api.cubicler.com
     default_headers:
       Authorization: "Bearer {{env.API_KEY}}"
     endpoints:
@@ -47,7 +47,7 @@ services:
         method: POST
         path: /mock_service/get/{mock_id}/{mock_name}
         headers:
-            X-Client-Version: "cubicle/1.0"
+            X-Client-Version: "cubicler/1.0"
         parameters:
           mock_id:
             type: number

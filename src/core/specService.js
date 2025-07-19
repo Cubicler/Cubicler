@@ -7,9 +7,9 @@ import { substituteEnvVars, substituteEnvVarsInObject } from '../utils/envHelper
 config();
 
 async function _getSpec() {
-    const specSource = process.env.CUBICLE_SPEC_SOURCE;
+    const specSource = process.env.CUBICLER_SPEC_SOURCE;
   if (!specSource) {
-    throw new Error('CUBICLE_SPEC_SOURCE is not defined in environment variables');
+    throw new Error('CUBICLER_SPEC_SOURCE is not defined in environment variables');
   }
 
   if (specSource.startsWith('http')) {

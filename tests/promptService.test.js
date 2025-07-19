@@ -19,7 +19,7 @@ describe('promptService', () => {
   });
 
   it('should fetch the prompt from a remote source', async () => {
-    process.env.CUBICLE_PROMPT_SOURCE = 'https://example.com/prompt.md';
+    process.env.CUBICLER_PROMPT_SOURCE = 'https://example.com/prompt.md';
     
     global.fetch = jest.fn(() => Promise.resolve({
       ok: true,
@@ -32,15 +32,15 @@ describe('promptService', () => {
   });
 
   it('should fetch the prompt from a local file', async () => {
-    process.env.CUBICLE_PROMPT_SOURCE = './tests/mocks/mockPrompt.md';
+    process.env.CUBICLER_PROMPT_SOURCE = './tests/mocks/mockPrompt.md';
 
     const prompt = await promptService.getPrompt();
     expect(prompt).toBe('Local Test Prompt');
   });
 
-  it('should throw an error if CUBICLE_PROMPT_SOURCE is not defined', async () => {
-    delete process.env.CUBICLE_PROMPT_SOURCE;
+  it('should throw an error if CUBICLER_PROMPT_SOURCE is not defined', async () => {
+    delete process.env.CUBICLER_PROMPT_SOURCE;
 
-    await expect(promptService.getPrompt()).rejects.toThrow('CUBICLE_PROMPT_SOURCE is not defined in environment variables');
+    await expect(promptService.getPrompt()).rejects.toThrow('CUBICLER_PROMPT_SOURCE is not defined in environment variables');
   });
 });

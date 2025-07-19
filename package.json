@@ -1,5 +1,5 @@
 {
-  "name": "cubicle",
+  "name": "cubicler",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -7,8 +7,8 @@
     "test": "jest",
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
-    "docker:build": "docker build -t cubicle .",
-    "docker:run": "docker run -p 1503:1503 --env-file .env cubicle",
+    "docker:build": "docker build -t cubicler .",
+    "docker:run": "docker run -p 1503:1503 --env-file .env cubicler",
     "docker:dev": "docker-compose -f docker-compose.dev.yml up --build",
     "docker:prod": "docker-compose up --build -d",
     "docker:example": "docker-compose -f docker-compose.example.yml up --build",
@@ -17,16 +17,16 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hainayanda/Cubicle.git"
+    "url": "git+https://github.com/hainayanda/Cubicler.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "module",
   "bugs": {
-    "url": "https://github.com/hainayanda/Cubicle/issues"
+    "url": "https://github.com/hainayanda/Cubicler/issues"
   },
-  "homepage": "https://github.com/hainayanda/Cubicle#readme",
+  "homepage": "https://github.com/hainayanda/Cubicler#readme",
   "devDependencies": {
     "@babel/core": "^7.28.0",
     "@babel/preset-env": "^7.28.0",

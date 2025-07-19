@@ -5,9 +5,9 @@ import { config } from 'dotenv';
 config();
 
 async function getPrompt() {
-  const promptSource = process.env.CUBICLE_PROMPT_SOURCE;
+  const promptSource = process.env.CUBICLER_PROMPT_SOURCE;
   if (!promptSource) {
-    throw new Error('CUBICLE_PROMPT_SOURCE is not defined in environment variables');
+    throw new Error('CUBICLER_PROMPT_SOURCE is not defined in environment variables');
   }
 
   if (promptSource.startsWith('http')) {

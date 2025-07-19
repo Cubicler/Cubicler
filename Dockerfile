@@ -1,4 +1,4 @@
-# Multi-stage Dockerfile for Cubicle
+# Multi-stage Dockerfile for Cubicler
 
 # Base stage
 FROM node:18-alpine AS base
@@ -24,10 +24,10 @@ COPY src/ ./src/
 
 # Create a non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
-    adduser -S cubicle -u 1001 && \
-    chown -R cubicle:nodejs /app
+    adduser -S cubicler -u 1001 && \
+    chown -R cubicler:nodejs /app
 
-USER cubicle
+USER cubicler
 
 # Expose the port (default 1503, but configurable via PORT env var)
 EXPOSE 1503

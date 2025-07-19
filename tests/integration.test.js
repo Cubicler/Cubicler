@@ -3,14 +3,14 @@ import express from 'express';
 import request from 'supertest';
 import { app } from '../src/index.js';
 
-describe('Integration Test - Full Cubicle Flow', () => {
+describe('Integration Test - Full Cubicler Flow', () => {
   let mockApiServer;
   let mockApiPort = 3002;
 
   beforeAll(async () => {
     // Set up environment variables for testing
-    process.env.CUBICLE_SPEC_SOURCE = './tests/mocks/integrationSpec.yaml';
-    process.env.CUBICLE_PROMPT_SOURCE = './tests/mocks/integrationPrompt.md';
+    process.env.CUBICLER_SPEC_SOURCE = './tests/mocks/integrationSpec.yaml';
+    process.env.CUBICLER_PROMPT_SOURCE = './tests/mocks/integrationPrompt.md';
 
     // Create mock API server
     const mockApp = express();
@@ -50,7 +50,7 @@ describe('Integration Test - Full Cubicle Flow', () => {
       .get('/prompt')
       .expect(200);
 
-    expect(response.body.prompt).toContain('You are a helpful assistant for testing Cubicle integration');
+    expect(response.body.prompt).toContain('You are a helpful assistant for testing Cubicler integration');
   });
 
   it('should serve the function spec via GET /spec', async () => {

@@ -7,7 +7,7 @@ dotenv.config();
 
 describe('functionService', () => {
   beforeAll(() => {
-    process.env.CUBICLE_SPEC_SOURCE = './tests/mocks/mockSpec.yaml';
+    process.env.CUBICLER_SPEC_SOURCE = './tests/mocks/mockSpec.yaml';
   });
 
   beforeEach(() => {

@@ -16,7 +16,7 @@ describe('specService', () => {
   const mockSpecNoPayloadOverride = fs.readFileSync('./tests/mocks/mockSpecNoPayloadOverride.yaml', 'utf-8');
 
   beforeAll(() => {
-    process.env.CUBICLE_SPEC_SOURCE = './tests/mocks/mockSpec.yaml';
+    process.env.CUBICLER_SPEC_SOURCE = './tests/mocks/mockSpec.yaml';
   });
 
   beforeEach(() => {
