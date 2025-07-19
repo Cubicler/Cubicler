@@ -1,0 +1,49 @@
+services:
+  cubicle:
+    build: .
+    ports:
+      - "1503:1503"
+    environment:
+      - PORT=1503
+      # Option 1: Use URLs (recommended for production)
+      # - CUBICLE_SPEC_SOURCE=https://your-domain.com/specs/agent.yaml
+      # - CUBICLE_PROMPT_SOURCE=https://your-domain.com/prompts/agent.md
+      
+      # Option 2: Use local files (mount them as volumes below)
+      - CUBICLE_SPEC_SOURCE=/app/config/spec.yaml
+      - CUBICLE_PROMPT_SOURCE=/app/config/prompt.md
+      
+      # Add your API keys and other service configurations
+      # - API_KEY=${API_KEY}
+    volumes:
+      # Mount your own spec and prompt files when using local file paths
+      # Uncomment and modify these lines to point to your actual files:
+      - ./your-spec.yaml:/app/config/spec.yaml:ro
+      - ./your-prompt.md:/app/config/prompt.md:ro
+      
+      # For testing with example files:
+      # - ./spec.example.yaml:/app/config/spec.yaml:ro
+      # - ./prompt.example.md:/app/config/prompt.md:ro
+      
+      # Mount logs directory if needed
+      - cubicle_logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "const http = require('http'); const req = http.request('http://localhost:1503/health', res => process.exit(res.statusCode === 200 ? 0 : 1)); req.on('error', () => process.exit(1)); req.end();"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Example: Add a reverse proxy if needed
+  # nginx:
+  #   image: nginx:alpine
+  #   ports:
+  #     - "80:80"
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
+  #   depends_on:
+  #     - cubicle
+
+volumes:
+  cubicle_logs:

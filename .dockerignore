@@ -1,0 +1,16 @@
+node_modules
+npm-debug.log
+.DS_Store
+.env
+.git
+coverage
+tests
+*.test.js
+jest.config.js
+.github
+LICENSE
+README.md
+docker-compose*.yml
+Dockerfile
+.dockerignore
+DOCKER.md

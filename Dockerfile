@@ -1,0 +1,40 @@
+# Multi-stage Dockerfile for Cubicle
+
+# Base stage
+FROM node:18-alpine AS base
+WORKDIR /app
+COPY package*.json ./
+
+# Development stage
+FROM base AS development
+RUN npm ci
+COPY src/ ./src/
+# Copy example files for development/testing only
+COPY spec.example.yaml ./
+COPY prompt.example.md ./
+EXPOSE 1503
+CMD ["node", "--watch", "src/index.js"]
+
+# Production stage
+FROM base AS production
+RUN npm ci --only=production && npm cache clean --force
+
+# Copy source code only
+COPY src/ ./src/
+
+# Create a non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S cubicle -u 1001 && \
+    chown -R cubicle:nodejs /app
+
+USER cubicle
+
+# Expose the port (default 1503, but configurable via PORT env var)
+EXPOSE 1503
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node -e "const http = require('http'); const req = http.request('http://localhost:' + (process.env.PORT || 1503) + '/health', res => process.exit(res.statusCode === 200 ? 0 : 1)); req.on('error', () => process.exit(1)); req.end();"
+
+# Start the application
+CMD ["node", "src/index.js"]

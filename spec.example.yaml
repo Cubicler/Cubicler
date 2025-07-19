@@ -1,0 +1,30 @@
+version: 1
+services:
+  mock_service:
+    base_url: localhost:3000
+    endpoints:
+      get_mock:
+        method: GET
+        path: /mock_service/get/{mock_id}/{mock_name}
+        parameters:
+          mock_id:
+            type: string
+          mock_name:
+            type: string
+        response:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            description:
+              type: string
+
+functions:
+  getMock:
+    service: mock_service
+    endpoint: get_mock
+    description: Get mock object by ID
+    override_parameters:
+      mock_name: "my_mock"

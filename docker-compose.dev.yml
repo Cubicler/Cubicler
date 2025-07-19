@@ -1,0 +1,22 @@
+# Docker Compose for development with live reload
+services:
+  cubicle-dev:
+    build: 
+      context: .
+      target: development
+    ports:
+      - "1503:1503"
+    environment:
+      - NODE_ENV=development
+      - PORT=1503
+      - CUBICLE_SPEC_SOURCE=spec.example.yaml
+      - CUBICLE_PROMPT_SOURCE=prompt.example.md
+    volumes:
+      # Mount source code for live development
+      - ./src:/app/src:ro
+      - ./spec.example.yaml:/app/spec.example.yaml:ro
+      - ./prompt.example.md:/app/prompt.example.md:ro
+      # Mount node_modules as a volume to avoid overwriting
+      - /app/node_modules
+    command: ["node", "--watch", "src/index.js"]
+    restart: unless-stopped
