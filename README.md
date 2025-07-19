@@ -1,12 +1,27 @@
 # 🏢 Cubicler
 
-> *A modular AI orchestration framework where GPT agents go to work*
+> *A modular AI orchestration framework where AI agents go to work*
 
 [![npm version](https://badge.fury.io/js/cubicler.svg)](https://badge.fury.io/js/cubicler)
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://opensource.org/licenses/ISC)
 [![Tests](https://github.com/hainayanda/Cubicler/workflows/Tests/badge.svg)](https://github.com/hainayanda/Cubicler/actions)
 
-Cubicler is a lightweight, modular AI orchestration framework that connects GPT-based agents to real-world services via a clean REST API. Think of it as providing a **desk or cubicle where AI agents can go to work** — complete with tools, specifications, and function call capabilities.
+Cubicler is a lightweight, modular AI orchestration framework that connects AI agents to real-world services via a clean REST API. Think of it as providing a **desk or cubicle where AI agents can go to work** — complete with tools, specifications, and function call capabilities.
+
+## 🎯 What Does It Do? (In 30 Seconds)
+
+```text
+AI Agent: "Hey Cubicler, what can I do?"
+Cubicler: "Here are your available functions: getUserById, sendEmail..."
+
+AI Agent: "Get user 123 for me"
+Cubicler: "Sure!" → calls https://api.example.com/users/123 → returns data
+
+AI Agent: "Thanks! Now send them an email"
+Cubicler: "On it!" → calls https://email-api.com/send → returns success
+```
+
+**The magic:** Change the YAML config file, and suddenly your AI agent has new powers. No code changes, no restarts!
 
 ---
 
@@ -23,25 +38,28 @@ Modern AI agents often need to interact with external systems, but many framewor
 
 ## 🛠️ What Does Cubicler Do?
 
-- Loads system prompts and function specs from local or remote sources
-- Exposes RESTful endpoints for:
-  - Fetching the current prompt (`GET /prompt`)
-  - Fetching the function spec (`GET /spec`)
-  - Routing function calls to the appropriate microservice (`POST /call/:function_name`)
-- Handles parameter merging, environment variable substitution, and flexible routing
-- Simplifies building, testing, and scaling AI agent integrations
+**Simple:** It's a bridge between AI agents and your APIs.
+
+**Specifically:**
+
+- 🔄 **Loads configs** from YAML/Markdown files (local or remote)
+- 🚀 **Serves 3 endpoints:** `/prompt`, `/spec`, `/call/functionName`
+- 🔧 **Handles the messy stuff:** parameter validation, type conversion, API routing
+- 🔥 **Hot-swappable:** Update configs without touching code or restarting
 
 ---
 
 ## 🚦 How Do I Use Cubicler?
 
-1. **Start the Cubicler server** (see "Getting Started" below)
-2. **Fetch the system prompt** for your agent via `GET /prompt`
-3. **Retrieve the function spec** via `GET /spec` to view available functions and parameters
-4. **Invoke functions** by sending a `POST` request to `/call/:function_name` with the required parameters
-5. **Update configurations** by modifying the YAML/Markdown sources—no code changes needed
+**The Complete Flow:**
 
-Cubicler is designed to be consumed by AI agents, backend services, or any client that needs a simple, unified API for orchestrating function calls.
+1. **Start Cubicler** → `node src/index.js` (serves on port 1503)
+2. **AI Agent asks "What can I do?"** → `GET /spec` → Gets available functions
+3. **AI Agent asks "How should I behave?"** → `GET /prompt` → Gets system instructions
+4. **AI Agent executes** → `POST /call/getUserById` → Cubicler routes to real API
+5. **Update anytime** → Edit YAML/Markdown files (no restart needed!)
+
+**Perfect for:** AI chatbots, automation systems, or any app that needs AI agents to interact with APIs.
 
 ---
 
@@ -102,86 +120,88 @@ Visit: `http://localhost:1503`
 
 ## 🧠 How It Works
 
-### 1. Function Spec (YAML)
+Cubicler acts as a **smart translator** between AI agents and your APIs. Here's the simple flow:
+
+### 🔄 The Data Flow
+
+```text
+┌─────────────┐    1. "What can I do?"     ┌──────────────┐    4. Translate & Call    ┌─────────────┐
+│             │ ─────────────────────────► │              │ ────────────────────────► │             │
+│  AI Agent   │    2. "How should I act?"  │   Cubicler   │                           │  Real APIs  │
+│             │ ◄───────────────────────── │              │ ◄──────────────────────── │             │
+└─────────────┘    3. "Do this function"   └──────────────┘    5. Return Response     └─────────────┘
+```
+
+### 📝 Configuration Files
+
+**YAML Spec** (defines what functions are available):
 
 ```yaml
 version: 2
 services:
   user_api:
     base_url: https://api.example.com
-    default_headers:
-      Authorization: "Bearer {{env.API_KEY}}"
     endpoints:
       get_user:
         method: POST
         path: /users/{id}
         parameters:
-          id:
-            type: string
-          include_details:
-            type: boolean
-        payload:
-          type: object
-          properties:
-            filters:
-              type: array
-              items:
-                type: string
-            metadata:
-              type: object
+          id: { type: string }
 
 functions:
   getUserById:
     service: user_api
     endpoint: get_user
     description: Get user information by ID
-    override_parameters:
-      include_details: true
-    override_payload:
-      filters: ["default", "active"]
 ```
 
-### 2. System Prompt (Markdown)
+**Markdown Prompt** (tells AI how to behave):
 
 ```markdown
 # Customer Support Assistant
-
-You are a helpful customer support agent. You can use the getUserById function 
-to fetch user data. Always respond politely and helpfully.
-
-## Functions
-- getUserById: Get user details by ID
+You help customers by looking up their information.
+Use getUserById to fetch user data.
 ```
 
-### 3. Request Flow
+### 🎯 Example Request Flow
 
-- AI calls: `getUserById({ id: "123", payload: { filters: ["custom"], metadata: { source: "api" } } })`
-- Override parameters add: `{ include_details: true }`
-- Override payload merges: `{ filters: ["default", "active"], metadata: { source: "api" } }`
-- Final URL: `POST /users/123?include_details=true`
-- Final Body: `{ "filters": ["default", "active"], "metadata": { "source": "api" } }`
+**What the AI Agent sends:**
 
-**Parameter Types & Conversion:**
+```json
+POST /call/getUserById
+{ "id": "123" }
+```
 
-- `string`, `number`, `boolean`: Direct conversion
-- `object`, `array` in URL: Converted to minified JSON in query parameters  
-- `object`, `array` in payload: Sent as JSON in request body
+**What Cubicler does:**
+
+- Looks up `getUserById` function in YAML spec
+- Finds it maps to `user_api` service → `get_user` endpoint
+- Translates to: `POST https://api.example.com/users/123`
+- Forwards the response back to AI Agent
 
 ---
 
 ## 📘 API Reference
 
-### GET `/prompt`
+### Quick Reference
 
-Returns the system prompt.
+| Endpoint | What It Does | Example Response |
+|----------|-------------|------------------|
+| `GET /prompt` | Get AI instructions | `{"prompt": "You are a helpful assistant..."}` |
+| `GET /spec` | Get available functions | `[{"name": "getUserById", "parameters": {...}}]` |
+| `POST /call/getUserById` | Execute a function | `{"id": "123", "name": "John", "email": "john@example.com"}` |
+
+### Detailed Endpoints
+
+#### GET `/prompt`
+
+Returns the system prompt that tells the AI agent how to behave.
 
 ```json
 { "prompt": "# Customer Support Assistant ..." }
 ```
 
----
-
-### GET `/spec`
+#### GET `/spec`
 
 Returns OpenAI-compatible function specs (override params and payload excluded).
 
@@ -210,9 +230,7 @@ Returns OpenAI-compatible function specs (override params and payload excluded).
 ]
 ```
 
----
-
-### POST `/call/:function_name`
+#### POST `/call/:function_name`
 
 Executes the specified function.
 
@@ -241,6 +259,45 @@ Executes the specified function.
 
 ---
 
+## ⚡ Advanced Features
+
+### 🔒 Hidden Parameters
+
+Add secret parameters that AI agents never see, but get automatically included in API calls:
+
+```yaml
+functions:
+  getUserById:
+    override_parameters:
+      api_key: "secret-key"  # AI never sees this, but it's always sent
+      include_details: true
+```
+
+### 🌍 Environment Variables
+
+Keep secrets safe by referencing environment variables:
+
+```yaml
+default_headers:
+  Authorization: "Bearer {{env.API_TOKEN}}"  # Pulls from .env file
+```
+
+### 📦 Multiple Services
+
+Connect to as many APIs as you want in one config:
+
+```yaml
+services:
+  user_api:
+    base_url: https://users.example.com
+  email_api:
+    base_url: https://email.example.com
+  payment_api:
+    base_url: https://payments.example.com
+```
+
+---
+
 ## 🧪 Testing
 
 ```bash
@@ -255,7 +312,6 @@ npm test -- tests/integration.test.js
 
 - ✅ Unit tests (services and utilities)
 - ✅ Integration tests (mock external APIs)
-- ✅ 26+ test cases
 
 ---
 
