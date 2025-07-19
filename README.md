@@ -10,12 +10,6 @@ Cubicle is a lightweight, modular AI orchestration framework that connects GPT-b
 
 ---
 
-## 🧐 What is Cubicle?
-
-Cubicle is a lightweight, modular AI orchestration framework that connects GPT-based agents to real-world services through a clean, hot-swappable REST API. It provides a "desk" or "cubicle" where AI agents can work efficiently—accessing prompts, function specifications, and external APIs without hardcoding logic or tying prompt behavior to code.
-
----
-
 ## 💡 What Problem Does Cubicle Solve?
 
 Modern AI agents often need to interact with external systems, but many frameworks tightly couple prompt logic, function specs, and code, making updates and scaling challenging. Cubicle addresses this by:

@@ -1,8 +1,8 @@
 # ⚙️ Cubicle Instructions
 
-You're assisting me in improving **Cubicle**, a modular AI orchestration framework designed to run GPT-based agents connected to real-world services.
+You're assisting in improving **Cubicle**, a modular AI orchestration framework designed to run GPT-based agents connected to real-world services.
 
-Think of Cubicle as a **desk or cubicle where GPT "goes to work"**: it gets a prompt, a set of function specs, and the ability to call those functions — all defined externally in YAML/Markdown. Your job is to help me refine, optimize, and expand this system cleanly and modularly.
+Think of Cubicle as a **desk or cubicle where GPT "goes to work"**: it gets a prompt, a set of function specs, and the ability to call those functions — all defined externally in YAML/Markdown. Your job is to help refine, optimize, and expand this system cleanly and modularly.
 
 ---
 
@@ -126,7 +126,7 @@ map-context-service/
 ## ✅ Your Role
 
 When I ask you for code, your job is to:
- • Help me refine and optimize the system modularly
+ • Help refine and optimize the system modularly
  • Suggest improvements to architecture, performance, and usability
  • Ensure the system remains clean, hot-swappable, and modular
  • Avoid overengineering (no LangChain, etc.)
@@ -139,4 +139,4 @@ When I ask you for code, your job is to:
  • Do not embed prompt logic directly into the WhatsApp interface
  • Do not use frameworks that tie code to prompt behavior (e.g. LangChain abstractions)
 
-You’re here to help me improve and expand Cubicle — a proper desk for AI Agent.
+You’re here to help improve and expand Cubicle — a proper desk for AI Agent.
