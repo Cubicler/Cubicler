@@ -7,15 +7,21 @@ dotenv.config();
 
 describe('specService', () => {
   // Read the actual mock spec file content to avoid redundancy
-  const mockSpecContent = fs.readFileSync('./tests/mockSpec.yaml', 'utf-8');
+  const mockSpecContent = fs.readFileSync('./tests/mocks/mockSpec.yaml', 'utf-8');
+  
+  // Read additional mock spec files
+  const complicatedMockSpec = fs.readFileSync('./tests/mocks/complicatedMockSpec.yaml', 'utf-8');
+  const mockSpecWithPayload = fs.readFileSync('./tests/mocks/mockSpecWithPayload.yaml', 'utf-8');
+  const mockSpecWithBoth = fs.readFileSync('./tests/mocks/mockSpecWithBoth.yaml', 'utf-8');
+  const mockSpecNoPayloadOverride = fs.readFileSync('./tests/mocks/mockSpecNoPayloadOverride.yaml', 'utf-8');
 
   beforeAll(() => {
-    process.env.CUBICLE_SPEC_SOURCE = './tests/mockSpec.yaml';
+    process.env.CUBICLE_SPEC_SOURCE = './tests/mocks/mockSpec.yaml';
   });
 
   beforeEach(() => {
     jest.spyOn(fs, 'readFileSync').mockImplementation((path, encoding) => {
-      if (path === './tests/mockSpec.yaml') {
+      if (path === './tests/mocks/mockSpec.yaml') {
         return mockSpecContent;
       }
       // For any other files, call the real readFileSync
@@ -27,17 +33,31 @@ describe('specService', () => {
     jest.restoreAllMocks();
   });
 
-  it('should fetch the correct endpoint for a function', async () => {
+  it('should fetch the correct endpoint for a function with payload', async () => {
+    jest.spyOn(fs, 'readFileSync').mockImplementation((path, encoding) => {
+      if (path === './tests/mocks/mockSpec.yaml') {
+        return complicatedMockSpec;
+      }
+      return jest.requireActual('fs').readFileSync(path, encoding);
+    });
+
     const func = await specService.getFunction('testFunction');
     const endpoint = await specService.getEndpoint(func);
 
     expect(endpoint).toEqual({
-      method: 'GET',
+      method: 'POST',
       path: '/test/{id}',
       parameters: {
-        id: {
-          type: 'string',
-        },
+        id: { type: 'string' }
+      },
+      payload: {
+        type: 'object',
+        properties: {
+          filter: {
+            type: 'array',
+            items: { type: 'string' }
+          }
+        }
       },
       base_url: 'https://api.example.com',
       headers: {
@@ -52,20 +72,68 @@ describe('specService', () => {
     expect(overrideValues).toEqual({ id: '123' });
   });
 
-  it('should exclude override parameters from AI function spec', async () => {
+  it('should fetch the override payload for a function', async () => {
+    jest.spyOn(fs, 'readFileSync').mockImplementation((path, encoding) => {
+      if (path === './tests/mocks/mockSpec.yaml') {
+        return mockSpecWithPayload;
+      }
+      return jest.requireActual('fs').readFileSync(path, encoding);
+    });
+
+    const overridePayload = await specService.getOverridePayload('testFunction');
+    expect(overridePayload).toEqual({ 
+      filter: ['default-filter'],
+      priority: 1
+    });
+  });
+
+  it('should return undefined for functions without override payload', async () => {
+    const overridePayload = await specService.getOverridePayload('testFunction');
+    expect(overridePayload).toBeUndefined();
+  });
+
+  it('should exclude override parameters and payload from AI function spec', async () => {
+    jest.spyOn(fs, 'readFileSync').mockImplementation((path, encoding) => {
+      if (path === './tests/mocks/mockSpec.yaml') {
+        return mockSpecWithBoth;
+      }
+      return jest.requireActual('fs').readFileSync(path, encoding);
+    });
+
     const functions = await specService.getFunctions();
     const testFunction = functions.find(f => f.name === 'testFunction');
     
     expect(testFunction).toBeDefined();
     expect(testFunction.description).toBe('Test function');
     
-    // The AI should NOT see the 'id' parameter because it's overridden
+    // Should not include overridden parameter 'id'
     expect(testFunction.parameters.properties).not.toHaveProperty('id');
+    // Should include non-overridden parameter 'count'
+    expect(testFunction.parameters.properties).toHaveProperty('count');
+    // Should not include payload since it's overridden
+    expect(testFunction.parameters.properties).not.toHaveProperty('payload');
+  });
+
+  it('should include payload in function spec when not overridden', async () => {
+    jest.spyOn(fs, 'readFileSync').mockImplementation((path, encoding) => {
+      if (path === './tests/mocks/mockSpec.yaml') {
+        return mockSpecNoPayloadOverride;
+      }
+      return jest.requireActual('fs').readFileSync(path, encoding);
+    });
+
+    const functions = await specService.getFunctions();
+    const testFunction = functions.find(f => f.name === 'testFunction');
     
-    // But it should see other parameters that aren't overridden
-    // (Note: in our mock, 'id' is the only parameter and it's overridden, 
-    // so properties should be empty)
-    expect(Object.keys(testFunction.parameters.properties)).toEqual([]);
+    expect(testFunction).toBeDefined();
+    // Should include payload since it's not overridden
+    expect(testFunction.parameters.properties).toHaveProperty('payload');
+    expect(testFunction.parameters.properties.payload).toEqual({
+      type: 'object',
+      properties: {
+        filter: { type: 'array' }
+      }
+    });
   });
 
   it('should substitute environment variables in headers', async () => {
@@ -78,7 +146,7 @@ describe('specService', () => {
     );
     
     jest.spyOn(fs, 'readFileSync').mockImplementation((path, encoding) => {
-      if (path === './tests/mockSpec.yaml') {
+      if (path === './tests/mocks/mockSpec.yaml') {
         return mockSpecWithEnvVars;
       }
       return jest.requireActual('fs').readFileSync(path, encoding);
@@ -102,7 +170,7 @@ describe('specService', () => {
     );
     
     jest.spyOn(fs, 'readFileSync').mockImplementation((path, encoding) => {
-      if (path === './tests/mockSpec.yaml') {
+      if (path === './tests/mocks/mockSpec.yaml') {
         return mockSpecWithEnvVars;
       }
       return jest.requireActual('fs').readFileSync(path, encoding);
@@ -126,7 +194,7 @@ describe('specService', () => {
     );
     
     jest.spyOn(fs, 'readFileSync').mockImplementation((path, encoding) => {
-      if (path === './tests/mockSpec.yaml') {
+      if (path === './tests/mocks/mockSpec.yaml') {
         return mockSpecWithEnvVars;
       }
       return jest.requireActual('fs').readFileSync(path, encoding);

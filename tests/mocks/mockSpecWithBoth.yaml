@@ -1,0 +1,27 @@
+version: 2
+services:
+  test_service:
+    base_url: https://api.example.com
+    endpoints:
+      test_endpoint:
+        method: POST
+        path: /test/{id}
+        parameters:
+          id:
+            type: string
+          count:
+            type: number
+        payload:
+          type: object
+          properties:
+            filter:
+              type: array
+functions:
+  testFunction:
+    service: test_service
+    endpoint: test_endpoint
+    description: Test function
+    override_parameters:
+      id: "123"
+    override_payload:
+      filter: ["default"]

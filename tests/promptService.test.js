@@ -1,5 +1,5 @@
 import { jest } from '@jest/globals';
-import promptService from '../../src/core/promptService';
+import promptService from '../src/core/promptService';
 import mockFs from 'mock-fs';
 import dotenv from 'dotenv';
 
@@ -10,6 +10,7 @@ describe('promptService', () => {
     mockFs({
       './tests/mocks/mockPrompt.md': 'Local Test Prompt',
     });
+    // Clear mocks
     jest.clearAllMocks();
   });
 
@@ -32,7 +33,7 @@ describe('promptService', () => {
 
   it('should fetch the prompt from a local file', async () => {
     process.env.CUBICLE_PROMPT_SOURCE = './tests/mocks/mockPrompt.md';
-    
+
     const prompt = await promptService.getPrompt();
     expect(prompt).toBe('Local Test Prompt');
   });

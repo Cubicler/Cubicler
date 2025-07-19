@@ -36,7 +36,7 @@ CUBICLE_PROMPT_SOURCE=https://your-cloud.com/prompts/agent.md
 ## 📑 YAML Spec Format
 
 ```yaml
-version: 1
+version: 2
 services:
   mock_service:
     base_url: https://api.cubicle.io
@@ -44,15 +44,26 @@ services:
       Authorization: "Bearer {{env.API_KEY}}"
     endpoints:
       get_mock:
-        method: GET
+        method: POST
         path: /mock_service/get/{mock_id}/{mock_name}
         headers:
             X-Client-Version: "cubicle/1.0"
         parameters:
           mock_id:
-            type: string
+            type: number
           mock_name:
             type: string
+          active:
+            type: boolean
+        payload:
+          type: object
+          properties:
+            filters:
+              type: array
+              items:
+                type: string
+            metadata:
+              type: object
         response:
           type: object
           properties:
@@ -70,7 +81,25 @@ functions:
     description: Get mock object by ID
     override_parameters:
       mock_name: "my_mock"
+      active: true
+    override_payload:
+      filters: ["default", "active"]
+      metadata: { "source": "system" }
 ```
+
+### Parameter Types & Handling
+
+**Supported Types:** `string`, `number`, `boolean`, `array`, `object`
+
+**Parameters vs Payload:**
+- **`parameters`**: URL parameters only (path + query)
+  - Object/array types → converted to minified JSON in query parameters
+- **`payload`**: HTTP request body (JSON format for object/array)
+
+**Function Spec Generation:**
+- Both `parameters` and `payload` are flattened into OpenAI function spec
+- Payload appears as parameter named `payload`
+- Override parameters/payload are hidden from AI agents
 
 ---
 
@@ -80,27 +109,45 @@ When a function is called via `POST /call`, here's the exact flow:
 
 1. **Collect Parameters:**
    - Get override parameters from YAML spec (hidden from AI)
+   - Get override payload from YAML spec (hidden from AI)
    - Get parameters from the AI agent's function call
+   - Separate `payload` from URL parameters
 
-2. **Merge Parameters (overrides win):**
+2. **Validate & Convert Types:**
    ```javascript
-   const mergedParameters = { ...userParameters, ...overrideParameters };
+   // Validate parameters against their type definitions
+   const validatedParams = validateAndConvertParameters(userParams, endpointSpec.parameters);
+   const validatedOverrides = validateAndConvertParameters(overrideParams, endpointSpec.parameters);
    ```
 
-3. **Replace URL Path Parameters:**
+3. **Merge Parameters (overrides win):**
    ```javascript
-   // "/api/{id}/{name}" + {id: "123", name: "test"} → "/api/123/test"
-   // Track which parameters were used in the path
+   const mergedParameters = { ...validatedParams, ...validatedOverrides };
    ```
 
-4. **Send Unused Parameters as Query/Body:**
-   - **GET requests:** Remaining parameters become query string
-   - **POST requests:** Remaining parameters become JSON body
+4. **Handle Payload:**
+   ```javascript
+   // Validate payload and merge with overrides
+   let finalPayload = validateAndConvertPayload(userPayload, endpointSpec.payload);
+   if (overridePayload) {
+     finalPayload = { ...finalPayload, ...overridePayload };
+   }
+   ```
+
+5. **Replace URL Path Parameters:**
+   ```javascript
+   // "/api/{id}/{name}" + {id: 123, name: "test"} → "/api/123/test"
+   ```
+
+6. **Send Unused Parameters as Query & Payload as Body:**
+   - **URL query:** Remaining parameters (object/array → minified JSON)
+   - **Request body:** Payload as JSON
 
 **Example:**
-- YAML spec: `override_parameters: { api_key: "{{env.SECRET}}" }`
-- AI calls: `{ id: "123", name: "test", filter: "active" }`
-- Result URL: `/api/123/test?filter=active` (api_key injected in headers)
+- YAML spec: `override_parameters: { active: true }`, `override_payload: { filters: ["default"] }`
+- AI calls: `{ id: "123", name: "test", payload: { filters: ["custom"], priority: 1 } }`
+- Result URL: `/api/123/test?active=true`
+- Result Body: `{ "filters": ["default"], "priority": 1 }`
 
 ---
 

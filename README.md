@@ -53,6 +53,9 @@ Cubicle is designed to be consumed by AI agents, backend services, or any client
 - 🚀 RESTful HTTP endpoints for interacting with agents
 - 🧩 Modular architecture with single-responsibility services
 - 🕵️‍♂️ Hidden override parameters (not visible to AI agents)
+- 🔧 **Parameter type validation and conversion** (`string`, `number`, `boolean`, `array`, `object`)
+- 📡 **Separate URL parameters and payload handling**
+- 🔄 **Smart parameter merging and type conversion**
 
 ---
 
@@ -101,7 +104,7 @@ Visit: `http://localhost:1503`
 ### 1. Function Spec (YAML)
 
 ```yaml
-version: 1
+version: 2
 services:
   user_api:
     base_url: https://api.example.com
@@ -109,13 +112,22 @@ services:
       Authorization: "Bearer {{env.API_KEY}}"
     endpoints:
       get_user:
-        method: GET
+        method: POST
         path: /users/{id}
         parameters:
           id:
             type: string
           include_details:
             type: boolean
+        payload:
+          type: object
+          properties:
+            filters:
+              type: array
+              items:
+                type: string
+            metadata:
+              type: object
 
 functions:
   getUserById:
@@ -124,6 +136,8 @@ functions:
     description: Get user information by ID
     override_parameters:
       include_details: true
+    override_payload:
+      filters: ["default", "active"]
 ```
 
 ### 2. System Prompt (Markdown)
@@ -140,9 +154,19 @@ to fetch user data. Always respond politely and helpfully.
 
 ### 3. Request Flow
 
-- AI calls: `getUserById({ id: "123", extra: "data" })`
-- Override adds: `{ include_details: true }`
-- Final URL: `GET /users/123?extra=data&include_details=true`
+**New Enhanced Flow (v2):**
+
+- AI calls: `getUserById({ id: "123", payload: { filters: ["custom"], metadata: { source: "api" } } })`
+- Override parameters add: `{ include_details: true }`
+- Override payload merges: `{ filters: ["default", "active"], metadata: { source: "api" } }`
+- Final URL: `POST /users/123?include_details=true`
+- Final Body: `{ "filters": ["default", "active"], "metadata": { "source": "api" } }`
+
+**Parameter Types & Conversion:**
+
+- `string`, `number`, `boolean`: Direct conversion
+- `object`, `array` in URL: Converted to minified JSON in query parameters  
+- `object`, `array` in payload: Sent as JSON in request body
 
 ---
 
@@ -160,7 +184,7 @@ Returns the system prompt.
 
 ### GET `/spec`
 
-Returns OpenAI-compatible function specs (override params excluded).
+Returns OpenAI-compatible function specs (override params and payload excluded).
 
 ```json
 [
@@ -170,7 +194,17 @@ Returns OpenAI-compatible function specs (override params excluded).
     "parameters": {
       "type": "object",
       "properties": {
-        "id": { "type": "string" }
+        "id": { "type": "string" },
+        "payload": {
+          "type": "object",
+          "properties": {
+            "filters": { 
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "metadata": { "type": "object" }
+          }
+        }
       }
     }
   }
@@ -186,13 +220,24 @@ Executes the specified function.
 **Request:**
 
 ```json
-{ "id": "123", "extra_param": "value" }
+{ 
+  "id": "123", 
+  "payload": { 
+    "filters": ["active", "verified"],
+    "metadata": { "priority": "high" }
+  }
+}
 ```
 
 **Response:**
 
 ```json
-{ "id": "123", "name": "John Doe", "email": "john@example.com" }
+{ 
+  "id": "123", 
+  "name": "John Doe", 
+  "email": "john@example.com",
+  "details": { "role": "admin" }
+}
 ```
 
 ---
@@ -241,6 +286,7 @@ Authorization: "Bearer {{env.API_KEY}}"
 ### Basic
 
 ```yaml
+version: 2
 services:
   weather_api:
     base_url: https://api.weather.com
@@ -250,27 +296,69 @@ services:
       current_weather:
         method: GET
         path: /current/{city}
+        parameters:
+          city:
+            type: string
+          units:
+            type: string
+        payload:
+          type: object
+          properties:
+            options:
+              type: array
+              items:
+                type: string
+
 functions:
   getCurrentWeather:
     service: weather_api
     endpoint: current_weather
+    description: Get current weather for a city
     override_parameters:
       units: "metric"
+    override_payload:
+      options: ["temperature", "humidity", "pressure"]
 ```
 
 ### Multiple Services
 
 ```yaml
+version: 2
 services:
   user_service:
-    ...
+    base_url: https://api.users.com
+    endpoints:
+      get_profile:
+        method: GET
+        path: /profile/{id}
+        parameters:
+          id: { type: string }
   email_service:
-    ...
+    base_url: https://api.email.com
+    endpoints:
+      send_email:
+        method: POST
+        path: /send
+        parameters:
+          priority: { type: number }
+        payload:
+          type: object
+          properties:
+            to: { type: string }
+            subject: { type: string }
+            body: { type: string }
+
 functions:
   getUserProfile:
-    ...
+    service: user_service
+    endpoint: get_profile
+    description: Get user profile information
   sendEmail:
-    ...
+    service: email_service
+    endpoint: send_email
+    description: Send an email
+    override_parameters:
+      priority: 1
 ```
 
 ---

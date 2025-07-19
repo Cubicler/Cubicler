@@ -1,0 +1,32 @@
+version: 2
+services:
+  test_service:
+    base_url: https://api.example.com
+    default_headers:
+      Authorization: "Bearer test_token"
+    endpoints:
+      test_endpoint:
+        method: POST
+        path: /test/{id}
+        headers:
+          X-Custom-Header: "CustomValue"
+        parameters:
+          id:
+            type: string
+        payload:
+          type: object
+          properties:
+            filter:
+              type: array
+              items:
+                type: string
+functions:
+  testFunction:
+    service: test_service
+    endpoint: test_endpoint
+    description: Test function
+    override_parameters:
+      id: "123"
+    override_payload:
+      filter:
+        - "default"

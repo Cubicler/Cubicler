@@ -36,6 +36,11 @@ async function getFunctions() {
       properties: { ...endpoint.parameters },
     };
 
+    // Add payload as a flattened parameter named "payload"
+    if (endpoint.payload) {
+      parameters.properties.payload = endpoint.payload;
+    }
+
     // Remove override parameters from AI function spec
     if (details.override_parameters) {
       Object.keys(details.override_parameters).forEach(key => {
@@ -43,6 +48,11 @@ async function getFunctions() {
           delete parameters.properties[key];
         }
       });
+    }
+
+    // Remove override payload from AI function spec
+    if (details.override_payload && parameters.properties.payload) {
+      delete parameters.properties.payload;
     }
 
     return {
@@ -97,4 +107,12 @@ async function getOverrideParameters(functionName) {
   return substituteEnvVarsInObject(func.override_parameters);
 }
 
-export default { getFunctions, getFunction, getEndpoint, getOverrideParameters };
+async function getOverridePayload(functionName) {
+  const spec = await _getSpec();
+  const func = spec.functions[functionName];
+  if (!func || !func.override_payload) return undefined;
+  
+  return substituteEnvVarsInObject(func.override_payload);
+}
+
+export default { getFunctions, getFunction, getEndpoint, getOverrideParameters, getOverridePayload };

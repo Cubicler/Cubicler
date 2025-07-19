@@ -1,16 +1,23 @@
-version: 1
+version: 2
 services:
-  mock_service:
+  some_service:
     base_url: localhost:3000
     endpoints:
       get_mock:
-        method: GET
-        path: /mock_service/get/{mock_id}/{mock_name}
+        method: POST
+        path: /some_service/get/{some_id}/{some_name}
         parameters:
-          mock_id:
+          some_id:
+            type: number
+          some_name:
             type: string
-          mock_name:
-            type: string
+        payload:
+          type: object
+          properties:
+            some_filter:
+              type: array
+              items:
+                type: string
         response:
           type: object
           properties:
@@ -22,9 +29,12 @@ services:
               type: string
 
 functions:
-  getMock:
-    service: mock_service
+  getSome:
+    service: some_service
     endpoint: get_mock
     description: Get mock object by ID
     override_parameters:
-      mock_name: "my_mock"
+      some_name: "my_mock"
+    override_payload:
+      some_filter:
+        - "filter1"
