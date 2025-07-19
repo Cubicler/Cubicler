@@ -88,7 +88,7 @@ export default {
 // Check if this module was imported or run directly
 const isMainModule = process.argv[1] && process.argv[1].endsWith('index.js');
 if (isMainModule) {
-  const port = process.env.PORT || 1503;
+  const port = process.env.CUBICLER_PORT || 1503;
   app.listen(port, () => {
     console.log(`Cubicler server is running on port ${port}`);
   });

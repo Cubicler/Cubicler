@@ -149,7 +149,7 @@ npm run docker:logs
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `PORT` | API server port | `1503` |
+| `CUBICLER_PORT` | API server port | `1503` |
 | `CUBICLER_SPEC_SOURCE` | YAML function spec path or URL | `spec.example.yaml` |
 | `CUBICLER_PROMPT_SOURCE` | Prompt file path or URL | `prompt.example.md` |
 
@@ -224,7 +224,7 @@ The health check verifies both prompt and spec services are working correctly.
 
 ### Port Conflicts
 
-- Modify `PORT` in `.env`
+- Modify `CUBICLER_PORT` in `.env`
 - Adjust port mapping in Docker Compose
 
 ### Permission Issues

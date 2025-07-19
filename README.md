@@ -87,7 +87,7 @@ CUBICLER_SPEC_SOURCE=./spec.example.yaml
 CUBICLER_PROMPT_SOURCE=./prompt.example.md
 
 # Optional: Port number (default: 1503)
-PORT=1503
+CUBICLER_PORT=1503
 ```
 
 ### Start the Server

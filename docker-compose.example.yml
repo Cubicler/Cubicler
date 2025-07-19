@@ -1,11 +1,11 @@
 # Docker Compose for testing with example files
 services:
-  cubicler-example:
+  cubicler:
     build: .
     ports:
-      - "1503:1503"
+      - "${CUBICLER_PORT:-1503}:${CUBICLER_PORT:-1503}"
     environment:
-      - PORT=1503
+      - CUBICLER_PORT=1503
       # Using local example files for testing
       - CUBICLER_SPEC_SOURCE=/app/config/spec.yaml
       - CUBICLER_PROMPT_SOURCE=/app/config/prompt.md

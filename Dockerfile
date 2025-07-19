@@ -29,12 +29,14 @@ RUN addgroup -g 1001 -S nodejs && \
 
 USER cubicler
 
-# Expose the port (default 1503, but configurable via PORT env var)
+# Expose the default port (1503) - actual port is configurable via CUBICLER_PORT env var
+# Note: Docker EXPOSE doesn't support env vars, so this documents the default port
+# For custom ports, update your docker-compose.yml or docker run port mappings accordingly
 EXPOSE 1503
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "const http = require('http'); const req = http.request('http://localhost:' + (process.env.PORT || 1503) + '/health', res => process.exit(res.statusCode === 200 ? 0 : 1)); req.on('error', () => process.exit(1)); req.end();"
+  CMD node -e "const http = require('http'); const req = http.request('http://localhost:' + (process.env.CUBICLER_PORT || 1503) + '/health', res => process.exit(res.statusCode === 200 ? 0 : 1)); req.on('error', () => process.exit(1)); req.end();"
 
 # Start the application
 CMD ["node", "src/index.js"]
