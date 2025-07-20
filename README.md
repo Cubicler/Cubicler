@@ -354,22 +354,27 @@ Authorization: "Bearer {{env.API_KEY}}"
 Control how Cubicler handles unknown parameters sent by AI agents:
 
 ### Non-Strict Mode (Default)
+
 ```env
 CUBICLER_STRICT_PARAMS=false
 ```
+
 - Unknown parameters are logged as warnings
 - Request continues with unknown parameters included
 - More forgiving for development and testing
 
 ### Strict Mode
+
 ```env
 CUBICLER_STRICT_PARAMS=true
 ```
+
 - Unknown parameters cause immediate error response
 - Helps catch AI agent mistakes and spec mismatches
 - Recommended for production environments
 
 **Example Error Response in Strict Mode:**
+
 ```json
 {
   "error": "Unknown parameter 'unexpected_param' is not allowed in strict mode"
