@@ -81,13 +81,21 @@ Modern AI agents often need to interact with external systems, but many framewor
 
 ## 🚀 Getting Started
 
-### Prerequisites
+### Quick Start with Docker
 
-- Node.js (v18 or higher)
-- npm
-- TypeScript (installed via npm dependencies)
+The fastest way to get Cubicler running:
 
-### Installation
+```bash
+# Pull and run from Docker Hub
+docker run -p 1503:1503 \
+  -e CUBICLER_SPEC_SOURCE=./spec.example.yaml \
+  -e CUBICLER_PROMPT_SOURCE=./prompt.example.md \
+  hainayanda/cubicler:latest
+```
+
+Visit: `http://localhost:1503`
+
+### Installation from Source
 
 ```bash
 git clone https://github.com/hainayanda/Cubicler.git
