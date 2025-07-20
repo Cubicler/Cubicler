@@ -10,8 +10,8 @@ describe('Integration Test - Full Cubicler Flow', () => {
 
   beforeAll(async () => {
     // Set up environment variables for testing
-    process.env.CUBICLER_SPEC_SOURCE = './tests/mocks/integrationSpec.yaml';
-    process.env.CUBICLER_PROMPT_SOURCE = './tests/mocks/integrationPrompt.md';
+    process.env.CUBICLER_SPEC_SOURCE = './tests/mocks/integration-spec.yaml';
+    process.env.CUBICLER_PROMPT_SOURCE = './tests/mocks/integration-prompt.md';
 
     // Create mock API server
     const mockApp = express();

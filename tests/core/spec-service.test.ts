@@ -7,13 +7,13 @@ dotenv.config();
 
 describe('specService', () => {
   // Read the actual mock spec file content to avoid redundancy
-  const mockSpecContent = fs.readFileSync('./tests/mocks/mockSpec.yaml', 'utf-8');
+  const mockSpecContent = fs.readFileSync('./tests/mocks/mock-spec.yaml', 'utf-8');
   
   // Read additional mock spec files
-  const complicatedMockSpec = fs.readFileSync('./tests/mocks/complicatedMockSpec.yaml', 'utf-8');
-  const mockSpecWithPayload = fs.readFileSync('./tests/mocks/mockSpecWithPayload.yaml', 'utf-8');
-  const mockSpecWithBoth = fs.readFileSync('./tests/mocks/mockSpecWithBoth.yaml', 'utf-8');
-  const mockSpecNoPayloadOverride = fs.readFileSync('./tests/mocks/mockSpecNoPayloadOverride.yaml', 'utf-8');
+  const complicatedMockSpec = fs.readFileSync('./tests/mocks/complicated-mock-spec.yaml', 'utf-8');
+  const mockSpecWithPayload = fs.readFileSync('./tests/mocks/mock-spec-with-payload.yaml', 'utf-8');
+  const mockSpecWithBoth = fs.readFileSync('./tests/mocks/mock-spec-with-both.yaml', 'utf-8');
+  const mockSpecNoPayloadOverride = fs.readFileSync('./tests/mocks/mock-spec-no-payload-override.yaml', 'utf-8');
 
   beforeAll(() => {
     process.env.CUBICLER_SPEC_SOURCE = './tests/mocks/mockSpec.yaml';
