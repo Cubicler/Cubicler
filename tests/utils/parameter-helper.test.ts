@@ -3,7 +3,7 @@ import {
   validateAndConvertParameters,
   validateAndConvertPayload,
   convertParametersForQuery 
-} from '../../src/utils/parameterHelper.js';
+} from '../../src/utils/parameter-helper.js';
 import type { ParameterDefinition } from '../../src/utils/types.js';
 
 describe('parameterHelper', () => {

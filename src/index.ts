@@ -1,6 +1,6 @@
-import promptService from './core/promptService.js';
-import specService from './core/specService.js';
-import functionService from './core/functionService.js';
+import promptService from './core/prompt-service.js';
+import specService from './core/spec-service.js';
+import functionService from './core/function-service.js';
 import express from 'express';
 import type { Request, Response } from 'express';
 import type { HealthStatus, FunctionCallParameters } from './utils/types.js';

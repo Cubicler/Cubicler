@@ -1,4 +1,4 @@
-import { substituteEnvVars, substituteEnvVarsInObject, getEnvBoolean, isStrictParamsEnabled } from '../../src/utils/envHelper.js';
+import { substituteEnvVars, substituteEnvVarsInObject, getEnvBoolean, isStrictParamsEnabled } from '../../src/utils/env-helper.js';
 
 describe('envHelper', () => {
   beforeEach(() => {

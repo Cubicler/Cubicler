@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals';
-import functionService from '../../src/core/functionService.js';
-import specService from '../../src/core/specService.js';
+import functionService from '../../src/core/function-service.js';
+import specService from '../../src/core/spec-service.js';
 import dotenv from 'dotenv';
 import type { FunctionDefinition, ProcessedEndpoint } from '../../src/utils/types.js';
 

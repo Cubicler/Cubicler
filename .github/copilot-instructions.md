@@ -158,13 +158,13 @@ Cubicler/
 ├── src/
 │   ├── index.ts                 # Main Express server (TypeScript)
 │   ├── core/
-│   │   ├── promptService.ts     # Loads, stores, and serves the system prompt
-│   │   ├── specService.ts       # Loads, stores, validates, and serves the spec
-│   │   └── functionService.ts   # Handles function calls
+│   │   ├── prompt-service.ts     # Loads, stores, and serves the system prompt
+│   │   ├── spec-service.ts       # Loads, stores, validates, and serves the spec
+│   │   └── function-service.ts   # Handles function calls
 │   └── utils/
 │       ├── types.ts             # TypeScript type definitions
-│       ├── envHelper.ts         # Environment variable utilities
-│       └── parameterHelper.ts   # Parameter validation and conversion
+│       ├── env-helper.ts         # Environment variable utilities
+│       └── parameter-helper.ts   # Parameter validation and conversion
 ├── tests/
 │   ├── core/                    # Core service tests (TypeScript)
 │   ├── utils/                   # Utility tests (TypeScript)

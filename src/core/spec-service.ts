@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs';
 import { load } from 'js-yaml';
 import { config } from 'dotenv';
-import { substituteEnvVars, substituteEnvVarsInObject } from '../utils/envHelper.js';
+import { substituteEnvVars, substituteEnvVarsInObject } from '../utils/env-helper.js';
 import type { 
   CubiclerSpec, 
   FunctionDefinition, 

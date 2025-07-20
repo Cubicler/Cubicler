@@ -1,5 +1,5 @@
 import { jest } from '@jest/globals';
-import specService from '../../src/core/specService.js';
+import specService from '../../src/core/spec-service.js';
 import fs from 'fs';
 import dotenv from 'dotenv';
 

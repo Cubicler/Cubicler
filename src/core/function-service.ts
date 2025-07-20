@@ -1,9 +1,9 @@
-import specService from './specService.js';
+import specService from './spec-service.js';
 import { 
   validateAndConvertParameters, 
   validateAndConvertPayload, 
   convertParametersForQuery 
-} from '../utils/parameterHelper.js';
+} from '../utils/parameter-helper.js';
 import type { FunctionCallParameters, FunctionCallResult } from '../utils/types.js';
 
 /**

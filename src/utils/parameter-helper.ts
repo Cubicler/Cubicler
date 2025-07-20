@@ -1,5 +1,5 @@
 import type { ParameterDefinition, PayloadDefinition, JSONValue } from './types.js';
-import { isStrictParamsEnabled } from './envHelper.js';
+import { isStrictParamsEnabled } from './env-helper.js';
 
 /**
  * Validates and converts a parameter value based on its type definition

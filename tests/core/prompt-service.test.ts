@@ -1,5 +1,5 @@
 import { jest } from '@jest/globals';
-import promptService from '../../src/core/promptService.js';
+import promptService from '../../src/core/prompt-service.js';
 import mockFs from 'mock-fs';
 import dotenv from 'dotenv';
 
