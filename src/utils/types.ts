@@ -20,24 +20,24 @@ export interface EndpointSpec {
   payload?: PayloadDefinition;
 }
 
-export interface ServiceSpec {
+export interface ServiceDefinition {
   base_url: string;
   default_headers?: Record<string, string>;
   endpoints: Record<string, EndpointSpec>;
 }
 
-export interface FunctionSpec {
+export interface FunctionDefinition {
   service: string;
   endpoint: string;
   description: string;
-  override_parameters?: Record<string, any>;
-  override_payload?: any;
+  override_parameters?: Record<string, JSONValue>;
+  override_payload?: JSONValue;
 }
 
 export interface CubiclerSpec {
   version: number;
-  services: Record<string, ServiceSpec>;
-  functions: Record<string, FunctionSpec>;
+  services: Record<string, ServiceDefinition>;
+  functions: Record<string, FunctionDefinition>;
 }
 
 export interface ProcessedEndpoint extends EndpointSpec {
@@ -45,7 +45,7 @@ export interface ProcessedEndpoint extends EndpointSpec {
   headers: Record<string, string>;
 }
 
-export interface OpenAIFunction {
+export interface FunctionSpec {
   name: string;
   description: string;
   parameters: {

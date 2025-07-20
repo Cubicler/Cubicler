@@ -1,4 +1,4 @@
-import type { ParameterDefinition, PayloadDefinition } from './types.js';
+import type { ParameterDefinition, PayloadDefinition, JSONValue } from './types.js';
 import { isStrictParamsEnabled } from './envHelper.js';
 
 /**
@@ -9,10 +9,10 @@ import { isStrictParamsEnabled } from './envHelper.js';
  * @returns The validated and converted value
  */
 export function validateAndConvertParameter(
-  value: any, 
+  value: JSONValue | undefined | null, 
   parameterDefinition: ParameterDefinition, 
   parameterName: string
-): any {
+): JSONValue | undefined | null {
   if (value === undefined || value === null) {
     if (parameterDefinition.required) {
       throw new Error(`Required parameter '${parameterName}' is missing`);
@@ -71,24 +71,34 @@ export function validateAndConvertParameter(
  * @returns The validated and converted parameters object
  */
 export function validateAndConvertParameters(
-  parameters: Record<string, any>,
+  parameters: Record<string, JSONValue | undefined | null>,
   parameterDefinitions: Record<string, ParameterDefinition> | undefined
-): Record<string, any> {
+): Record<string, JSONValue> {
   if (!parameters || typeof parameters !== 'object') {
     return {};
   }
 
   if (!parameterDefinitions || typeof parameterDefinitions !== 'object') {
-    return parameters; // No definitions available, return as-is
+    // No definitions available, filter out undefined values and return
+    const result: Record<string, JSONValue> = {};
+    for (const [key, value] of Object.entries(parameters)) {
+      if (value !== undefined && value !== null) {
+        result[key] = value;
+      }
+    }
+    return result;
   }
 
-  const convertedParameters: Record<string, any> = {};
+  const convertedParameters: Record<string, JSONValue> = {};
 
   // Convert provided parameters
   for (const [paramName, paramValue] of Object.entries(parameters)) {
     const paramDef = parameterDefinitions[paramName];
     if (paramDef) {
-      convertedParameters[paramName] = validateAndConvertParameter(paramValue, paramDef, paramName);
+      const convertedValue = validateAndConvertParameter(paramValue, paramDef, paramName);
+      if (convertedValue !== undefined && convertedValue !== null) {
+        convertedParameters[paramName] = convertedValue;
+      }
     } else {
       // Parameter not defined in spec
       if (isStrictParamsEnabled()) {
@@ -96,7 +106,9 @@ export function validateAndConvertParameters(
       } else {
         // Just warn in non-strict mode
         console.warn(`Parameter '${paramName}' is not defined in the spec`);
-        convertedParameters[paramName] = paramValue;
+        if (paramValue !== undefined && paramValue !== null) {
+          convertedParameters[paramName] = paramValue;
+        }
       }
     }
   }
@@ -118,9 +130,9 @@ export function validateAndConvertParameters(
  * @returns The validated and converted payload
  */
 export function validateAndConvertPayload(
-  payload: any,
+  payload: JSONValue | undefined | null,
   payloadDefinition: PayloadDefinition | undefined
-): any {
+): JSONValue | undefined {
   if (!payloadDefinition) {
     return payload;
   }
@@ -141,7 +153,8 @@ export function validateAndConvertPayload(
     }
   }
 
-  return validateAndConvertParameter(payload, payloadDefinition, 'payload');
+  const convertedResult = validateAndConvertParameter(payload, payloadDefinition, 'payload');
+  return convertedResult === null ? undefined : convertedResult;
 }
 
 /**
@@ -150,7 +163,7 @@ export function validateAndConvertPayload(
  * @param parameters - The parameters to convert
  * @returns Parameters converted to string format suitable for URLSearchParams
  */
-export function convertParametersForQuery(parameters: Record<string, any>): Record<string, string> {
+export function convertParametersForQuery(parameters: Record<string, JSONValue | undefined | null>): Record<string, string> {
   const queryParams: Record<string, string> = {};
   
   for (const [key, value] of Object.entries(parameters)) {

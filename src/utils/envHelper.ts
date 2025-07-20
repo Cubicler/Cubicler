@@ -1,11 +1,13 @@
+import type { JSONValue, JSONObject } from './types.js';
+
 /**
  * Helper function to substitute environment variables in strings
  * @param str - The string that may contain environment variable placeholders
  * @returns The string with environment variables substituted
  */
 export function substituteEnvVars(str: string): string;
-export function substituteEnvVars(str: any): any;
-export function substituteEnvVars(str: any): any {
+export function substituteEnvVars(str: JSONValue | undefined | null): JSONValue | undefined | null;
+export function substituteEnvVars(str: JSONValue | undefined | null): JSONValue | undefined | null {
   if (typeof str !== 'string') return str;
   return str.replace(/\{\{env\.(\w+)\}\}/g, (match: string, envVar: string) => {
     return process.env[envVar] || match;
@@ -39,15 +41,18 @@ export function isStrictParamsEnabled(): boolean {
  * @param obj - The object containing values that may have environment variable placeholders
  * @returns A new object with environment variables substituted
  */
-export function substituteEnvVarsInObject<T extends Record<string, any>>(obj: T): T;
+export function substituteEnvVarsInObject<T extends JSONObject>(obj: T): T;
 export function substituteEnvVarsInObject(obj: undefined): undefined;
-export function substituteEnvVarsInObject<T extends Record<string, any>>(obj: T | undefined): T | undefined;
-export function substituteEnvVarsInObject<T extends Record<string, any>>(obj: T | undefined): T | undefined {
+export function substituteEnvVarsInObject<T extends JSONObject>(obj: T | undefined): T | undefined;
+export function substituteEnvVarsInObject<T extends JSONObject>(obj: T | undefined): T | undefined {
   if (!obj) return obj;
   
-  const result: Record<string, any> = {};
+  const result: JSONObject = {};
   for (const [key, value] of Object.entries(obj)) {
-    result[key] = substituteEnvVars(value);
+    const substituted = substituteEnvVars(value);
+    if (substituted !== undefined) { // Keep null values but filter out undefined
+      result[key] = substituted;
+    }
   }
   return result as T;
 }

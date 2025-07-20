@@ -11,7 +11,7 @@ Think of CuYou're here to help improve and expand Cubicler — a proper desk for
 - Acts as the **control center / middleware**
 - Exposes:
   - `GET /prompt` – fetches current system prompt (Markdown/Doc/URL)
-  - `GET /spec` – fetches YAML-based OpenAI function spec
+  - `GET /spec` – fetches YAML-based AI agent function spec
   - `POST /call` – handles AI Agent function_call routing
 - Parses a YAML spec from a remote or local location (`env.CUBICLER_SPEC_SOURCE`)
 - Gets a prompt from a remote or local location (`env.CUBICLER_PROMPT_SOURCE`)
@@ -97,7 +97,7 @@ functions:
 - **`payload`**: HTTP request body (JSON format for object/array)
 
 **Function Spec Generation:**
-- Both `parameters` and `payload` are flattened into OpenAI function spec
+- Both `parameters` and `payload` are flattened into AI agent function spec
 - Payload appears as parameter named `payload`
 - Override parameters/payload are hidden from AI agents
 

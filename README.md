@@ -214,7 +214,7 @@ Returns the system prompt that tells the AI agent how to behave.
 
 #### GET `/spec`
 
-Returns OpenAI-compatible function specs (override params and payload excluded).
+Returns function specs in AI agent compatible format (override params and payload excluded).
 
 ```json
 [

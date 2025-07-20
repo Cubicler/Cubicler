@@ -2,7 +2,7 @@ import { jest } from '@jest/globals';
 import functionService from '../../src/core/functionService.js';
 import specService from '../../src/core/specService.js';
 import dotenv from 'dotenv';
-import type { FunctionSpec, ProcessedEndpoint } from '../../src/utils/types.js';
+import type { FunctionDefinition, ProcessedEndpoint } from '../../src/utils/types.js';
 
 dotenv.config();
 
@@ -22,7 +22,7 @@ describe('functionService', () => {
       service: 'test_service',
       endpoint: 'test_endpoint',
       description: 'Test function'
-    } as FunctionSpec);
+    } as FunctionDefinition);
 
     jest.spyOn(specService, 'getEndpoint').mockResolvedValue({
       base_url: 'https://api.example.com',

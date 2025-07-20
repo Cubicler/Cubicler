@@ -44,7 +44,9 @@ async function callFunction(
     
     // Apply override payload (merge with user payload, overrides take precedence)
     if (overridePayload !== undefined) {
-      if (endpointSpec.payload.type === 'object' && typeof finalPayload === 'object' && finalPayload !== null) {
+      if (endpointSpec.payload?.type === 'object' && 
+          typeof finalPayload === 'object' && finalPayload !== null && !Array.isArray(finalPayload) &&
+          typeof overridePayload === 'object' && overridePayload !== null && !Array.isArray(overridePayload)) {
         finalPayload = { ...finalPayload, ...overridePayload };
       } else {
         finalPayload = overridePayload;

@@ -4,9 +4,10 @@ import { config } from 'dotenv';
 import { substituteEnvVars, substituteEnvVarsInObject } from '../utils/envHelper.js';
 import type { 
   CubiclerSpec, 
-  FunctionSpec, 
+  FunctionDefinition, 
   ProcessedEndpoint, 
-  OpenAIFunction 
+  FunctionSpec,
+  JSONValue
 } from '../utils/types.js';
 
 config();
@@ -43,10 +44,10 @@ async function _getSpec(): Promise<CubiclerSpec> {
 }
 
 /**
- * Gets the list of functions formatted for OpenAI function calling
- * @returns Promise that resolves to an array of OpenAI function specs
+ * Gets the list of functions formatted for AI agent function calling
+ * @returns Promise that resolves to an array of function specs
  */
-async function getFunctions(): Promise<OpenAIFunction[]> {
+async function getFunctions(): Promise<FunctionSpec[]> {
   const spec = await _getSpec();
   
   return Object.entries(spec.functions).map(([name, details]) => {
@@ -60,7 +61,7 @@ async function getFunctions(): Promise<OpenAIFunction[]> {
       throw new Error(`Endpoint ${details.endpoint} not found in service ${details.service}`);
     }
 
-    const parameters: OpenAIFunction['parameters'] = {
+    const parameters: FunctionSpec['parameters'] = {
       type: 'object',
       properties: { ...endpoint.parameters },
     };
@@ -98,7 +99,7 @@ async function getFunctions(): Promise<OpenAIFunction[]> {
  * @returns Promise that resolves to the function spec
  * @throws Error if function is not found
  */
-async function getFunction(functionName: string): Promise<FunctionSpec> {
+async function getFunction(functionName: string): Promise<FunctionDefinition> {
   const spec = await _getSpec();
   const functionSpec = spec.functions[functionName];
   if (!functionSpec) {
@@ -113,7 +114,7 @@ async function getFunction(functionName: string): Promise<FunctionSpec> {
  * @returns Promise that resolves to the processed endpoint with base URL and headers
  * @throws Error if service or endpoint is not found
  */
-async function getEndpoint(func: FunctionSpec): Promise<ProcessedEndpoint> {
+async function getEndpoint(func: FunctionDefinition): Promise<ProcessedEndpoint> {
   const spec = await _getSpec();
   const service = spec.services[func.service];
   if (!service) {
@@ -145,7 +146,7 @@ async function getEndpoint(func: FunctionSpec): Promise<ProcessedEndpoint> {
  * @param functionName - The name of the function
  * @returns Promise that resolves to the override parameters object
  */
-async function getOverrideParameters(functionName: string): Promise<Record<string, any>> {
+async function getOverrideParameters(functionName: string): Promise<Record<string, JSONValue>> {
   const spec = await _getSpec();
   const func = spec.functions[functionName];
   if (!func || !func.override_parameters) return {};
@@ -158,12 +159,17 @@ async function getOverrideParameters(functionName: string): Promise<Record<strin
  * @param functionName - The name of the function
  * @returns Promise that resolves to the override payload
  */
-async function getOverridePayload(functionName: string): Promise<any> {
+async function getOverridePayload(functionName: string): Promise<JSONValue | undefined> {
   const spec = await _getSpec();
   const func = spec.functions[functionName];
   if (!func || !func.override_payload) return undefined;
   
-  return substituteEnvVarsInObject(func.override_payload);
+  // For payload, we need to handle different types
+  if (typeof func.override_payload === 'object' && func.override_payload !== null && !Array.isArray(func.override_payload)) {
+    return substituteEnvVarsInObject(func.override_payload);
+  } else {
+    return func.override_payload;
+  }
 }
 
 export default { getFunctions, getFunction, getEndpoint, getOverrideParameters, getOverridePayload };
