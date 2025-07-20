@@ -5,6 +5,7 @@ services:
       - "${CUBICLER_PORT:-1503}:${CUBICLER_PORT:-1503}"
     environment:
       - CUBICLER_PORT=${CUBICLER_PORT:-1503}
+      - CUBICLER_STRICT_PARAMS=${CUBICLER_STRICT_PARAMS:-false}
       # Option 1: Use URLs (recommended for production)
       # - CUBICLER_SPEC_SOURCE=https://your-domain.com/specs/agent.yaml
       # - CUBICLER_PROMPT_SOURCE=https://your-domain.com/prompts/agent.md

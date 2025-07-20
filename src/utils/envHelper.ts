@@ -13,6 +13,28 @@ export function substituteEnvVars(str: any): any {
 }
 
 /**
+ * Helper function to get boolean value from environment variable
+ * @param envVar - The environment variable name
+ * @param defaultValue - The default value if environment variable is not set
+ * @returns The boolean value
+ */
+export function getEnvBoolean(envVar: string, defaultValue: boolean = false): boolean {
+  const value = process.env[envVar];
+  if (!value) return defaultValue;
+  
+  const lowerValue = value.toLowerCase();
+  return lowerValue === 'true' || lowerValue === '1';
+}
+
+/**
+ * Helper function to check if strict parameter validation is enabled
+ * @returns true if strict parameter validation is enabled
+ */
+export function isStrictParamsEnabled(): boolean {
+  return getEnvBoolean('CUBICLER_STRICT_PARAMS', false);
+}
+
+/**
  * Helper function to substitute environment variables in an object
  * @param obj - The object containing values that may have environment variable placeholders
  * @returns A new object with environment variables substituted

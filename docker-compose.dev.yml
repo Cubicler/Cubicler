@@ -9,6 +9,7 @@ services:
     environment:
       - NODE_ENV=development
       - CUBICLER_PORT=${CUBICLER_PORT:-1503}
+      - CUBICLER_STRICT_PARAMS=${CUBICLER_STRICT_PARAMS:-false}
       - CUBICLER_SPEC_SOURCE=spec.example.yaml
       - CUBICLER_PROMPT_SOURCE=prompt.example.md
     volumes:

@@ -1,4 +1,5 @@
 import type { ParameterDefinition, PayloadDefinition } from './types.js';
+import { isStrictParamsEnabled } from './envHelper.js';
 
 /**
  * Validates and converts a parameter value based on its type definition
@@ -89,9 +90,14 @@ export function validateAndConvertParameters(
     if (paramDef) {
       convertedParameters[paramName] = validateAndConvertParameter(paramValue, paramDef, paramName);
     } else {
-      // Parameter not defined in spec, keep as-is but warn
-      console.warn(`Parameter '${paramName}' is not defined in the spec`);
-      convertedParameters[paramName] = paramValue;
+      // Parameter not defined in spec
+      if (isStrictParamsEnabled()) {
+        throw new Error(`Unknown parameter '${paramName}' is not allowed in strict mode`);
+      } else {
+        // Just warn in non-strict mode
+        console.warn(`Parameter '${paramName}' is not defined in the spec`);
+        convertedParameters[paramName] = paramValue;
+      }
     }
   }
 
@@ -124,6 +130,15 @@ export function validateAndConvertPayload(
       throw new Error(`Required payload is missing`);
     }
     return payload;
+  }
+
+  // If strict mode is enabled and payload has properties defined, validate against them
+  if (isStrictParamsEnabled() && payloadDefinition.type === 'object' && payloadDefinition.properties && typeof payload === 'object' && !Array.isArray(payload)) {
+    for (const propName of Object.keys(payload)) {
+      if (!(propName in payloadDefinition.properties)) {
+        throw new Error(`Unknown payload property '${propName}' is not allowed in strict mode`);
+      }
+    }
   }
 
   return validateAndConvertParameter(payload, payloadDefinition, 'payload');

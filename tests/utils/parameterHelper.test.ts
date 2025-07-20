@@ -274,4 +274,70 @@ describe('parameterHelper', () => {
       });
     });
   });
+
+  describe('strict parameter validation', () => {
+    const originalEnv = process.env.CUBICLER_STRICT_PARAMS;
+    
+    afterEach(() => {
+      // Restore original env value
+      if (originalEnv !== undefined) {
+        process.env.CUBICLER_STRICT_PARAMS = originalEnv;
+      } else {
+        delete process.env.CUBICLER_STRICT_PARAMS;
+      }
+    });
+
+    it('should allow unknown parameters when strict mode is disabled', () => {
+      process.env.CUBICLER_STRICT_PARAMS = 'false';
+      
+      const parameters = { known: 'value', unknown: 'should-be-allowed' };
+      const definitions = { known: { type: 'string' } as ParameterDefinition };
+      
+      const result = validateAndConvertParameters(parameters, definitions);
+      
+      expect(result).toEqual({ known: 'value', unknown: 'should-be-allowed' });
+    });
+
+    it('should throw error for unknown parameters when strict mode is enabled', () => {
+      process.env.CUBICLER_STRICT_PARAMS = 'true';
+      
+      const parameters = { known: 'value', unknown: 'should-cause-error' };
+      const definitions = { known: { type: 'string' } as ParameterDefinition };
+      
+      expect(() => {
+        validateAndConvertParameters(parameters, definitions);
+      }).toThrow("Unknown parameter 'unknown' is not allowed in strict mode");
+    });
+
+    it('should validate payload properties in strict mode', () => {
+      process.env.CUBICLER_STRICT_PARAMS = 'true';
+      
+      const payload = { known: 'value', unknown: 'should-cause-error' };
+      const payloadDefinition = {
+        type: 'object' as const,
+        properties: {
+          known: { type: 'string' as const }
+        }
+      };
+      
+      expect(() => {
+        validateAndConvertPayload(payload, payloadDefinition);
+      }).toThrow("Unknown payload property 'unknown' is not allowed in strict mode");
+    });
+
+    it('should allow payload properties in non-strict mode', () => {
+      process.env.CUBICLER_STRICT_PARAMS = 'false';
+      
+      const payload = { known: 'value', unknown: 'should-be-allowed' };
+      const payloadDefinition = {
+        type: 'object' as const,
+        properties: {
+          known: { type: 'string' as const }
+        }
+      };
+      
+      const result = validateAndConvertPayload(payload, payloadDefinition);
+      expect(result).toEqual({ known: 'value', unknown: 'should-be-allowed' });
+    });
+  });
 });

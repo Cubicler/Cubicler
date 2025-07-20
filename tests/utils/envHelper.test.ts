@@ -1,4 +1,4 @@
-import { substituteEnvVars, substituteEnvVarsInObject } from '../../src/utils/envHelper.js';
+import { substituteEnvVars, substituteEnvVarsInObject, getEnvBoolean, isStrictParamsEnabled } from '../../src/utils/envHelper.js';
 
 describe('envHelper', () => {
   beforeEach(() => {
@@ -123,6 +123,82 @@ describe('envHelper', () => {
       expect(result).toEqual({
         url: 'https://example.com/api'
       });
+    });
+  });
+
+  describe('getEnvBoolean', () => {
+    const originalValue = process.env.TEST_BOOLEAN;
+    
+    afterEach(() => {
+      // Restore original env value
+      if (originalValue !== undefined) {
+        process.env.TEST_BOOLEAN = originalValue;
+      } else {
+        delete process.env.TEST_BOOLEAN;
+      }
+    });
+
+    it('should return true for "true" string', () => {
+      process.env.TEST_BOOLEAN = 'true';
+      expect(getEnvBoolean('TEST_BOOLEAN')).toBe(true);
+    });
+
+    it('should return true for "1" string', () => {
+      process.env.TEST_BOOLEAN = '1';
+      expect(getEnvBoolean('TEST_BOOLEAN')).toBe(true);
+    });
+
+    it('should return false for "false" string', () => {
+      process.env.TEST_BOOLEAN = 'false';
+      expect(getEnvBoolean('TEST_BOOLEAN')).toBe(false);
+    });
+
+    it('should return false for "0" string', () => {
+      process.env.TEST_BOOLEAN = '0';
+      expect(getEnvBoolean('TEST_BOOLEAN')).toBe(false);
+    });
+
+    it('should return default value when env var is not set', () => {
+      delete process.env.TEST_BOOLEAN;
+      expect(getEnvBoolean('TEST_BOOLEAN', true)).toBe(true);
+      expect(getEnvBoolean('TEST_BOOLEAN', false)).toBe(false);
+      expect(getEnvBoolean('TEST_BOOLEAN')).toBe(false); // default should be false
+    });
+
+    it('should be case insensitive', () => {
+      process.env.TEST_BOOLEAN = 'TRUE';
+      expect(getEnvBoolean('TEST_BOOLEAN')).toBe(true);
+      
+      process.env.TEST_BOOLEAN = 'FALSE';
+      expect(getEnvBoolean('TEST_BOOLEAN')).toBe(false);
+    });
+  });
+
+  describe('isStrictParamsEnabled', () => {
+    const originalValue = process.env.CUBICLER_STRICT_PARAMS;
+    
+    afterEach(() => {
+      // Restore original env value
+      if (originalValue !== undefined) {
+        process.env.CUBICLER_STRICT_PARAMS = originalValue;
+      } else {
+        delete process.env.CUBICLER_STRICT_PARAMS;
+      }
+    });
+
+    it('should return true when CUBICLER_STRICT_PARAMS is "true"', () => {
+      process.env.CUBICLER_STRICT_PARAMS = 'true';
+      expect(isStrictParamsEnabled()).toBe(true);
+    });
+
+    it('should return false when CUBICLER_STRICT_PARAMS is "false"', () => {
+      process.env.CUBICLER_STRICT_PARAMS = 'false';
+      expect(isStrictParamsEnabled()).toBe(false);
+    });
+
+    it('should return false when CUBICLER_STRICT_PARAMS is not set', () => {
+      delete process.env.CUBICLER_STRICT_PARAMS;
+      expect(isStrictParamsEnabled()).toBe(false);
     });
   });
 });
