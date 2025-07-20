@@ -1,13 +1,22 @@
-// Service to handle function calls
-
 import specService from './specService.js';
 import { 
   validateAndConvertParameters, 
   validateAndConvertPayload, 
   convertParametersForQuery 
 } from '../utils/parameterHelper.js';
+import type { FunctionCallParameters, FunctionCallResult } from '../utils/types.js';
 
-async function callFunction(functionName, parameters) {
+/**
+ * Executes a function call by routing to the appropriate service endpoint
+ * @param functionName - The name of the function to call
+ * @param parameters - The parameters to pass to the function
+ * @returns Promise that resolves to the function call result
+ * @throws Error if function is not found or call fails
+ */
+async function callFunction(
+  functionName: string, 
+  parameters: FunctionCallParameters
+): Promise<FunctionCallResult> {
   const functionSpec = await specService.getFunction(functionName);
   const endpointSpec = await specService.getEndpoint(functionSpec);
 
@@ -44,11 +53,11 @@ async function callFunction(functionName, parameters) {
   }
   
   // Replace path parameters
-  const pathParams = [];
-  url = url.replace(/{(\w+)}/g, (match, paramName) => {
+  const pathParams: string[] = [];
+  url = url.replace(/{(\w+)}/g, (match: string, paramName: string) => {
     if (allUrlParameters[paramName] !== undefined) {
       pathParams.push(paramName);
-      return allUrlParameters[paramName];
+      return String(allUrlParameters[paramName]);
     }
     return match;
   });
@@ -59,11 +68,11 @@ async function callFunction(functionName, parameters) {
 
   const method = endpointSpec.method;
 
-  const requestOptions = {
+  const requestOptions: RequestInit = {
     method,
     headers: {
       'Content-Type': 'application/json',
-      ...endpointSpec.headers, // Already processed by specService
+      ...endpointSpec.headers,
     },
   };
 
@@ -86,7 +95,7 @@ async function callFunction(functionName, parameters) {
     throw new Error(`Failed to call function: ${response.statusText}`);
   }
 
-  return await response.json();
+  return await response.json() as FunctionCallResult;
 }
 
 export default { callFunction };

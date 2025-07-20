@@ -18,5 +18,5 @@ services:
       - ./prompt.example.md:/app/prompt.example.md:ro
       # Mount node_modules as a volume to avoid overwriting
       - /app/node_modules
-    command: ["node", "--watch", "src/index.js"]
+    command: ["sh", "-c", "npm run build && npm start"]
     restart: unless-stopped

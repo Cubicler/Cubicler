@@ -1,37 +1,66 @@
-// Service to load, store, validate, and serve the spec
-
 import { readFileSync } from 'fs';
 import { load } from 'js-yaml';
 import { config } from 'dotenv';
 import { substituteEnvVars, substituteEnvVarsInObject } from '../utils/envHelper.js';
+import type { 
+  CubiclerSpec, 
+  FunctionSpec, 
+  ProcessedEndpoint, 
+  OpenAIFunction 
+} from '../utils/types.js';
+
 config();
 
-async function _getSpec() {
-    const specSource = process.env.CUBICLER_SPEC_SOURCE;
+/**
+ * Internal function to load and parse the YAML spec
+ * @returns Promise that resolves to the parsed spec
+ * @throws Error if spec source is not defined or fetch/parse fails
+ */
+async function _getSpec(): Promise<CubiclerSpec> {
+  const specSource = process.env.CUBICLER_SPEC_SOURCE;
   if (!specSource) {
     throw new Error('CUBICLER_SPEC_SOURCE is not defined in environment variables');
   }
 
+  let yamlText: string;
+  
   if (specSource.startsWith('http')) {
     const response = await fetch(specSource);
     if (!response.ok) {
       throw new Error(`Failed to fetch spec: ${response.statusText}`);
     }
-    const yamlText = await response.text();
-    return load(yamlText);
+    yamlText = await response.text();
   } else {
-    const yamlText = readFileSync(specSource, 'utf-8');
-    return load(yamlText);
+    yamlText = readFileSync(specSource, 'utf-8');
   }
+  
+  const spec = load(yamlText) as CubiclerSpec;
+  if (!spec || typeof spec !== 'object') {
+    throw new Error('Invalid YAML spec format');
+  }
+  
+  return spec;
 }
 
-async function getFunctions() {
+/**
+ * Gets the list of functions formatted for OpenAI function calling
+ * @returns Promise that resolves to an array of OpenAI function specs
+ */
+async function getFunctions(): Promise<OpenAIFunction[]> {
   const spec = await _getSpec();
+  
   return Object.entries(spec.functions).map(([name, details]) => {
     const service = spec.services[details.service];
+    if (!service) {
+      throw new Error(`Service ${details.service} not found in spec`);
+    }
+    
     const endpoint = service.endpoints[details.endpoint];
+    if (!endpoint) {
+      throw new Error(`Endpoint ${details.endpoint} not found in service ${details.service}`);
+    }
 
-    const parameters = {
+    const parameters: OpenAIFunction['parameters'] = {
       type: 'object',
       properties: { ...endpoint.parameters },
     };
@@ -63,7 +92,13 @@ async function getFunctions() {
   });
 }
 
-async function getFunction(functionName) {
+/**
+ * Gets a specific function definition by name
+ * @param functionName - The name of the function to retrieve
+ * @returns Promise that resolves to the function spec
+ * @throws Error if function is not found
+ */
+async function getFunction(functionName: string): Promise<FunctionSpec> {
   const spec = await _getSpec();
   const functionSpec = spec.functions[functionName];
   if (!functionSpec) {
@@ -72,7 +107,13 @@ async function getFunction(functionName) {
   return functionSpec;
 }
 
-async function getEndpoint(func) {
+/**
+ * Gets the processed endpoint configuration for a function
+ * @param func - The function specification
+ * @returns Promise that resolves to the processed endpoint with base URL and headers
+ * @throws Error if service or endpoint is not found
+ */
+async function getEndpoint(func: FunctionSpec): Promise<ProcessedEndpoint> {
   const spec = await _getSpec();
   const service = spec.services[func.service];
   if (!service) {
@@ -99,7 +140,12 @@ async function getEndpoint(func) {
   };
 }
 
-async function getOverrideParameters(functionName) {
+/**
+ * Gets the override parameters for a function (parameters hidden from AI)
+ * @param functionName - The name of the function
+ * @returns Promise that resolves to the override parameters object
+ */
+async function getOverrideParameters(functionName: string): Promise<Record<string, any>> {
   const spec = await _getSpec();
   const func = spec.functions[functionName];
   if (!func || !func.override_parameters) return {};
@@ -107,7 +153,12 @@ async function getOverrideParameters(functionName) {
   return substituteEnvVarsInObject(func.override_parameters);
 }
 
-async function getOverridePayload(functionName) {
+/**
+ * Gets the override payload for a function (payload hidden from AI)
+ * @param functionName - The name of the function
+ * @returns Promise that resolves to the override payload
+ */
+async function getOverridePayload(functionName: string): Promise<any> {
   const spec = await _getSpec();
   const func = spec.functions[functionName];
   if (!func || !func.override_payload) return undefined;

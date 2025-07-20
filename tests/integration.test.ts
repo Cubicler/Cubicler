@@ -1,10 +1,11 @@
 import { jest } from '@jest/globals';
-import express from 'express';
+import express, { Request, Response } from 'express';
 import request from 'supertest';
 import { app } from '../src/index.js';
+import type { Server } from 'http';
 
 describe('Integration Test - Full Cubicler Flow', () => {
-  let mockApiServer;
+  let mockApiServer: Server;
   let mockApiPort = 3002;
 
   beforeAll(async () => {
@@ -17,7 +18,7 @@ describe('Integration Test - Full Cubicler Flow', () => {
     mockApp.use(express.json());
 
     // Mock endpoint that our function will call
-    mockApp.get('/users/:id', (req, res) => {
+    mockApp.get('/users/:id', (req: Request, res: Response) => {
       const { id } = req.params;
       const { include_details } = req.query;
       
@@ -88,5 +89,16 @@ describe('Integration Test - Full Cubicler Flow', () => {
       .expect(500);
 
     expect(response.body.error).toContain('Function nonExistentFunction not found');
+  });
+
+  it('should return health status via GET /health', async () => {
+    const response = await request(app)
+      .get('/health')
+      .expect(200);
+
+    expect(response.body.status).toBe('healthy');
+    expect(response.body.services.prompt.status).toBe('healthy');
+    expect(response.body.services.spec.status).toBe('healthy');
+    expect(response.body.timestamp).toBeDefined();
   });
 });

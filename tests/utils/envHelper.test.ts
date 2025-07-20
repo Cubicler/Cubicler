@@ -54,35 +54,35 @@ describe('envHelper', () => {
       process.env.BASE_URL = 'https://api.example.com';
       
       const input = {
-        url: '{{env.BASE_URL}}/api',
         authorization: 'Bearer {{env.API_KEY}}',
+        baseUrl: '{{env.BASE_URL}}',
         version: 'v1'
       };
       
       const result = substituteEnvVarsInObject(input);
       expect(result).toEqual({
-        url: 'https://api.example.com/api',
         authorization: 'Bearer secret-key',
+        baseUrl: 'https://api.example.com',
         version: 'v1'
       });
     });
 
     it('should handle objects with missing environment variables', () => {
       const input = {
-        existing: 'value',
-        missing: '{{env.MISSING_VAR}}'
+        authorization: 'Bearer {{env.MISSING_KEY}}',
+        baseUrl: 'https://api.example.com'
       };
       
       const result = substituteEnvVarsInObject(input);
       expect(result).toEqual({
-        existing: 'value',
-        missing: '{{env.MISSING_VAR}}'
+        authorization: 'Bearer {{env.MISSING_KEY}}',
+        baseUrl: 'https://api.example.com'
       });
     });
 
-    it('should return null/undefined unchanged', () => {
-      expect(substituteEnvVarsInObject(null)).toBe(null);
-      expect(substituteEnvVarsInObject(undefined)).toBe(undefined);
+    it('should return undefined for undefined input', () => {
+      const result = substituteEnvVarsInObject(undefined);
+      expect(result).toBeUndefined();
     });
 
     it('should handle empty objects', () => {
@@ -91,29 +91,38 @@ describe('envHelper', () => {
     });
 
     it('should handle objects with non-string values', () => {
-      process.env.API_KEY = 'secret-key';
+      process.env.TEST_VAR = 'test-value';
       
       const input = {
-        stringValue: '{{env.API_KEY}}',
+        stringValue: 'Hello {{env.TEST_VAR}}',
         numberValue: 123,
         booleanValue: true,
-        nullValue: null
+        nullValue: null,
+        objectValue: { nested: 'value' }
       };
       
       const result = substituteEnvVarsInObject(input);
       expect(result).toEqual({
-        stringValue: 'secret-key',
+        stringValue: 'Hello test-value',
         numberValue: 123,
         booleanValue: true,
-        nullValue: null
+        nullValue: null,
+        objectValue: { nested: 'value' }
       });
     });
-  });
 
-  afterEach(() => {
-    // Clean up test environment variables
-    delete process.env.TEST_VAR;
-    delete process.env.API_KEY;
-    delete process.env.BASE_URL;
+    it('should handle nested placeholder patterns', () => {
+      process.env.DOMAIN = 'example.com';
+      process.env.PROTOCOL = 'https';
+      
+      const input = {
+        url: '{{env.PROTOCOL}}://{{env.DOMAIN}}/api'
+      };
+      
+      const result = substituteEnvVarsInObject(input);
+      expect(result).toEqual({
+        url: 'https://example.com/api'
+      });
+    });
   });
 });

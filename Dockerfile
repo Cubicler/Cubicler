@@ -4,6 +4,7 @@
 FROM node:18-alpine AS base
 WORKDIR /app
 COPY package*.json ./
+COPY tsconfig.json ./
 
 # Development stage
 FROM base AS development
@@ -13,14 +14,23 @@ COPY src/ ./src/
 COPY spec.example.yaml ./
 COPY prompt.example.md ./
 EXPOSE 1503
-CMD ["node", "--watch", "src/index.js"]
+# For development, build and start - better for TypeScript
+CMD ["sh", "-c", "npm run build && npm start"]
+
+# Build stage
+FROM base AS build
+RUN npm ci
+COPY src/ ./src/
+RUN npm run build
 
 # Production stage
-FROM base AS production
+FROM node:18-alpine AS production
+WORKDIR /app
+COPY package*.json ./
 RUN npm ci --only=production && npm cache clean --force
 
-# Copy source code only
-COPY src/ ./src/
+# Copy built artifacts
+COPY --from=build /app/dist/ ./dist/
 
 # Create a non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
@@ -39,4 +49,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node -e "const http = require('http'); const req = http.request('http://localhost:' + (process.env.CUBICLER_PORT || 1503) + '/health', res => process.exit(res.statusCode === 200 ? 0 : 1)); req.on('error', () => process.exit(1)); req.end();"
 
 # Start the application
-CMD ["node", "src/index.js"]
+CMD ["npm", "start"]

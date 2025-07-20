@@ -1,10 +1,14 @@
-// Service to load, store, and serve the system prompt
-
 import { readFileSync } from 'fs';
 import { config } from 'dotenv';
+
 config();
 
-async function getPrompt() {
+/**
+ * Gets the system prompt from the configured source
+ * @returns Promise that resolves to the prompt text
+ * @throws Error if CUBICLER_PROMPT_SOURCE is not defined or fetch fails
+ */
+async function getPrompt(): Promise<string> {
   const promptSource = process.env.CUBICLER_PROMPT_SOURCE;
   if (!promptSource) {
     throw new Error('CUBICLER_PROMPT_SOURCE is not defined in environment variables');

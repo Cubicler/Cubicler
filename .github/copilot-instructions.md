@@ -154,16 +154,26 @@ When a function is called via `POST /call`, here's the exact flow:
 ## Project Structure
 
 ```
-map-context-service/
+Cubicler/
 ├── src/
-│   ├── index.js
+│   ├── index.ts                 # Main Express server (TypeScript)
 │   ├── core/
-│   │   ├── promptService.js     # Loads, stores, and serves the system prompt
-│   │   ├── specService.js       # Loads, stores, validates, and serves the spec
-│   │   └── functionService.js   # Handles function calls
-│   └── utils/  # Any utility functions
+│   │   ├── promptService.ts     # Loads, stores, and serves the system prompt
+│   │   ├── specService.ts       # Loads, stores, validates, and serves the spec
+│   │   └── functionService.ts   # Handles function calls
+│   └── utils/
+│       ├── types.ts             # TypeScript type definitions
+│       ├── envHelper.ts         # Environment variable utilities
+│       └── parameterHelper.ts   # Parameter validation and conversion
+├── tests/
+│   ├── core/                    # Core service tests (TypeScript)
+│   ├── utils/                   # Utility tests (TypeScript)
+│   ├── integration.test.ts      # Integration tests
+│   └── mocks/                   # Mock files for testing
+├── dist/                        # Compiled JavaScript output
 ├── .env
-├── .gitignore
+├── tsconfig.json                # TypeScript configuration
+├── jest.config.js               # Jest test configuration
 ├── package.json
 └── README.md
 ```
@@ -173,9 +183,10 @@ map-context-service/
 ## ✅ Your Role
 
 When I ask you for code, your job is to:
- • Help refine and optimize the system modularly
+ • Help refine and optimize the TypeScript system modularly
  • Suggest improvements to architecture, performance, and usability
  • Ensure the system remains clean, hot-swappable, and modular
+ • Maintain TypeScript type safety and best practices
  • Avoid overengineering (no LangChain, etc.)
  • Assume this system may grow into a multi-agent runtime in the future
  • When in doubt, Ask
@@ -183,7 +194,8 @@ When I ask you for code, your job is to:
 ## ✅ DO NOT
 
  • Do not suggest centralized monolith logic
- • Do not embed prompt logic directly into the WhatsApp interface
+ • Do not embed prompt logic directly into interfaces
  • Do not use frameworks that tie code to prompt behavior (e.g. LangChain abstractions)
+ • Do not sacrifice type safety for convenience
 
-You’re here to help improve and expand Cubicle — a proper desk for AI Agent.
+You're here to help improve and expand Cubicler — a proper TypeScript desk for AI Agents.

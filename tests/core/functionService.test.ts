@@ -1,7 +1,8 @@
 import { jest } from '@jest/globals';
-import functionService from '../../src/core/functionService';
-import specService from '../../src/core/specService';
+import functionService from '../../src/core/functionService.js';
+import specService from '../../src/core/specService.js';
 import dotenv from 'dotenv';
+import type { FunctionSpec, ProcessedEndpoint } from '../../src/utils/types.js';
 
 dotenv.config();
 
@@ -11,13 +12,17 @@ describe('functionService', () => {
   });
 
   beforeEach(() => {
-    global.fetch = jest.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true }) }));
+    global.fetch = jest.fn(() => Promise.resolve({ 
+      ok: true, 
+      json: () => Promise.resolve({ success: true }) 
+    } as Response));
     
     // Reset mocks to default values for each test
     jest.spyOn(specService, 'getFunction').mockResolvedValue({
       service: 'test_service',
       endpoint: 'test_endpoint',
-    });
+      description: 'Test function'
+    } as FunctionSpec);
 
     jest.spyOn(specService, 'getEndpoint').mockResolvedValue({
       base_url: 'https://api.example.com',
@@ -33,7 +38,7 @@ describe('functionService', () => {
           filter: { type: 'array' }
         }
       }
-    });
+    } as ProcessedEndpoint);
 
     jest.spyOn(specService, 'getOverrideParameters').mockResolvedValue({});
     jest.spyOn(specService, 'getOverridePayload').mockResolvedValue(undefined);
@@ -68,7 +73,7 @@ describe('functionService', () => {
         active: { type: 'boolean' },
         tags: { type: 'array' }
       }
-    });
+    } as ProcessedEndpoint);
 
     await functionService.callFunction('testFunction', { 
       id: '123',     // Should convert to number for path
@@ -96,7 +101,7 @@ describe('functionService', () => {
       parameters: {
         id: { type: 'string' }
       }
-    });
+    } as ProcessedEndpoint);
 
     await functionService.callFunction('testFunction', { 
       id: 'original-value'  // This should be overridden
@@ -125,7 +130,7 @@ describe('functionService', () => {
           filter: { type: 'array' }
         }
       }
-    });
+    } as ProcessedEndpoint);
 
     jest.spyOn(specService, 'getOverridePayload').mockResolvedValue({
       defaultFilter: 'override',
@@ -166,7 +171,7 @@ describe('functionService', () => {
           filter: { type: 'array' }
         }
       }
-    });
+    } as ProcessedEndpoint);
 
     jest.spyOn(specService, 'getOverridePayload').mockResolvedValue({
       filter: ['override-item']
@@ -195,7 +200,7 @@ describe('functionService', () => {
         id: { type: 'string' }
       }
       // No payload defined
-    });
+    } as ProcessedEndpoint);
 
     await functionService.callFunction('testFunction', { id: '123' });
 
@@ -215,7 +220,7 @@ describe('functionService', () => {
       parameters: {
         count: { type: 'number' }
       }
-    });
+    } as ProcessedEndpoint);
 
     await expect(functionService.callFunction('testFunction', { 
       count: 'not-a-number'

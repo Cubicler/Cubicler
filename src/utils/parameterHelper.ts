@@ -1,13 +1,17 @@
-// Utility functions for parameter type validation and conversion
+import type { ParameterDefinition, PayloadDefinition } from './types.js';
 
 /**
  * Validates and converts a parameter value based on its type definition
- * @param {any} value - The parameter value to validate/convert
- * @param {object} parameterDefinition - The parameter definition from YAML spec
- * @param {string} parameterName - The name of the parameter (for error messages)
- * @returns {any} - The validated and converted value
+ * @param value - The parameter value to validate/convert
+ * @param parameterDefinition - The parameter definition from YAML spec
+ * @param parameterName - The name of the parameter (for error messages)
+ * @returns The validated and converted value
  */
-function validateAndConvertParameter(value, parameterDefinition, parameterName) {
+export function validateAndConvertParameter(
+  value: any, 
+  parameterDefinition: ParameterDefinition, 
+  parameterName: string
+): any {
   if (value === undefined || value === null) {
     if (parameterDefinition.required) {
       throw new Error(`Required parameter '${parameterName}' is missing`);
@@ -61,11 +65,14 @@ function validateAndConvertParameter(value, parameterDefinition, parameterName) 
 
 /**
  * Validates and converts all parameters in an object based on their definitions
- * @param {object} parameters - The parameters object to validate/convert
- * @param {object} parameterDefinitions - The parameter definitions from YAML spec
- * @returns {object} - The validated and converted parameters object
+ * @param parameters - The parameters object to validate/convert
+ * @param parameterDefinitions - The parameter definitions from YAML spec
+ * @returns The validated and converted parameters object
  */
-function validateAndConvertParameters(parameters, parameterDefinitions) {
+export function validateAndConvertParameters(
+  parameters: Record<string, any>,
+  parameterDefinitions: Record<string, ParameterDefinition> | undefined
+): Record<string, any> {
   if (!parameters || typeof parameters !== 'object') {
     return {};
   }
@@ -74,7 +81,7 @@ function validateAndConvertParameters(parameters, parameterDefinitions) {
     return parameters; // No definitions available, return as-is
   }
 
-  const convertedParameters = {};
+  const convertedParameters: Record<string, any> = {};
 
   // Convert provided parameters
   for (const [paramName, paramValue] of Object.entries(parameters)) {
@@ -100,11 +107,14 @@ function validateAndConvertParameters(parameters, parameterDefinitions) {
 
 /**
  * Validates and converts payload based on payload definition
- * @param {any} payload - The payload to validate/convert
- * @param {object} payloadDefinition - The payload definition from YAML spec
- * @returns {any} - The validated and converted payload
+ * @param payload - The payload to validate/convert
+ * @param payloadDefinition - The payload definition from YAML spec
+ * @returns The validated and converted payload
  */
-function validateAndConvertPayload(payload, payloadDefinition) {
+export function validateAndConvertPayload(
+  payload: any,
+  payloadDefinition: PayloadDefinition | undefined
+): any {
   if (!payloadDefinition) {
     return payload;
   }
@@ -122,11 +132,11 @@ function validateAndConvertPayload(payload, payloadDefinition) {
 /**
  * Converts parameters to appropriate format for URL query strings
  * For object/array types, converts to minified JSON and escapes it
- * @param {object} parameters - The parameters to convert
- * @returns {object} - Parameters converted to string format suitable for URLSearchParams
+ * @param parameters - The parameters to convert
+ * @returns Parameters converted to string format suitable for URLSearchParams
  */
-function convertParametersForQuery(parameters) {
-  const queryParams = {};
+export function convertParametersForQuery(parameters: Record<string, any>): Record<string, string> {
+  const queryParams: Record<string, string> = {};
   
   for (const [key, value] of Object.entries(parameters)) {
     if (value === undefined || value === null) {
@@ -147,10 +157,3 @@ function convertParametersForQuery(parameters) {
   
   return queryParams;
 }
-
-export { 
-  validateAndConvertParameter, 
-  validateAndConvertParameters,
-  validateAndConvertPayload,
-  convertParametersForQuery 
-};

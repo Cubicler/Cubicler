@@ -53,7 +53,7 @@ Modern AI agents often need to interact with external systems, but many framewor
 
 **The Complete Flow:**
 
-1. **Start Cubicler** → `node src/index.js` (serves on port 1503)
+1. **Start Cubicler** → `npm run dev` (development) or `npm start` (production)
 2. **AI Agent asks "What can I do?"** → `GET /spec` → Gets available functions
 3. **AI Agent asks "How should I behave?"** → `GET /prompt` → Gets system instructions
 4. **AI Agent executes** → `POST /call/getUserById` → Cubicler routes to real API
@@ -75,6 +75,7 @@ Modern AI agents often need to interact with external systems, but many framewor
 - 📡 **Separate URL parameters and payload handling**
 - 🎛️ **Enhanced override system** (parameters + payload)
 - 🔄 **Smart parameter merging and type conversion**
+- 📘 **Full TypeScript support** with comprehensive type definitions
 
 ---
 
@@ -84,6 +85,7 @@ Modern AI agents often need to interact with external systems, but many framewor
 
 - Node.js (v18 or higher)
 - npm
+- TypeScript (installed via npm dependencies)
 
 ### Installation
 
@@ -111,7 +113,12 @@ CUBICLER_PORT=1503
 ### Start the Server
 
 ```bash
-node src/index.js
+# Development mode (with watch)
+npm run dev
+
+# Build and run production
+npm run build
+npm start
 ```
 
 Visit: `http://localhost:1503`
@@ -307,7 +314,7 @@ npm test
 # Run specific suites
 npm test -- tests/core/
 npm test -- tests/utils/
-npm test -- tests/integration.test.js
+npm test -- tests/integration.test.ts
 ```
 
 - ✅ Unit tests (services and utilities)
@@ -320,8 +327,10 @@ npm test -- tests/integration.test.js
 ```
 src/
 ├── core/             # Core services (prompt, spec, function)
-├── utils/            # Environment variable utils
-└── index.js          # Main Express server
+├── utils/            # Type definitions & utilities
+└── index.ts          # Main Express server
+dist/                 # Compiled JavaScript output
+tests/                # TypeScript test files
 ```
 
 ---
@@ -432,10 +441,11 @@ This project is licensed under the [ISC License](LICENSE).
 
 ## 🙏 Acknowledgments
 
-- Modern ES Modules + Node.js
-- Tested using Jest + Supertest
+- Modern ES Modules + Node.js + TypeScript
+- Tested using Jest + Supertest + ts-jest
 - YAML parsing with `js-yaml`
 - Env management via `dotenv`
+- Full type safety with TypeScript
 
 ---
 

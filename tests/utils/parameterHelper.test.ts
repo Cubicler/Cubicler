@@ -4,6 +4,7 @@ import {
   validateAndConvertPayload,
   convertParametersForQuery 
 } from '../../src/utils/parameterHelper.js';
+import type { ParameterDefinition } from '../../src/utils/types.js';
 
 describe('parameterHelper', () => {
   describe('validateAndConvertParameter', () => {
@@ -77,7 +78,7 @@ describe('parameterHelper', () => {
 
     it('should throw error for unsupported types', () => {
       expect(() => {
-        validateAndConvertParameter(123, { type: 'unknown' }, 'testParam');
+        validateAndConvertParameter(123, { type: 'unknown' as any }, 'testParam');
       }).toThrow("Unsupported parameter type 'unknown' for parameter 'testParam'");
     });
 
@@ -94,7 +95,7 @@ describe('parameterHelper', () => {
   });
 
   describe('validateAndConvertParameters', () => {
-    const parameterDefinitions = {
+    const parameterDefinitions: Record<string, ParameterDefinition> = {
       id: { type: 'string', required: true },
       count: { type: 'number' },
       active: { type: 'boolean' },
@@ -160,13 +161,13 @@ describe('parameterHelper', () => {
     });
 
     it('should handle null/undefined parameters', () => {
-      expect(validateAndConvertParameters(null, parameterDefinitions)).toEqual({});
-      expect(validateAndConvertParameters(undefined, parameterDefinitions)).toEqual({});
+      expect(validateAndConvertParameters(null as any, parameterDefinitions)).toEqual({});
+      expect(validateAndConvertParameters(undefined as any, parameterDefinitions)).toEqual({});
     });
 
     it('should handle missing parameter definitions', () => {
       const parameters = { id: 'test', value: 123 };
-      const result = validateAndConvertParameters(parameters, null);
+      const result = validateAndConvertParameters(parameters, undefined);
       expect(result).toEqual(parameters);
     });
   });
@@ -174,7 +175,7 @@ describe('parameterHelper', () => {
   describe('validateAndConvertPayload', () => {
     it('should validate object payload', () => {
       const payload = { key: 'value', count: 42 };
-      const payloadDef = { type: 'object' };
+      const payloadDef = { type: 'object' as const };
       
       const result = validateAndConvertPayload(payload, payloadDef);
       expect(result).toEqual(payload);
@@ -182,7 +183,7 @@ describe('parameterHelper', () => {
 
     it('should validate array payload', () => {
       const payload = ['item1', 'item2'];
-      const payloadDef = { type: 'array' };
+      const payloadDef = { type: 'array' as const };
       
       const result = validateAndConvertPayload(payload, payloadDef);
       expect(result).toEqual(payload);
