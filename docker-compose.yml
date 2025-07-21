@@ -6,25 +6,36 @@ services:
     environment:
       - CUBICLER_PORT=${CUBICLER_PORT:-1503}
       - CUBICLER_STRICT_PARAMS=${CUBICLER_STRICT_PARAMS:-false}
+      
+      # Timeout configurations
+      - DEFAULT_CALL_TIMEOUT=${DEFAULT_CALL_TIMEOUT:-30000}
+      - PROVIDER_CALL_TIMEOUT=${PROVIDER_CALL_TIMEOUT}
+      - AGENT_CALL_TIMEOUT=${AGENT_CALL_TIMEOUT}
+      
+      # New orchestration architecture
       # Option 1: Use URLs (recommended for production)
-      # - CUBICLER_SPEC_SOURCE=https://your-domain.com/specs/agent.yaml
-      # - CUBICLER_PROMPT_SOURCE=https://your-domain.com/prompts/agent.md
+      # - CUBICLER_PROMPTS_SOURCE=https://your-domain.com/prompts
+      # - CUBICLER_AGENTS_LIST=https://your-domain.com/agents.yaml
+      # - CUBICLER_PROVIDERS_LIST=https://your-domain.com/providers.yaml
       
       # Option 2: Use local files (mount them as volumes below)
-      - CUBICLER_SPEC_SOURCE=/app/config/spec.yaml
-      - CUBICLER_PROMPT_SOURCE=/app/config/prompt.md
+      - CUBICLER_PROMPTS_SOURCE=/app/config
+      - CUBICLER_AGENTS_LIST=/app/config/agents.yaml
+      - CUBICLER_PROVIDERS_LIST=/app/config/providers.yaml
       
       # Add your API keys and other service configurations
       # - API_KEY=${API_KEY}
     volumes:
-      # Mount your own spec and prompt files when using local file paths
+      # Mount your own configuration files when using local file paths
       # Uncomment and modify these lines to point to your actual files:
-      # - ./your-spec.yaml:/app/config/spec.yaml:ro
-      # - ./your-prompt.md:/app/config/prompt.md:ro
+      # - ./your-prompts:/app/config:ro
+      # - ./your-agents.yaml:/app/config/agents.yaml:ro
+      # - ./your-providers.yaml:/app/config/providers.yaml:ro
       
       # For testing with example files:
-      - ./spec.example.yaml:/app/config/spec.yaml:ro
-      - ./prompt.example.md:/app/config/prompt.md:ro
+      - ./prompts.example.md:/app/config/prompts.md:ro
+      - ./agents.example.yaml:/app/config/agents.yaml:ro
+      - ./providers.example.yaml:/app/config/providers.yaml:ro
       
       # Mount logs directory if needed
       - cubicler_logs:/app/logs
