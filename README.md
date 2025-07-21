@@ -11,39 +11,46 @@ Cubicler is a lightweight, modular AI orchestration framework that connects AI a
 ## 🎯 What Does It Do? (In 30 Seconds)
 
 ```text
-AI Agent: "Hey Cubicler, what can I do?"
-Cubicler: "Here are your available functions: getUserById, sendEmail..."
-
-AI Agent: "Get user 123 for me"
-Cubicler: "Sure!" → calls https://api.example.com/users/123 → returns data
-
-AI Agent: "Thanks! Now send them an email"
-Cubicler: "On it!" → calls https://email-api.com/send → returns success
+Frontend (Telegram): "User wants weather for Paris"
+Cubicler: "Got it, asking AI agent..." → calls Agent
+Agent: "I need weather data" → calls back to Cubicler
+Cubicler: "Sure!" → calls Weather Provider API → returns data to Agent
+Agent: "The weather in Paris is sunny, 25°C" → returns to Cubicler
+Cubicler: → returns response to Frontend
+Frontend: Shows user "The weather in Paris is sunny, 25°C"
 ```
 
-**The magic:** Change the YAML config file, and suddenly your AI agent has new powers. No code changes, no restarts!
+**The magic:** Change the YAML config file, and suddenly your AI agents have new powers. No code changes, no restarts!
 
 ---
 
 ## 💡 What Problem Does Cubicler Solve?
 
-Modern AI agents often need to interact with external systems, but many frameworks tightly couple prompt logic, function specs, and code, making updates and scaling challenging. Cubicler addresses this by:
+Modern AI systems need to connect multiple components: frontend apps, AI agents, and external services. But most frameworks tightly couple these components, making updates and scaling challenging. Cubicler addresses this by:
 
-- Decoupling prompt and function specs from the codebase using YAML/Markdown
-- Enabling hot-swappable configurations—no redeployment required for updates
-- Offering a secure, modular, and testable middleware for AI-to-API orchestration
-- Simplifying the process of adding, updating, or swapping services and functions
+- **Orchestrating 4 key components:** Frontend Services ↔ Cubicler ↔ AI Agents ↔ External Providers
+- Decoupling configuration from code using hot-swappable YAML/Markdown files
+- Enabling seamless integration between chat apps (Telegram, Slack) and AI agents
+- Providing a secure, modular middleware for AI-to-API orchestration
+- Allowing real-time updates without redeployment
 
 ---
 
 ## 🛠️ What Does Cubicler Do?
 
-**Simple:** It's a bridge between AI agents and your APIs.
+**Simple:** It's the orchestrator that connects your frontend, AI agents, and external APIs.
 
-**Specifically:**
+**The 4-Component Architecture:**
+
+1. 🖥️ **Frontend Services** (Telegram, Slack, Chat Apps, Web Apps)
+2. 🏢 **Cubicler** (The Orchestrator - this project)
+3. 🤖 **AI Agents** (GPT, Claude, Gemini, etc.)
+4. 🔌 **External Providers** (REST APIs, databases, services)
+
+**What Cubicler handles:**
 
 - 🔄 **Loads configs** from YAML/Markdown files (local or remote)
-- 🚀 **Serves 3 endpoints:** `/prompt`, `/spec`, `/call/functionName`
+- 🚀 **Routes requests** between frontends, agents, and providers
 - 🔧 **Handles the messy stuff:** parameter validation, type conversion, API routing
 - 🔥 **Hot-swappable:** Update configs without touching code or restarting
 
@@ -53,13 +60,24 @@ Modern AI agents often need to interact with external systems, but many framewor
 
 **The Complete Flow:**
 
-1. **Start Cubicler** → `npm run dev` (development) or `npm start` (production)
-2. **AI Agent asks "What can I do?"** → `GET /spec` → Gets available functions
-3. **AI Agent asks "How should I behave?"** → `GET /prompt` → Gets system instructions
-4. **AI Agent executes** → `POST /call/getUserById` → Cubicler routes to real API
-5. **Update anytime** → Edit YAML/Markdown files (no restart needed!)
+1. **Frontend** (Telegram bot, Slack app, etc.) → sends user request to Cubicler
+2. **Cubicler** → routes request to appropriate AI Agent  
+3. **AI Agent** → processes request, may ask Cubicler to execute external functions
+4. **Cubicler** → executes functions via External Providers, returns results to Agent
+5. **AI Agent** → sends final response back through Cubicler to Frontend
+6. **Update anytime** → Edit YAML/Markdown files (agents, providers, prompts) - no restart needed!
 
-**Perfect for:** AI chatbots, automation systems, or any app that needs AI agents to interact with APIs.
+**Perfect for:** Telegram bots, Slack apps, Discord bots, web chat interfaces, or any system that needs AI agents connected to real services.
+
+---
+
+## 📚 Integration Guides
+
+Comprehensive guides for different types of developers:
+
+- **🖥️ [Frontend Integration Guide](FRONTEND_INTEGRATION.md)** - For frontend developers building chat apps, Telegram bots, or web interfaces
+- **🔌 [Provider Development Guide](PROVIDER_DEVELOPMENT.md)** - For backend developers creating external API services
+- **🤖 [Agent Integration Guide](AGENT_INTEGRATION.md)** - For AI developers building OpenAI, Claude, or custom AI agents
 
 ---
 
@@ -88,8 +106,9 @@ The fastest way to get Cubicler running:
 ```bash
 # Pull and run from Docker Hub
 docker run -p 1503:1503 \
-  -e CUBICLER_SPEC_SOURCE=./spec.example.yaml \
-  -e CUBICLER_PROMPT_SOURCE=./prompt.example.md \
+  -e CUBICLER_PROMPTS_SOURCE=./prompt.example.md \
+  -e CUBICLER_AGENTS_LIST=./agents.yaml \
+  -e CUBICLER_PROVIDERS_LIST=./providers.yaml \
   hainayanda/cubicler:latest
 ```
 
@@ -108,17 +127,19 @@ npm install
 Create a `.env` file:
 
 ```env
-# YAML function + routing spec source
-CUBICLER_SPEC_SOURCE=./spec.example.yaml
+# Source of prompts (local folder or remote URL)
+CUBICLER_PROMPTS_SOURCE=./prompt.example.md
 
-# System prompt source (Markdown or text)
-CUBICLER_PROMPT_SOURCE=./prompt.example.md
+# Source of agents list (local file or remote URL) 
+CUBICLER_AGENTS_LIST=./agents.yaml
+
+# Source of providers list (local file or remote URL)
+CUBICLER_PROVIDERS_LIST=./providers.yaml
 
 # Optional: Port number (default: 1503)
 CUBICLER_PORT=1503
 
 # Optional: Strict parameter validation (default: false)
-# Set to 'true' to throw errors for unknown parameters
 CUBICLER_STRICT_PARAMS=false
 ```
 
@@ -139,39 +160,60 @@ Visit: `http://localhost:1503`
 
 ## 🧠 How It Works
 
-Cubicler acts as a **smart translator** between AI agents and your APIs. Here's the simple flow:
+Cubicler acts as the **central orchestrator** in a 4-component architecture:
 
-### 🔄 The Data Flow
+### 🔄 The Complete Data Flow
 
 ```text
-┌─────────────┐    1. "What can I do?"     ┌──────────────┐    4. Translate & Call    ┌─────────────┐
-│             │ ─────────────────────────► │              │ ────────────────────────► │             │
-│  AI Agent   │    2. "How should I act?"  │   Cubicler   │                           │  Real APIs  │
-│             │ ◄───────────────────────── │              │ ◄──────────────────────── │             │
-└─────────────┘    3. "Do this function"   └──────────────┘    5. Return Response     └─────────────┘
+┌─────────────────┐    1. User Request      ┌──────────────┐    2. Route to Agent    ┌─────────────┐
+│  Frontend App   │ ──────────────────────► │   Cubicler   │ ──────────────────────► │ AI Agent    │
+│ (Telegram,      │                         │(Orchestrator)│                         │(GPT, Claude)│
+│  Slack, etc.)   │ ◄────────────────────── │              │ ◄────────────────────── │             │
+└─────────────────┘    6. Final Response    └──────────────┘    5. Agent Response    └─────────────┘
+                                                    ▲ │                                    │ ▲
+                                                  4.│ │3. Execute                          │ │
+                                                    │ │   Function                         │ │
+                                                    │ ▼                                    │ │
+                                            ┌──────────────┐                               │ │
+                                            │   External   │ ◄─────────────────────────────┘ │
+                                            │   Provider   │                                 │
+                                            │ (REST APIs)  │ ────────────────────────────────┘
+                                            └──────────────┘    3a. Function Request
 ```
+
+**Step-by-Step:**
+
+1. **Frontend** sends user request to Cubicler
+2. **Cubicler** routes to appropriate AI Agent based on configuration
+3. **AI Agent** processes request, may request function execution from Cubicler
+4. **Cubicler** calls External Provider APIs and returns data to Agent
+5. **AI Agent** sends response back to Cubicler
+6. **Cubicler** returns final response to Frontend
 
 ### 📝 Configuration Files
 
-**YAML Spec** (defines what functions are available):
+**Agents YAML** (defines available AI agents):
 
 ```yaml
-version: 2
-services:
-  user_api:
-    base_url: https://api.example.com
-    endpoints:
-      get_user:
-        method: POST
-        path: /users/{id}
-        parameters:
-          id: { type: string }
+version: 1
+kind: agents
+agents:
+  - name: "gpt-4o"
+    endpoint: "localhost:3000/call"
+  - name: "claude-3.5"
+    endpoint: "localhost:3001/call"
+```
 
-functions:
-  getUserById:
-    service: user_api
-    endpoint: get_user
-    description: Get user information by ID
+**Providers YAML** (defines available external services):
+
+```yaml
+version: 1
+kind: providers
+providers:
+  - name: "weather_api"
+    description: "A provider for Weather API"
+    spec_source: "localhost:4000/spec/weather_api.yaml"
+    context_source: "localhost:4000/context/weather_api.md"
 ```
 
 **Markdown Prompt** (tells AI how to behave):
@@ -179,24 +221,40 @@ functions:
 ```markdown
 # Customer Support Assistant
 You help customers by looking up their information.
-Use getUserById to fetch user data.
+You have access to multiple providers through the Cubicler framework.
 ```
+
+> 📖 **Need detailed examples?** Check out our [integration guides](#-integration-guides) for complete setup instructions.
 
 ### 🎯 Example Request Flow
 
-**What the AI Agent sends:**
+**User asks for weather via Telegram bot**
+
+**Frontend → Cubicler:**
 
 ```json
-POST /call/getUserById
-{ "id": "123" }
+POST /call/weather_agent
+{
+  "messages": [
+    {"role": "user", "content": "What's the weather in Paris?"}
+  ]
+}
 ```
 
-**What Cubicler does:**
+**Cubicler → AI Agent:** Routes request to weather_agent
 
-- Looks up `getUserById` function in YAML spec
-- Finds it maps to `user_api` service → `get_user` endpoint
-- Translates to: `POST https://api.example.com/users/123`
-- Forwards the response back to AI Agent
+**AI Agent → Cubicler:** "I need weather data"
+
+```json
+POST /execute/getWeather
+{"city": "Paris", "country": "France"}
+```
+
+**Cubicler → External Provider:** Calls weather API
+
+**Full Response Chain:** Weather data → AI Agent → Cubicler → Frontend → User sees "It's sunny and 25°C in Paris!"
+
+> 📖 **Want to build this yourself?** Check our [Frontend Integration Guide](FRONTEND_INTEGRATION.md) and [Agent Integration Guide](AGENT_INTEGRATION.md).
 
 ---
 
@@ -206,52 +264,49 @@ POST /call/getUserById
 
 | Endpoint | What It Does | Example Response |
 |----------|-------------|------------------|
-| `GET /prompt` | Get AI instructions | `{"prompt": "You are a helpful assistant..."}` |
-| `GET /spec` | Get available functions | `[{"name": "getUserById", "parameters": {...}}]` |
-| `POST /call/getUserById` | Execute a function | `{"id": "123", "name": "John", "email": "john@example.com"}` |
+| `GET /prompt/:agentName` | Get AI instructions | `{"prompt": "You are a helpful assistant..."}` |
+| `GET /provider/:providerName/spec` | Get provider functions | `{"spec": [...], "context": "..."}` |
+| `POST /call` | Call default agent | `{"response": "AI agent response"}` |
+| `POST /call/:agent` | Call specific agent | `{"response": "AI agent response"}` |
+| `POST /execute/:functionName` | Execute a function | `{"id": "123", "name": "John", "email": "john@example.com"}` |
+| `GET /agents` | List available agents | `{"availableAgents": [...]}` |
+| `GET /health` | System health check | `{"status": "healthy", "services": {...}}` |
 
 ### Detailed Endpoints
 
-#### GET `/prompt`
+#### GET `/prompt/:agentName`
 
-Returns the system prompt that tells the AI agent how to behave.
+Returns the system prompt for a specific agent.
 
 ```json
 { "prompt": "# Customer Support Assistant ..." }
 ```
 
-#### GET `/spec`
+#### GET `/provider/:providerName/spec`
 
-Returns function specs in AI agent compatible format (override params and payload excluded).
+Returns function specs and context for a specific provider.
 
 ```json
-[
-  {
-    "name": "getUserById",
-    "description": "Get user information by ID",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "payload": {
-          "type": "object",
-          "properties": {
-            "filters": { 
-              "type": "array",
-              "items": { "type": "string" }
-            },
-            "metadata": { "type": "object" }
-          }
+{
+  "spec": [
+    {
+      "name": "getUserById",
+      "description": "Get user information by ID",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" }
         }
       }
     }
-  }
-]
+  ],
+  "context": "This provider handles user data operations..."
+}
 ```
 
-#### POST `/call/:function_name`
+#### POST `/execute/:function_name`
 
-Executes the specified function.
+Executes the specified function through the provider system.
 
 **Request:**
 
@@ -276,44 +331,49 @@ Executes the specified function.
 }
 ```
 
+#### POST `/call` or `/call/:agent`
+
+Calls an AI agent with messages. The agent will use the available providers to fulfill the request.
+
+**Request:**
+
+```json
+{
+  "messages": [
+    {"role": "user", "content": "Get user information for ID 123"}
+  ]
+}
+```
+
+**Response:**
+
+```json
+{
+  "response": "I found the user information for ID 123: John Doe (john@example.com)"
+}
+```
+
 ---
 
 ## ⚡ Advanced Features
 
-### 🔒 Hidden Parameters
+### 🔒 Provider-based Architecture  
 
-Add secret parameters that AI agents never see, but get automatically included in API calls:
-
-```yaml
-functions:
-  getUserById:
-    override_parameters:
-      api_key: "secret-key"  # AI never sees this, but it's always sent
-      include_details: true
-```
+Cubicler uses a modular provider system where each provider defines its own specs and contexts.
 
 ### 🌍 Environment Variables
 
-Keep secrets safe by referencing environment variables:
+Provider specs support environment variable substitution with `{{env.VARIABLE_NAME}}`.
 
-```yaml
-default_headers:
-  Authorization: "Bearer {{env.API_TOKEN}}"  # Pulls from .env file
-```
+### 📦 Multiple Agents
 
-### 📦 Multiple Services
+Connect to different AI agents for different purposes - customer support, data analysis, content creation, etc.
 
-Connect to as many APIs as you want in one config:
+### 🔒 Strict Parameter Validation
 
-```yaml
-services:
-  user_api:
-    base_url: https://users.example.com
-  email_api:
-    base_url: https://email.example.com
-  payment_api:
-    base_url: https://payments.example.com
-```
+Control how Cubicler handles unknown parameters sent by AI agents with `CUBICLER_STRICT_PARAMS`.
+
+> 📖 **Want full examples and implementation details?** See our [integration guides](#-integration-guides).
 
 ---
 
@@ -336,10 +396,10 @@ npm test -- tests/integration.test.ts
 
 ## 📁 Project Structure
 
-```
+```text
 src/
-├── core/             # Core services (prompt, spec, function)
-├── utils/            # Type definitions & utilities
+├── core/             # Core services (prompt, agent, provider, execution, call)
+├── utils/            # Type definitions & utilities  
 └── index.ts          # Main Express server
 dist/                 # Compiled JavaScript output
 tests/                # TypeScript test files
@@ -357,119 +417,20 @@ Authorization: "Bearer {{env.API_KEY}}"
 
 ---
 
-## 🔒 Strict Parameter Validation
+## 🧪 Testing
 
-Control how Cubicler handles unknown parameters sent by AI agents:
+```bash
+# Run all tests
+npm test
 
-### Non-Strict Mode (Default)
-
-```env
-CUBICLER_STRICT_PARAMS=false
+# Run specific suites
+npm test -- tests/core/
+npm test -- tests/utils/
+npm test -- tests/integration.test.ts
 ```
 
-- Unknown parameters are logged as warnings
-- Request continues with unknown parameters included
-- More forgiving for development and testing
-
-### Strict Mode
-
-```env
-CUBICLER_STRICT_PARAMS=true
-```
-
-- Unknown parameters cause immediate error response
-- Helps catch AI agent mistakes and spec mismatches
-- Recommended for production environments
-
-**Example Error Response in Strict Mode:**
-
-```json
-{
-  "error": "Unknown parameter 'unexpected_param' is not allowed in strict mode"
-}
-```
-
----
-
-## 🛠️ Configuration Samples
-
-### Basic
-
-```yaml
-version: 2
-services:
-  weather_api:
-    base_url: https://api.weather.com
-    default_headers:
-      X-API-Key: "{{env.WEATHER_API_KEY}}"
-    endpoints:
-      current_weather:
-        method: GET
-        path: /current/{city}
-        parameters:
-          city:
-            type: string
-          units:
-            type: string
-        payload:
-          type: object
-          properties:
-            options:
-              type: array
-              items:
-                type: string
-
-functions:
-  getCurrentWeather:
-    service: weather_api
-    endpoint: current_weather
-    description: Get current weather for a city
-    override_parameters:
-      units: "metric"
-    override_payload:
-      options: ["temperature", "humidity", "pressure"]
-```
-
-### Multiple Services
-
-```yaml
-version: 2
-services:
-  user_service:
-    base_url: https://api.users.com
-    endpoints:
-      get_profile:
-        method: GET
-        path: /profile/{id}
-        parameters:
-          id: { type: string }
-  email_service:
-    base_url: https://api.email.com
-    endpoints:
-      send_email:
-        method: POST
-        path: /send
-        parameters:
-          priority: { type: number }
-        payload:
-          type: object
-          properties:
-            to: { type: string }
-            subject: { type: string }
-            body: { type: string }
-
-functions:
-  getUserProfile:
-    service: user_service
-    endpoint: get_profile
-    description: Get user profile information
-  sendEmail:
-    service: email_service
-    endpoint: send_email
-    description: Send an email
-    override_parameters:
-      priority: 1
-```
+- ✅ Unit tests (services and utilities)
+- ✅ Integration tests (mock external APIs)
 
 ---
 
@@ -481,7 +442,7 @@ We welcome contributions! Please check the [CONTRIBUTING.md](CONTRIBUTING.md) fi
 
 ## 📄 License
 
-This project is licensed under the [ISC License](LICENSE).
+This project is licensed under the [Apache 2.0 License](LICENSE).
 
 ---
 
