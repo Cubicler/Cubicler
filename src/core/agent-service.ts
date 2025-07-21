@@ -24,14 +24,11 @@ async function getAvailableAgents(): Promise<string[]> {
 }
 
 /**
- * Load agents list from configured source with caching
+ * Fetch and parse agents list from configured source (no caching)
+ * @returns Complete AgentsList object
+ * @throws Error if fetch fails or format is invalid
  */
-async function retrieveAgentsList(): Promise<AgentsList> {
-  const cached = agentsCache.get('agents_list');
-  if (cached) {
-    return cached;
-  }
-
+async function fetchAgentsList(): Promise<AgentsList> {
   const agentsSource = process.env.CUBICLER_AGENTS_LIST;
   if (!agentsSource) {
     throw new Error('CUBICLER_AGENTS_LIST is not defined in environment variables');
@@ -58,6 +55,35 @@ async function retrieveAgentsList(): Promise<AgentsList> {
     throw new Error('Invalid agents YAML: kind must be "agents"');
   }
   
+  return agents;
+}
+
+/**
+ * Fetch agents list from configured source (no caching)
+ * @returns Array of agent names
+ * @throws Error if fetch fails or no agents are available
+ */
+async function fetchAvailableAgents(): Promise<string[]> {
+  const agents = await fetchAgentsList();
+
+  if (!agents.agents || agents.agents.length === 0) {
+    throw new Error('No agents defined in configuration');
+  }
+
+  return agents.agents.map(agent => agent.name);
+}
+
+/**
+ * Load agents list from configured source with caching
+ */
+async function retrieveAgentsList(): Promise<AgentsList> {
+  const cached = agentsCache.get('agents_list');
+  if (cached) {
+    return cached;
+  }
+
+  const agents = await fetchAgentsList();
+  
   // Cache the result
   agentsCache.set('agents_list', agents);
   
@@ -81,5 +107,6 @@ async function getAgents(): Promise<AgentsList> {
 export default {
   getAvailableAgents,
   getAgents,
+  fetchAvailableAgents,
   clearCache
 };

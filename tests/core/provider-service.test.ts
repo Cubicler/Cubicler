@@ -82,6 +82,26 @@ describe('Provider Service', () => {
       await expect(providerService.getProviderSpec('weather_api'))
         .rejects.toThrow('CUBICLER_PROVIDERS_LIST is not defined in environment variables');
     });
+
+    it('should throw detailed error when remote providers list fetch fails', async () => {
+      process.env.CUBICLER_PROVIDERS_LIST = 'https://example.com/providers.yaml';
+      
+      global.fetch = jest.fn(() => Promise.resolve({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found'
+      } as Response));
+
+      await expect(providerService.getProviderSpec('weather_api'))
+        .rejects.toThrow('Cannot fetch providers from URL');
+    });
+
+    it('should throw detailed error when local providers file is missing', async () => {
+      process.env.CUBICLER_PROVIDERS_LIST = './tests/mocks/nonexistent-providers.yaml';
+      
+      await expect(providerService.getProviderSpec('weather_api'))
+        .rejects.toThrow('Cannot fetch providers from path');
+    });
   });
 
   describe('getProviders', () => {

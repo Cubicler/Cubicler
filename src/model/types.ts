@@ -3,6 +3,9 @@ import { AgentFunctionDefinition } from './definitions.js';
 /**
  * System health status including individual service statuses
  */
+/**
+ * System health status with service checks
+ */
 export interface HealthStatus {
   status: 'healthy' | 'unhealthy';
   timestamp: string;
@@ -10,6 +13,18 @@ export interface HealthStatus {
     prompt?: {
       status: 'healthy' | 'unhealthy';
       error?: string;
+    };
+    agents?: {
+      status: 'healthy' | 'unhealthy';
+      error?: string;
+      count?: number;
+      agents?: string[];
+    };
+    providers?: {
+      status: 'healthy' | 'unhealthy';
+      error?: string;
+      count?: number;
+      providers?: string[];
     };
     spec?: {
       status: 'healthy' | 'unhealthy';

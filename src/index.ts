@@ -12,10 +12,17 @@ import type { HealthStatus, FunctionCallParameters } from './model/types.js';
 const app = express();
 app.use(express.json());
 
-// GET /prompt endpoint
-app.get('/prompt', async (req: Request, res: Response) => {
+// GET /prompt/:agentName endpoint
+app.get('/prompt/:agentName', async (req: Request, res: Response) => {
+  const { agentName } = req.params;
+
+  if (!agentName) {
+    res.status(400).json({ error: 'Agent name is required' });
+    return;
+  }
+
   try {
-    const prompt = await promptService.getPrompt();
+    const prompt = await promptService.getPrompt(agentName);
     res.json({ prompt });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -45,7 +52,7 @@ app.get('/agents', async (req: Request, res: Response) => {
   }
 });
 
-// GET /health endpoint - checks if prompt and spec services are working
+// GET /health endpoint - checks if prompt, agents, and providers services are working
 app.get('/health', async (req: Request, res: Response) => {
   const health: HealthStatus = {
     status: 'healthy',
@@ -53,13 +60,47 @@ app.get('/health', async (req: Request, res: Response) => {
     services: {}
   };
 
-  // Check prompt service
+  // Check prompt service (bypass cache for fresh check)
   try {
-    await promptService.getPrompt();
+    await promptService.fetchPrompts();
     health.services.prompt = { status: 'healthy' };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     health.services.prompt = { status: 'unhealthy', error: errorMessage };
+    health.status = 'unhealthy';
+  }
+
+  // Check agents service (bypass cache for fresh check)
+  try {
+    const availableAgents = await agentService.fetchAvailableAgents();
+    if (!availableAgents || availableAgents.length === 0) {
+      throw new Error('No agents available');
+    }
+    health.services.agents = { 
+      status: 'healthy', 
+      count: availableAgents.length,
+      agents: availableAgents
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    health.services.agents = { status: 'unhealthy', error: errorMessage };
+    health.status = 'unhealthy';
+  }
+
+  // Check providers service (bypass cache for fresh check)
+  try {
+    const availableProviders = await providerService.fetchProviders();
+    if (!availableProviders || availableProviders.length === 0) {
+      throw new Error('No providers available');
+    }
+    health.services.providers = { 
+      status: 'healthy', 
+      count: availableProviders.length,
+      providers: availableProviders.map(p => p.name)
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    health.services.providers = { status: 'unhealthy', error: errorMessage };
     health.status = 'unhealthy';
   }
 

@@ -11,7 +11,9 @@ describe('Integration Test - Full Cubicler Flow', () => {
   beforeAll(async () => {
     // Set up environment variables for testing
     process.env.CUBICLER_SPEC_SOURCE = './tests/mocks/integration-spec.yaml';
-    process.env.CUBICLER_PROMPT_SOURCE = './tests/mocks/integration-prompt.md';
+    process.env.CUBICLER_PROMPTS_SOURCE = './tests/mocks/integration-prompt.md';
+    process.env.CUBICLER_AGENTS_LIST = './tests/mocks/test-agents.yaml';
+    process.env.CUBICLER_PROVIDERS_LIST = './tests/mocks/test-providers.yaml';
 
     // Create mock API server
     const mockApp = express();
@@ -46,9 +48,9 @@ describe('Integration Test - Full Cubicler Flow', () => {
     }
   });
 
-  it('should serve the system prompt via GET /prompt', async () => {
+  it('should serve the system prompt via GET /prompt/:agentName', async () => {
     const response = await request(app)
-      .get('/prompt')
+      .get('/prompt/default')
       .expect(200);
 
     expect(response.body.prompt).toContain('You are a helpful assistant for testing Cubicler integration');
@@ -98,6 +100,8 @@ describe('Integration Test - Full Cubicler Flow', () => {
 
     expect(response.body.status).toBe('healthy');
     expect(response.body.services.prompt.status).toBe('healthy');
+    expect(response.body.services.agents.status).toBe('healthy');
+    expect(response.body.services.providers.status).toBe('healthy');
     expect(response.body.services.spec.status).toBe('healthy');
     expect(response.body.timestamp).toBeDefined();
   });

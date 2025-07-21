@@ -71,6 +71,180 @@ async function findProvider(providerName: string): Promise<Provider> {
 }
 
 /**
+ * Fetch providers list from URL source
+ * @param providersSource - URL to fetch providers list from
+ * @returns Parsed ProvidersList object
+ * @throws Error if unable to fetch providers from URL
+ */
+async function fetchProvidersFromUrl(providersSource: string): Promise<ProvidersList> {
+  const errors: string[] = [];
+
+  try {
+    const response = await fetch(providersSource);
+    if (response.ok) {
+      const yamlText = await response.text();
+      const providers = load(yamlText) as ProvidersList;
+      
+      if (!providers || typeof providers !== 'object') {
+        throw new Error('Invalid providers YAML format');
+      }
+
+      if (providers.kind !== 'providers') {
+        throw new Error('Invalid providers YAML: kind must be "providers"');
+      }
+      
+      return providers;
+    }
+    errors.push(`Fetch failed: ${response.status} ${response.statusText}`);
+  } catch (error) {
+    errors.push(`Fetch error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+
+  throw new Error(`Cannot fetch providers from URL '${providersSource}'. Errors: ${errors.join('; ')}`);
+}
+
+/**
+ * Fetch providers list from local file source
+ * @param providersSource - Local path to fetch providers list from
+ * @returns Parsed ProvidersList object
+ * @throws Error if unable to fetch providers from local path
+ */
+function fetchProvidersFromFile(providersSource: string): ProvidersList {
+  const errors: string[] = [];
+
+  try {
+    const yamlText = readFileSync(providersSource, 'utf-8');
+    const providers = load(yamlText) as ProvidersList;
+    
+    if (!providers || typeof providers !== 'object') {
+      throw new Error('Invalid providers YAML format');
+    }
+
+    if (providers.kind !== 'providers') {
+      throw new Error('Invalid providers YAML: kind must be "providers"');
+    }
+    
+    return providers;
+  } catch (error) {
+    errors.push(`File read error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+
+  throw new Error(`Cannot fetch providers from path '${providersSource}'. Errors: ${errors.join('; ')}`);
+}
+
+/**
+ * Fetch provider definition from URL source
+ * @param specUrl - URL to fetch spec from
+ * @returns Parsed ProviderDefinition object
+ * @throws Error if unable to fetch spec from URL
+ */
+async function fetchProviderDefinitionFromUrl(specUrl: string): Promise<ProviderDefinition> {
+  const errors: string[] = [];
+
+  try {
+    const response = await fetch(specUrl);
+    if (response.ok) {
+      const yamlText = await response.text();
+      const spec = load(yamlText) as ProviderDefinition;
+      
+      if (!spec || typeof spec !== 'object') {
+        throw new Error('Invalid provider spec YAML format');
+      }
+      
+      return spec;
+    }
+    errors.push(`Spec fetch failed: ${response.status} ${response.statusText}`);
+  } catch (error) {
+    errors.push(`Spec fetch error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+
+  throw new Error(`Cannot fetch provider spec from URL '${specUrl}'. Errors: ${errors.join('; ')}`);
+}
+
+/**
+ * Fetch provider definition from local file source
+ * @param specUrl - Local path to fetch spec from
+ * @returns Parsed ProviderDefinition object
+ * @throws Error if unable to fetch spec from local path
+ */
+function fetchProviderDefinitionFromFile(specUrl: string): ProviderDefinition {
+  const errors: string[] = [];
+
+  try {
+    const yamlText = readFileSync(specUrl, 'utf-8');
+    const spec = load(yamlText) as ProviderDefinition;
+    
+    if (!spec || typeof spec !== 'object') {
+      throw new Error('Invalid provider spec YAML format');
+    }
+    
+    return spec;
+  } catch (error) {
+    errors.push(`File read error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+
+  throw new Error(`Cannot fetch provider spec from path '${specUrl}'. Errors: ${errors.join('; ')}`);
+}
+
+/**
+ * Fetch provider context from URL source
+ * @param contextUrl - URL to fetch context from
+ * @returns Context text content
+ * @throws Error if unable to fetch context from URL
+ */
+async function fetchProviderContextFromUrl(contextUrl: string): Promise<string> {
+  const errors: string[] = [];
+
+  try {
+    const response = await fetch(contextUrl);
+    if (response.ok) {
+      return await response.text();
+    }
+    errors.push(`Context fetch failed: ${response.status} ${response.statusText}`);
+  } catch (error) {
+    errors.push(`Context fetch error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+
+  throw new Error(`Cannot fetch provider context from URL '${contextUrl}'. Errors: ${errors.join('; ')}`);
+}
+
+/**
+ * Fetch provider context from local file source
+ * @param contextUrl - Local path to fetch context from
+ * @returns Context text content
+ * @throws Error if unable to fetch context from local path
+ */
+function fetchProviderContextFromFile(contextUrl: string): string {
+  const errors: string[] = [];
+
+  try {
+    return readFileSync(contextUrl, 'utf-8');
+  } catch (error) {
+    errors.push(`File read error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+
+  throw new Error(`Cannot fetch provider context from path '${contextUrl}'. Errors: ${errors.join('; ')}`);
+}
+
+/**
+ * Fetch and parse providers list from configured source (no caching)
+ * @returns Complete ProvidersList object
+ * @throws Error if environment variable is missing or if fetch fails
+ */
+async function fetchProvidersList(): Promise<ProvidersList> {
+  const providersSource = process.env.CUBICLER_PROVIDERS_LIST;
+  if (!providersSource) {
+    throw new Error('CUBICLER_PROVIDERS_LIST is not defined in environment variables');
+  }
+
+  if (providersSource.startsWith('http')) {
+    return await fetchProvidersFromUrl(providersSource);
+  } else {
+    return fetchProvidersFromFile(providersSource);
+  }
+}
+
+/**
  * Load providers list from configured source with caching
  */
 async function retrieveProvidersList(): Promise<ProvidersList> {
@@ -79,31 +253,7 @@ async function retrieveProvidersList(): Promise<ProvidersList> {
     return cached;
   }
 
-  const providersSource = process.env.CUBICLER_PROVIDERS_LIST;
-  if (!providersSource) {
-    throw new Error('CUBICLER_PROVIDERS_LIST is not defined in environment variables');
-  }
-
-  let yamlText: string;
-  
-  if (providersSource.startsWith('http')) {
-    const response = await fetch(providersSource);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch providers list: ${response.statusText}`);
-    }
-    yamlText = await response.text();
-  } else {
-    yamlText = readFileSync(providersSource, 'utf-8');
-  }
-  
-  const providers = load(yamlText) as ProvidersList;
-  if (!providers || typeof providers !== 'object') {
-    throw new Error('Invalid providers YAML format');
-  }
-
-  if (providers.kind !== 'providers') {
-    throw new Error('Invalid providers YAML: kind must be "providers"');
-  }
+  const providers = await fetchProvidersList();
   
   // Cache the result
   providersCache.set('providers_list', providers);
@@ -112,41 +262,30 @@ async function retrieveProvidersList(): Promise<ProvidersList> {
 }
 
 /**
- * Load and parse a provider's spec from URL
+ * Load and parse a provider's spec from URL or file
+ * @param specUrl - URL or path to fetch spec from
+ * @returns Parsed ProviderDefinition object
+ * @throws Error if fetch fails
  */
 async function retrievesProviderDefinition(specUrl: string): Promise<ProviderDefinition> {
-  let yamlText: string;
-  
   if (specUrl.startsWith('http')) {
-    const response = await fetch(specUrl);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch provider spec: ${response.statusText}`);
-    }
-    yamlText = await response.text();
+    return await fetchProviderDefinitionFromUrl(specUrl);
   } else {
-    yamlText = readFileSync(specUrl, 'utf-8');
+    return fetchProviderDefinitionFromFile(specUrl);
   }
-  
-  const spec = load(yamlText) as ProviderDefinition;
-  if (!spec || typeof spec !== 'object') {
-    throw new Error('Invalid provider spec YAML format');
-  }
-  
-  return spec;
 }
 
 /**
- * Load provider context from URL
+ * Load provider context from URL or file
+ * @param contextUrl - URL or path to fetch context from
+ * @returns Context text content
+ * @throws Error if fetch fails
  */
 async function retrievesProviderContext(contextUrl: string): Promise<string> {
   if (contextUrl.startsWith('http')) {
-    const response = await fetch(contextUrl);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch provider context: ${response.statusText}`);
-    }
-    return await response.text();
+    return await fetchProviderContextFromUrl(contextUrl);
   } else {
-    return readFileSync(contextUrl, 'utf-8');
+    return fetchProviderContextFromFile(contextUrl);
   }
 }
 
@@ -160,14 +299,37 @@ function clearCache(): void {
 
 /**
  * Get list of available providers
+ * @returns Array of Provider objects
+ * @throws Error if no providers are available
  */
 async function getProviders(): Promise<Provider[]> {
   const providers = await retrieveProvidersList();
+  
+  if (!providers.providers || providers.providers.length === 0) {
+    throw new Error('No providers defined in configuration');
+  }
+  
+  return providers.providers;
+}
+
+/**
+ * Fetch providers list from configured source (no caching)
+ * @returns Array of Provider objects
+ * @throws Error if fetch fails or no providers are available
+ */
+async function fetchProviders(): Promise<Provider[]> {
+  const providers = await fetchProvidersList();
+
+  if (!providers.providers || providers.providers.length === 0) {
+    throw new Error('No providers defined in configuration');
+  }
+
   return providers.providers;
 }
 
 export default { 
   getProviderSpec, 
   clearCache, 
-  getProviders 
+  getProviders,
+  fetchProviders
 };
