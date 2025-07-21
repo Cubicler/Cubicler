@@ -99,20 +99,41 @@ Comprehensive guides for different types of developers:
 
 ## 🚀 Getting Started
 
-### Quick Start with Docker
+### Quick Start with Docker Hub
 
 The fastest way to get Cubicler running:
 
 ```bash
 # Pull and run from Docker Hub
 docker run -p 1503:1503 \
-  -e CUBICLER_PROMPTS_SOURCE=./prompt.example.md \
-  -e CUBICLER_AGENTS_LIST=./agents.yaml \
-  -e CUBICLER_PROVIDERS_LIST=./providers.yaml \
+  -v $(pwd)/config:/app/config \
+  -e CUBICLER_PROMPTS_SOURCE=/app/config/prompts.md \
+  -e CUBICLER_AGENTS_LIST=/app/config/agents.yaml \
+  -e CUBICLER_PROVIDERS_LIST=/app/config/providers.yaml \
   hainayanda/cubicler:latest
 ```
 
+**Available tags:**
+
+- `hainayanda/cubicler:latest` - Latest stable release
+- `hainayanda/cubicler:1.0.0` - Version 1.0.0
+
 Visit: `http://localhost:1503`
+
+### Quick Start with Docker Compose
+
+For easier configuration management:
+
+```bash
+# Create your config directory
+mkdir config
+cp prompt.example.md config/prompts.md
+cp agents.example.yaml config/agents.yaml  
+cp providers.example.yaml config/providers.yaml
+
+# Run with Docker Compose
+docker-compose up -d
+```
 
 ### Installation from Source
 
