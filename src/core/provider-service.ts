@@ -6,19 +6,18 @@ import { convertToFunctionSpecs } from '../utils/definition-helper.js';
 import type { 
   ProvidersList,
   Provider,
-  ProviderDefinition,
-  FunctionSpec,
   ProviderSpecResponse
-} from '../utils/types.js';
+} from '../model/types.js';
+import type { AgentFunctionDefinition } from '../model/definitions.js';
+import type { ProviderDefinition } from '../model/definitions.js';
 
 config();
 
 interface CachedProviderSpec {
   context: string;
-  functions: FunctionSpec[];
+  functions: AgentFunctionDefinition[];
 }
 
-// Create cache instances
 const providersCache: Cache<ProvidersList> = createEnvCache('PROVIDERS_LIST', 600); // 10 minutes default
 const specCache: Cache<CachedProviderSpec> = createEnvCache('PROVIDER_SPEC', 600); // 10 minutes default
 
@@ -35,17 +34,15 @@ async function getProviderSpec(providerName: string): Promise<ProviderSpecRespon
     };
   }
 
-  // Find the provider
   const provider = await findProvider(providerName);
   
-    // Load spec and context in parallel
   const [providerDefinition, providerContext] = await Promise.all([
     retrievesProviderDefinition(provider.spec_source),
     retrievesProviderContext(provider.context_source)
   ]);
 
-  // Convert spec to function specs
-  const functions = convertToFunctionSpecs(providerDefinition);
+  // Convert spec to function specs with provider naming convention
+  const functions = convertToFunctionSpecs(providerDefinition, providerName);
 
   // Cache the result
   specCache.set(providerName, {

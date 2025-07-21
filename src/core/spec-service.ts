@@ -4,12 +4,14 @@ import { config } from 'dotenv';
 import { substituteEnvVars, substituteEnvVarsInObject } from '../utils/env-helper.js';
 import { convertToFunctionSpecs, getFunctionByName } from '../utils/definition-helper.js';
 import type { 
-  ProviderDefinition, 
-  FunctionDefinition, 
-  ProcessedEndpoint, 
-  FunctionSpec,
   JSONValue
-} from '../utils/types.js';
+} from '../model/types.js';
+import type { AgentFunctionDefinition } from '../model/definitions.js';
+import type {
+  ProviderDefinition,
+  FunctionDefinition,
+  FullEndpointDefinition
+} from '../model/definitions.js';
 
 config();
 
@@ -48,7 +50,7 @@ async function _getSpec(): Promise<ProviderDefinition> {
  * Gets the list of functions formatted for AI agent function calling
  * @returns Promise that resolves to an array of function specs
  */
-async function getFunctions(): Promise<FunctionSpec[]> {
+async function getFunctions(): Promise<AgentFunctionDefinition[]> {
   const spec = await _getSpec();
   return convertToFunctionSpecs(spec);
 }
@@ -80,9 +82,9 @@ async function getFunction(functionName: string): Promise<FunctionDefinition> {
  * @returns Promise that resolves to the function spec
  * @throws Error if function is not found
  */
-async function getFunctionSpec(functionName: string): Promise<FunctionSpec> {
+async function getFunctionSpec(functionName: string): Promise<AgentFunctionDefinition> {
   const spec = await _getSpec();
-  return getFunctionByName(spec, functionName);
+  return getFunctionByName(spec, functionName, undefined);
 }
 
 /**
@@ -91,7 +93,7 @@ async function getFunctionSpec(functionName: string): Promise<FunctionSpec> {
  * @returns Promise that resolves to the processed endpoint with base URL and headers
  * @throws Error if service or endpoint is not found
  */
-async function getEndpoint(func: FunctionDefinition): Promise<ProcessedEndpoint> {
+async function getEndpoint(func: FunctionDefinition): Promise<FullEndpointDefinition> {
   const spec = await _getSpec();
   const service = spec.services[func.service];
   if (!service) {

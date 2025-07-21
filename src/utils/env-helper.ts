@@ -1,4 +1,4 @@
-import type { JSONValue, JSONObject } from './types.js';
+import type { JSONValue, JSONObject } from '../model/types.js';
 
 /**
  * Helper function to substitute environment variables in strings

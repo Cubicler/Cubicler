@@ -2,7 +2,7 @@ import { jest } from '@jest/globals';
 import functionService from '../../src/core/function-service.js';
 import specService from '../../src/core/spec-service.js';
 import dotenv from 'dotenv';
-import type { FunctionDefinition, ProcessedEndpoint } from '../../src/utils/types.js';
+import type { FunctionDefinition, FullEndpointDefinition } from '../../src/model/definitions.js';
 
 dotenv.config();
 
@@ -38,7 +38,7 @@ describe('functionService', () => {
           filter: { type: 'array' }
         }
       }
-    } as ProcessedEndpoint);
+    } as FullEndpointDefinition);
 
     jest.spyOn(specService, 'getOverrideParameters').mockResolvedValue({});
     jest.spyOn(specService, 'getOverridePayload').mockResolvedValue(undefined);
@@ -73,7 +73,7 @@ describe('functionService', () => {
         active: { type: 'boolean' },
         tags: { type: 'array' }
       }
-    } as ProcessedEndpoint);
+    } as FullEndpointDefinition);
 
     await functionService.callFunction('testFunction', { 
       id: '123',     // Should convert to number for path
@@ -101,7 +101,7 @@ describe('functionService', () => {
       parameters: {
         id: { type: 'string' }
       }
-    } as ProcessedEndpoint);
+    } as FullEndpointDefinition);
 
     await functionService.callFunction('testFunction', { 
       id: 'original-value'  // This should be overridden
@@ -130,7 +130,7 @@ describe('functionService', () => {
           filter: { type: 'array' }
         }
       }
-    } as ProcessedEndpoint);
+    } as FullEndpointDefinition);
 
     jest.spyOn(specService, 'getOverridePayload').mockResolvedValue({
       defaultFilter: 'override',
@@ -171,7 +171,7 @@ describe('functionService', () => {
           filter: { type: 'array' }
         }
       }
-    } as ProcessedEndpoint);
+    } as FullEndpointDefinition);
 
     jest.spyOn(specService, 'getOverridePayload').mockResolvedValue({
       filter: ['override-item']
@@ -200,7 +200,7 @@ describe('functionService', () => {
         id: { type: 'string' }
       }
       // No payload defined
-    } as ProcessedEndpoint);
+    } as FullEndpointDefinition);
 
     await functionService.callFunction('testFunction', { id: '123' });
 
@@ -220,7 +220,7 @@ describe('functionService', () => {
       parameters: {
         count: { type: 'number' }
       }
-    } as ProcessedEndpoint);
+    } as FullEndpointDefinition);
 
     await expect(functionService.callFunction('testFunction', { 
       count: 'not-a-number'

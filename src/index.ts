@@ -2,9 +2,10 @@ import promptService from './core/prompt-service.js';
 import specService from './core/spec-service.js';
 import functionService from './core/function-service.js';
 import providerService from './core/provider-service.js';
+import executionService from './core/execution-service.js';
 import express from 'express';
 import type { Request, Response } from 'express';
-import type { HealthStatus, FunctionCallParameters } from './utils/types.js';
+import type { HealthStatus, FunctionCallParameters } from './model/types.js';
 
 // Create Express app
 const app = express();
@@ -83,6 +84,25 @@ app.post('/call/:function_name', async (req: Request, res: Response) => {
   }
 });
 
+// POST /execute/{functionName} endpoint - executes provider functions
+app.post('/execute/:functionName', async (req: Request, res: Response) => {
+  const { functionName } = req.params;
+  const parameters: FunctionCallParameters = req.body;
+
+  if (!functionName) {
+    res.status(400).json({ error: 'Function name is required' });
+    return;
+  }
+
+  try {
+    const result = await executionService.executeFunction(functionName, parameters);
+    res.json(result);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ error: errorMessage });
+  }
+});
+
 // GET /provider/{providerName}/spec endpoint
 app.get('/provider/:providerName/spec', async (req: Request, res: Response) => {
   const { providerName } = req.params;
@@ -110,6 +130,7 @@ export default {
   specService,
   functionService,
   providerService,
+  executionService,
   app,
 };
 

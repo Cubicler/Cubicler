@@ -1,4 +1,5 @@
-import type { ParameterDefinition, PayloadDefinition, JSONValue } from './types.js';
+import type { JSONValue } from '../model/types.js';
+import type { ParameterDefinition, PayloadDefinition } from '../model/definitions.js';
 import { isStrictParamsEnabled } from './env-helper.js';
 
 /**

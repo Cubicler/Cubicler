@@ -31,7 +31,7 @@ describe('Provider Service', () => {
       const weatherFunction = result.functions[0];
       expect(weatherFunction).toBeDefined();
       expect(weatherFunction).toMatchObject({
-        name: 'getWeather',
+        name: 'weather_api.getWeather',
         description: 'Get weather information by city and country',
         parameters: {
           type: 'object',
@@ -60,7 +60,7 @@ describe('Provider Service', () => {
       expect(result.functions).toHaveLength(1);
       const mockFunction = result.functions[0];
       expect(mockFunction).toMatchObject({
-        name: 'getData',
+        name: 'mock_service.getData',
         description: 'Get mock data by ID',
         parameters: {
           type: 'object',

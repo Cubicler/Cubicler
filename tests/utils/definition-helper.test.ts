@@ -1,5 +1,6 @@
-import { convertToFunctionSpecs, validateProviderDefinition, getFunctionByName } from '../../src/utils/definition-helper.js';
-import type { ProviderDefinition } from '../../src/utils/types.js';
+import { convertToFunctionSpecs, validateProviderDefinition, getFunctionByName, parseFunctionName } from '../../src/utils/definition-helper.js';
+import type { ProviderDefinition } from '../../src/model/definitions.js';
+import type { ParsedFunctionName } from '../../src/model/types.js';
 
 describe('Definition Helper', () => {
   const mockProviderDefinition: ProviderDefinition = {
@@ -73,6 +74,23 @@ describe('Definition Helper', () => {
       expect(createFunc!.name).toBe('create_data');
       expect(createFunc!.description).toBe('Create new data via API');
       expect(createFunc!.parameters.properties).toHaveProperty('id');
+    });
+
+    it('should use provider naming convention when providerName is provided', () => {
+      const result = convertToFunctionSpecs(mockProviderDefinition, 'test_provider');
+      
+      expect(result).toHaveLength(2);
+      
+      const searchFunc = result.find(f => f.name === 'test_provider.search_data');
+      const createFunc = result.find(f => f.name === 'test_provider.create_data');
+      
+      expect(searchFunc).toBeDefined();
+      expect(searchFunc!.name).toBe('test_provider.search_data');
+      expect(searchFunc!.description).toBe('Search for data using the API');
+      
+      expect(createFunc).toBeDefined();
+      expect(createFunc!.name).toBe('test_provider.create_data');
+      expect(createFunc!.description).toBe('Create new data via API');
     });
 
     it('should handle payload in function specs', () => {
@@ -214,8 +232,47 @@ describe('Definition Helper', () => {
       expect(result.parameters.properties).not.toHaveProperty('limit'); // Override parameter should be hidden
     });
 
+    it('should return specific function spec by name with provider naming convention', () => {
+      const result = getFunctionByName(mockProviderDefinition, 'test_provider.search_data', 'test_provider');
+      
+      expect(result.name).toBe('test_provider.search_data');
+      expect(result.description).toBe('Search for data using the API');
+      expect(result.parameters.properties).toHaveProperty('payload');
+      expect(result.parameters.properties).not.toHaveProperty('limit'); // Override parameter should be hidden
+    });
+
     it('should throw error for non-existent function', () => {
       expect(() => getFunctionByName(mockProviderDefinition, 'non_existent_function')).toThrow("Function 'non_existent_function' not found in provider definition");
+    });
+  });
+
+  describe('parseFunctionName', () => {
+    it('should parse function name with provider prefix', () => {
+      const result = parseFunctionName('weather.getWeatherData');
+      
+      expect(result.providerName).toBe('weather');
+      expect(result.originalFunctionName).toBe('getWeatherData');
+    });
+
+    it('should parse function name with dots in function name', () => {
+      const result = parseFunctionName('provider.complex.function.name');
+      
+      expect(result.providerName).toBe('provider');
+      expect(result.originalFunctionName).toBe('complex.function.name');
+    });
+
+    it('should handle function name without provider prefix', () => {
+      const result = parseFunctionName('simpleFunction');
+      
+      expect(result.providerName).toBeUndefined();
+      expect(result.originalFunctionName).toBe('simpleFunction');
+    });
+
+    it('should handle empty provider name', () => {
+      const result = parseFunctionName('.functionName');
+      
+      expect(result.providerName).toBe('');
+      expect(result.originalFunctionName).toBe('functionName');
     });
   });
 });

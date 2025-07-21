@@ -4,7 +4,7 @@ import {
   validateAndConvertPayload, 
   convertParametersForQuery 
 } from '../utils/parameter-helper.js';
-import type { FunctionCallParameters, FunctionCallResult } from '../utils/types.js';
+import type { FunctionCallParameters, FunctionCallResult } from '../model/types.js';
 
 /**
  * Executes a function call by routing to the appropriate service endpoint

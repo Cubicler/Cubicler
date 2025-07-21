@@ -30,7 +30,7 @@ describe('GET /provider/:providerName/spec endpoint', () => {
     expect(response.body).toHaveProperty('functions');
     expect(response.body.context).toContain('Weather API Context');
     expect(response.body.functions).toHaveLength(1);
-    expect(response.body.functions[0].name).toBe('getWeather');
+    expect(response.body.functions[0].name).toBe('weather_api.getWeather');
   });
 
   it('should return 500 for non-existent provider', async () => {

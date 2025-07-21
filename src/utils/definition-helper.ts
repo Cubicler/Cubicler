@@ -1,4 +1,6 @@
-import { ProviderDefinition, FunctionSpec } from './types';
+import { ParsedFunctionName } from '../model/types';
+import { AgentFunctionDefinition } from '../model/definitions';
+import { ProviderDefinition } from '../model/definitions';
 
 /**
  * Converts a provider definition to AI agent function specifications
@@ -6,9 +8,10 @@ import { ProviderDefinition, FunctionSpec } from './types';
  * while hiding override parameters/payload from AI agents
  * 
  * @param spec - The provider definition containing services and functions
+ * @param providerName - The name of the provider (used for function naming convention)
  * @returns Array of function specifications for AI agents
  */
-export function convertToFunctionSpecs(spec: ProviderDefinition): FunctionSpec[] {
+export function convertToFunctionSpecs(spec: ProviderDefinition, providerName?: string): AgentFunctionDefinition[] {
   return Object.entries(spec.functions).map(([name, details]) => {
     const service = spec.services[details.service];
     if (!service) {
@@ -20,7 +23,7 @@ export function convertToFunctionSpecs(spec: ProviderDefinition): FunctionSpec[]
       throw new Error(`Endpoint ${details.endpoint} not found in service ${details.service}`);
     }
 
-    const parameters: FunctionSpec['parameters'] = {
+    const parameters: AgentFunctionDefinition['parameters'] = {
       type: 'object',
       properties: { ...endpoint.parameters },
     };
@@ -44,8 +47,11 @@ export function convertToFunctionSpecs(spec: ProviderDefinition): FunctionSpec[]
       delete parameters.properties.payload;
     }
 
+    // Use provider.function convention if providerName is provided
+    const functionName = providerName ? `${providerName}.${name}` : name;
+
     return {
-      name,
+      name: functionName,
       description: details.description,
       parameters,
     };
@@ -98,12 +104,13 @@ export function validateProviderDefinition(spec: ProviderDefinition): boolean {
  * Gets a specific function definition by name from a provider definition
  * 
  * @param spec - The provider definition to search
- * @param functionName - The name of the function to retrieve
+ * @param functionName - The name of the function to retrieve (can be with or without provider prefix)
+ * @param providerName - The name of the provider (used for function naming convention)
  * @returns The function specification for AI agents
  * @throws Error if function is not found
  */
-export function getFunctionByName(spec: ProviderDefinition, functionName: string): FunctionSpec {
-  const functions = convertToFunctionSpecs(spec);
+export function getFunctionByName(spec: ProviderDefinition, functionName: string, providerName?: string): AgentFunctionDefinition {
+  const functions = convertToFunctionSpecs(spec, providerName);
   const targetFunction = functions.find(f => f.name === functionName);
   
   if (!targetFunction) {
@@ -111,4 +118,57 @@ export function getFunctionByName(spec: ProviderDefinition, functionName: string
   }
   
   return targetFunction;
+}
+
+/**
+ * Parses a function name to extract provider name and original function name
+ * Uses dot notation: "provider.function"
+ * 
+ * @param functionName - The function name to parse
+ * @returns Object with providerName and originalFunctionName
+ */
+export function parseFunctionName(functionName: string): ParsedFunctionName {
+  const dotIndex = functionName.indexOf('.');
+  if (dotIndex >= 0) {
+    const providerName = functionName.substring(0, dotIndex);
+    const originalFunctionName = functionName.substring(dotIndex + 1);
+    const result: ParsedFunctionName = {
+      originalFunctionName: originalFunctionName
+    };
+    if (providerName !== undefined) {
+      result.providerName = providerName;
+    }
+    return result;
+  }
+  return {
+    originalFunctionName: functionName
+  };
+}
+
+/**
+ * Parses a function name against known provider names to handle complex cases
+ * This is more robust for providers with dots in their names
+ * 
+ * @param functionName - The function name to parse
+ * @param availableProviders - List of known provider names
+ * @returns Object with providerName and originalFunctionName
+ */
+export function parseProviderFunction(
+  functionName: string, 
+  availableProviders: string[]
+): ParsedFunctionName {
+  // Sort providers by length (longest first) to handle prefixes correctly
+  const sortedProviders = [...availableProviders].sort((a, b) => b.length - a.length);
+  
+  for (const providerName of sortedProviders) {
+    if (functionName.startsWith(providerName + '.')) {
+      return {
+        providerName: providerName,
+        originalFunctionName: functionName.substring(providerName.length + 1)
+      };
+    }
+  }
+  
+  // Fallback to simple parsing
+  return parseFunctionName(functionName);
 }
