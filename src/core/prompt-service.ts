@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync } from 'fs';
 import { config } from 'dotenv';
 import { Cache, createEnvCache } from '../utils/cache.js';
+import { fetchWithDefaultTimeout } from '../utils/fetch-helper.js';
 import agentService from './agent-service.js';
 
 config();
@@ -65,7 +66,7 @@ async function fetchPromptsFromUrl(promptsSource: string): Promise<PromptsData> 
 
   // Try to fetch as single prompt first
   try {
-    const response = await fetch(promptsSource);
+    const response = await fetchWithDefaultTimeout(promptsSource);
     if (response.ok) {
       prompts.default = await response.text();
       // Try to fetch agent-specific prompts too
@@ -75,13 +76,17 @@ async function fetchPromptsFromUrl(promptsSource: string): Promise<PromptsData> 
     }
     errors.push(`Single file fetch failed: ${response.status} ${response.statusText}`);
   } catch (error) {
-    errors.push(`Single file fetch error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    if (error instanceof Error && error.message.includes('timeout')) {
+      errors.push(`Single file fetch timeout: ${error.message}`);
+    } else {
+      errors.push(`Single file fetch error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   // Try to fetch multiple prompts
   try {
     // Try default prompt
-    const defaultResponse = await fetch(`${promptsSource}/prompts.md`);
+    const defaultResponse = await fetchWithDefaultTimeout(`${promptsSource}/prompts.md`);
     if (defaultResponse.ok) {
       prompts.default = await defaultResponse.text();
       // Try to fetch agent-specific prompts
@@ -91,7 +96,11 @@ async function fetchPromptsFromUrl(promptsSource: string): Promise<PromptsData> 
     }
     errors.push(`Multi-file fetch failed: ${defaultResponse.status} ${defaultResponse.statusText}`);
   } catch (error) {
-    errors.push(`Multi-file fetch error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    if (error instanceof Error && error.message.includes('timeout')) {
+      errors.push(`Multi-file fetch timeout: ${error.message}`);
+    } else {
+      errors.push(`Multi-file fetch error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   // If we get here, all attempts failed
@@ -115,7 +124,7 @@ async function fetchAgentSpecificPromptsFromUrl(promptsSource: string, errors: s
     for (const agentName of agentNames) {
       try {
         const url = `${promptsSource}/prompts.${agentName}.md`;
-        const agentResponse = await fetch(url);
+        const agentResponse = await fetchWithDefaultTimeout(url);
         if (agentResponse.ok) {
           agentPrompts[agentName] = await agentResponse.text();
         }

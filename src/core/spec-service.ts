@@ -3,6 +3,7 @@ import { load } from 'js-yaml';
 import { config } from 'dotenv';
 import { substituteEnvVars, substituteEnvVarsInObject } from '../utils/env-helper.js';
 import { convertToFunctionSpecs, getFunctionByName } from '../utils/definition-helper.js';
+import { fetchWithDefaultTimeout } from '../utils/fetch-helper.js';
 import type { 
   JSONValue
 } from '../model/types.js';
@@ -29,7 +30,7 @@ async function _getSpec(): Promise<ProviderDefinition> {
   let yamlText: string;
   
   if (specSource.startsWith('http')) {
-    const response = await fetch(specSource);
+    const response = await fetchWithDefaultTimeout(specSource);
     if (!response.ok) {
       throw new Error(`Failed to fetch spec: ${response.statusText}`);
     }

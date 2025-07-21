@@ -67,7 +67,9 @@ describe('Agent Service', () => {
       const result = await agentService.getAvailableAgents();
 
       expect(result).toEqual(['gemini-1.5']);
-      expect(mockFetch).toHaveBeenCalledWith('https://example.com/agents.yaml');
+      expect(mockFetch).toHaveBeenCalledWith('https://example.com/agents.yaml', expect.objectContaining({
+        signal: expect.any(AbortSignal)
+      }));
     });
 
     it('should throw error when no agents are available', async () => {

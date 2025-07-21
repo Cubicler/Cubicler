@@ -1,12 +1,15 @@
-import promptService from './core/prompt-service.js';
+import express, { Request, Response } from 'express';
 import specService from './core/spec-service.js';
-import functionService from './core/function-service.js';
+import promptService from './core/prompt-service.js';
+import agentService from './core/agent-service.js';
 import providerService from './core/provider-service.js';
 import executionService from './core/execution-service.js';
-import agentService from './core/agent-service.js';
-import express from 'express';
-import type { Request, Response } from 'express';
-import type { HealthStatus, FunctionCallParameters } from './model/types.js';
+import callService from './core/call-service.js';
+import type { 
+  FunctionCallParameters, 
+  HealthStatus,
+  CallRequest
+} from './model/types.js';
 
 // Create Express app
 const app = express();
@@ -118,18 +121,41 @@ app.get('/health', async (req: Request, res: Response) => {
   res.status(statusCode).json(health);
 });
 
-// POST /call/{function_name} endpoint
-app.post('/call/:function_name', async (req: Request, res: Response) => {
-  const { function_name } = req.params;
-  const parameters: FunctionCallParameters = req.body;
+// POST /call endpoint - calls default agent
+app.post('/call', async (req: Request, res: Response) => {
+  const request: CallRequest = req.body;
 
-  if (!function_name) {
-    res.status(400).json({ error: 'Function name is required' });
+  if (!request.messages || !Array.isArray(request.messages)) {
+    res.status(400).json({ error: 'Messages array is required' });
     return;
   }
 
   try {
-    const result = await functionService.callFunction(function_name, parameters);
+    const result = await callService.callAgent(undefined, request);
+    res.json(result);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ error: errorMessage });
+  }
+});
+
+// POST /call/:agent endpoint - calls specific agent
+app.post('/call/:agent', async (req: Request, res: Response) => {
+  const { agent } = req.params;
+  const request: CallRequest = req.body;
+
+  if (!agent) {
+    res.status(400).json({ error: 'Agent name is required' });
+    return;
+  }
+
+  if (!request.messages || !Array.isArray(request.messages)) {
+    res.status(400).json({ error: 'Messages array is required' });
+    return;
+  }
+
+  try {
+    const result = await callService.callAgent(agent, request);
     res.json(result);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -181,9 +207,10 @@ export { app };
 export default {
   promptService,
   specService,
-  functionService,
   providerService,
   executionService,
+  agentService,
+  callService,
   app,
 };
 

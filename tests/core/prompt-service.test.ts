@@ -30,7 +30,9 @@ describe('promptService', () => {
 
     const prompt = await promptService.getPrompt('gpt-4o');
     expect(prompt).toBe('Test Prompt');
-    expect(global.fetch).toHaveBeenCalledWith('https://example.com/prompt.md');
+    expect(global.fetch).toHaveBeenCalledWith('https://example.com/prompt.md', expect.objectContaining({
+      signal: expect.any(AbortSignal)
+    }));
   });
 
   it('should fetch the default prompt from a local file', async () => {
@@ -129,11 +131,21 @@ describe('promptService', () => {
     expect(claudePrompt).toBe('Default Prompt');
     
     // Verify key fetch calls were made
-    expect(mockFetch).toHaveBeenCalledWith('https://example.com/prompts');
-    expect(mockFetch).toHaveBeenCalledWith('https://example.com/prompts/prompts.md');
-    expect(mockFetch).toHaveBeenCalledWith('https://example.com/prompts/prompts.gpt-4o.md');
-    expect(mockFetch).toHaveBeenCalledWith('https://example.com/prompts/prompts.claude-3.5.md');
-    expect(mockFetch).toHaveBeenCalledWith('https://example.com/prompts/prompts.gemini-1.5.md');
+    expect(mockFetch).toHaveBeenCalledWith('https://example.com/prompts', expect.objectContaining({
+      signal: expect.any(AbortSignal)
+    }));
+    expect(mockFetch).toHaveBeenCalledWith('https://example.com/prompts/prompts.md', expect.objectContaining({
+      signal: expect.any(AbortSignal)
+    }));
+    expect(mockFetch).toHaveBeenCalledWith('https://example.com/prompts/prompts.gpt-4o.md', expect.objectContaining({
+      signal: expect.any(AbortSignal)
+    }));
+    expect(mockFetch).toHaveBeenCalledWith('https://example.com/prompts/prompts.claude-3.5.md', expect.objectContaining({
+      signal: expect.any(AbortSignal)
+    }));
+    expect(mockFetch).toHaveBeenCalledWith('https://example.com/prompts/prompts.gemini-1.5.md', expect.objectContaining({
+      signal: expect.any(AbortSignal)
+    }));
     
     // Restore the original implementation
     originalGetAvailableAgents.mockRestore();

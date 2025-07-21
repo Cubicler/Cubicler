@@ -37,6 +37,51 @@ export function isStrictParamsEnabled(): boolean {
 }
 
 /**
+ * Helper function to get timeout value from environment variable
+ * @param envVar - The environment variable name
+ * @param defaultValue - The default timeout value in milliseconds
+ * @returns The timeout value in milliseconds
+ */
+export function getEnvTimeout(envVar: string, defaultValue: number): number {
+  const value = process.env[envVar];
+  if (!value) return defaultValue;
+  
+  const parsed = parseInt(value, 10);
+  if (isNaN(parsed) || parsed <= 0) {
+    console.warn(`Invalid timeout value for ${envVar}: ${value}. Using default: ${defaultValue}ms`);
+    return defaultValue;
+  }
+  
+  return parsed;
+}
+
+/**
+ * Helper function to get provider call timeout
+ * @returns The provider call timeout in milliseconds (default: uses DEFAULT_CALL_TIMEOUT or 30 seconds)
+ */
+export function getProviderCallTimeout(): number {
+  const defaultTimeout = getDefaultCallTimeout();
+  return getEnvTimeout('PROVIDER_CALL_TIMEOUT', defaultTimeout);
+}
+
+/**
+ * Helper function to get agent call timeout
+ * @returns The agent call timeout in milliseconds (default: 3x DEFAULT_CALL_TIMEOUT)
+ */
+export function getAgentCallTimeout(): number {
+  const defaultTimeout = getDefaultCallTimeout() * 3;
+  return getEnvTimeout('AGENT_CALL_TIMEOUT', defaultTimeout);
+}
+
+/**
+ * Helper function to get default call timeout (fallback for all other operations)
+ * @returns The default call timeout in milliseconds (default: 30 seconds)
+ */
+export function getDefaultCallTimeout(): number {
+  return getEnvTimeout('DEFAULT_CALL_TIMEOUT', 30000);
+}
+
+/**
  * Helper function to substitute environment variables in an object
  * @param obj - The object containing values that may have environment variable placeholders
  * @returns A new object with environment variables substituted

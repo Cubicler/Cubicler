@@ -120,5 +120,44 @@ export interface ParsedFunctionName {
   originalFunctionName: string;
 }
 
+/**
+ * Message structure for call requests and agent communication
+ */
+export interface Message {
+  sender: string; // agentName or 'user'
+  content: string;
+}
+
+/**
+ * Request body for POST /call and POST /call/:agent endpoints
+ */
+export interface CallRequest {
+  messages: Message[];
+}
+
+/**
+ * Response format for call endpoints
+ */
+export interface CallResponse {
+  message: string;
+}
+
+/**
+ * Provider information sent to agents
+ */
+export interface ProviderInfo {
+  name: string;
+  description: string;
+}
+
+/**
+ * Request structure sent to AI agents
+ */
+export interface AgentRequest {
+  prompt: string;
+  providers: ProviderInfo[];
+  messages: Message[];
+}
+
 // Re-export Cache utilities for convenience
 export { Cache, createEnvCache } from '../utils/cache.js';

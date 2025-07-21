@@ -20,21 +20,16 @@ describe('Integration Test - Full Cubicler Flow', () => {
     mockApp.use(express.json());
 
     // Mock endpoint that our function will call
-    mockApp.get('/users/:id', (req: Request, res: Response) => {
+    mockApp.get('/data/:id', (req: Request, res: Response) => {
       const { id } = req.params;
-      const { include_details } = req.query;
-      
-      // Verify the override parameter was applied
-      expect(include_details).toBe('true');
       
       // Verify headers
-      expect(req.headers.authorization).toBe('Bearer test-token');
+      expect(req.headers['x-api-key']).toBe('test-key');
       
       res.json({
         id: id,
-        name: `User ${id}`,
-        email: `user${id}@example.com`,
-        details: include_details === 'true' ? { role: 'admin' } : null
+        data: `Test data for ID: ${id}`,
+        timestamp: new Date().toISOString()
       });
     });
 
@@ -70,27 +65,26 @@ describe('Integration Test - Full Cubicler Flow', () => {
     expect(response.body[0].parameters.properties).toHaveProperty('id');
   });
 
-  it('should execute function calls via POST /call/:function_name', async () => {
+  it('should execute function calls via POST /execute/:function_name', async () => {
     const response = await request(app)
-      .post('/call/getUserById')
+      .post('/execute/mock_service.getData')
       .send({ id: '123' })
       .expect(200);
 
     expect(response.body).toEqual({
       id: '123',
-      name: 'User 123',
-      email: 'user123@example.com',
-      details: { role: 'admin' } // This proves override parameter worked
+      data: 'Test data for ID: 123',
+      timestamp: expect.any(String)
     });
   });
 
-  it('should handle function call errors properly', async () => {
+  it('should handle function execution errors properly', async () => {
     const response = await request(app)
-      .post('/call/nonExistentFunction')
+      .post('/execute/mock_service.nonExistentFunction')
       .send({ id: '123' })
       .expect(500);
 
-    expect(response.body.error).toContain('Function nonExistentFunction not found');
+    expect(response.body.error).toContain('Function \'nonExistentFunction\' not found in provider \'mock_service\'');
   });
 
   it('should return health status via GET /health', async () => {

@@ -8,6 +8,7 @@ import {
 } from '../utils/parameter-helper.js';
 import { parseFunctionName, parseProviderFunction } from '../utils/definition-helper.js';
 import { substituteEnvVars, substituteEnvVarsInObject } from '../utils/env-helper.js';
+import { fetchWithProviderTimeout } from '../utils/fetch-helper.js';
 import type { 
   FunctionCallParameters, 
   FunctionCallResult, 
@@ -73,11 +74,19 @@ async function loadProviderDefinition(specUrl: string): Promise<ProviderDefiniti
   let yamlText: string;
   
   if (specUrl.startsWith('http')) {
-    const response = await fetch(specUrl);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch provider spec: ${response.statusText}`);
+    try {
+      const response = await fetchWithProviderTimeout(specUrl);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch provider spec: ${response.statusText}`);
+      }
+      yamlText = await response.text();
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('timeout')) {
+        throw new Error(`Provider spec fetch timeout: ${error.message}`);
+      }
+      throw error;
     }
-    yamlText = await response.text();
   } else {
     yamlText = readFileSync(specUrl, 'utf-8');
   }
@@ -110,7 +119,7 @@ function processEndpoint(service: ServiceDefinition, endpoint: EndpointDefinitio
 }
 
 /**
- * Execute the actual provider function call (based on function-service logic)
+ * Execute the actual provider function call
  */
 async function callProviderFunction(
   functionDef: FunctionDefinition,
@@ -185,12 +194,20 @@ async function callProviderFunction(
     requestOptions.body = JSON.stringify(finalPayload);
   }
 
-  const response = await fetch(url, requestOptions);
-  if (!response.ok) {
-    throw new Error(`Failed to call provider function: ${response.statusText}`);
-  }
+  try {
+    const response = await fetchWithProviderTimeout(url, requestOptions);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to call provider function: ${response.statusText}`);
+    }
 
-  return await response.json() as FunctionCallResult;
+    return await response.json() as FunctionCallResult;
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('timeout')) {
+      throw new Error(`Provider call timeout: ${error.message}`);
+    }
+    throw error;
+  }
 }
 
 export default { executeFunction };

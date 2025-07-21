@@ -2,6 +2,7 @@ import { readFileSync } from 'fs';
 import { load } from 'js-yaml';
 import { config } from 'dotenv';
 import { Cache, createEnvCache } from '../utils/cache.js';
+import { fetchWithDefaultTimeout } from '../utils/fetch-helper.js';
 import type { AgentsList } from '../model/types.js';
 
 config();
@@ -37,7 +38,7 @@ async function fetchAgentsList(): Promise<AgentsList> {
   let yamlText: string;
   
   if (agentsSource.startsWith('http')) {
-    const response = await fetch(agentsSource);
+    const response = await fetchWithDefaultTimeout(agentsSource);
     if (!response.ok) {
       throw new Error(`Failed to fetch agents list: ${response.statusText}`);
     }

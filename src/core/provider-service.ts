@@ -3,6 +3,7 @@ import { load } from 'js-yaml';
 import { config } from 'dotenv';
 import { Cache, createEnvCache } from '../utils/cache.js';
 import { convertToFunctionSpecs } from '../utils/definition-helper.js';
+import { fetchWithDefaultTimeout } from '../utils/fetch-helper.js';
 import type { 
   ProvidersList,
   Provider,
@@ -80,7 +81,8 @@ async function fetchProvidersFromUrl(providersSource: string): Promise<Providers
   const errors: string[] = [];
 
   try {
-    const response = await fetch(providersSource);
+    const response = await fetchWithDefaultTimeout(providersSource);
+    
     if (response.ok) {
       const yamlText = await response.text();
       const providers = load(yamlText) as ProvidersList;
@@ -97,7 +99,11 @@ async function fetchProvidersFromUrl(providersSource: string): Promise<Providers
     }
     errors.push(`Fetch failed: ${response.status} ${response.statusText}`);
   } catch (error) {
-    errors.push(`Fetch error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    if (error instanceof Error && error.message.includes('timeout')) {
+      errors.push(`Provider fetch timeout: ${error.message}`);
+    } else {
+      errors.push(`Fetch error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   throw new Error(`Cannot fetch providers from URL '${providersSource}'. Errors: ${errors.join('; ')}`);
@@ -142,7 +148,8 @@ async function fetchProviderDefinitionFromUrl(specUrl: string): Promise<Provider
   const errors: string[] = [];
 
   try {
-    const response = await fetch(specUrl);
+    const response = await fetchWithDefaultTimeout(specUrl);
+    
     if (response.ok) {
       const yamlText = await response.text();
       const spec = load(yamlText) as ProviderDefinition;
@@ -155,7 +162,11 @@ async function fetchProviderDefinitionFromUrl(specUrl: string): Promise<Provider
     }
     errors.push(`Spec fetch failed: ${response.status} ${response.statusText}`);
   } catch (error) {
-    errors.push(`Spec fetch error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    if (error instanceof Error && error.message.includes('timeout')) {
+      errors.push(`Provider spec fetch timeout: ${error.message}`);
+    } else {
+      errors.push(`Spec fetch error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   throw new Error(`Cannot fetch provider spec from URL '${specUrl}'. Errors: ${errors.join('; ')}`);
@@ -196,13 +207,17 @@ async function fetchProviderContextFromUrl(contextUrl: string): Promise<string> 
   const errors: string[] = [];
 
   try {
-    const response = await fetch(contextUrl);
+    const response = await fetchWithDefaultTimeout(contextUrl);
     if (response.ok) {
       return await response.text();
     }
     errors.push(`Context fetch failed: ${response.status} ${response.statusText}`);
   } catch (error) {
-    errors.push(`Context fetch error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    if (error instanceof Error && error.message.includes('timeout')) {
+      errors.push(`Context fetch timeout: ${error.message}`);
+    } else {
+      errors.push(`Context fetch error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   throw new Error(`Cannot fetch provider context from URL '${contextUrl}'. Errors: ${errors.join('; ')}`);
