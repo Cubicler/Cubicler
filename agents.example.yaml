@@ -1,0 +1,22 @@
+# Example agents configuration for Cubicler
+# This file defines available AI agents and their endpoints
+version: 1
+kind: agents
+agents:
+  - name: "gpt-4o"
+    endpoints: "http://localhost:3000/call"
+    
+  - name: "claude-3.5-sonnet"
+    endpoints: "http://localhost:3001/call"
+    
+  - name: "gemini-1.5-pro"
+    endpoints: "http://localhost:3002/call"
+    
+  - name: "local-llm"
+    endpoints: "http://localhost:11434/call" # Example: Ollama or similar
+    
+  # You can also specify multiple endpoints for load balancing
+  - name: "distributed-gpt"
+    endpoints: 
+      - "http://node1:3000/call"
+      - "http://node2:3000/call"

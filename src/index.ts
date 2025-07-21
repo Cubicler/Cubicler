@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express';
-import specService from './core/spec-service.js';
+
 import promptService from './core/prompt-service.js';
 import agentService from './core/agent-service.js';
 import providerService from './core/provider-service.js';
@@ -33,16 +33,6 @@ app.get('/prompt/:agentName', async (req: Request, res: Response) => {
   }
 });
 
-// GET /spec endpoint
-app.get('/spec', async (req: Request, res: Response) => {
-  try {
-    const functions = await specService.getFunctions();
-    res.json(functions);
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    res.status(500).json({ error: errorMessage });
-  }
-});
 
 // GET /agents endpoint
 app.get('/agents', async (req: Request, res: Response) => {
@@ -104,16 +94,6 @@ app.get('/health', async (req: Request, res: Response) => {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     health.services.providers = { status: 'unhealthy', error: errorMessage };
-    health.status = 'unhealthy';
-  }
-
-  // Check spec service
-  try {
-    await specService.getFunctions();
-    health.services.spec = { status: 'healthy' };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    health.services.spec = { status: 'unhealthy', error: errorMessage };
     health.status = 'unhealthy';
   }
 
@@ -206,7 +186,6 @@ export { app };
 // Export services for external use
 export default {
   promptService,
-  specService,
   providerService,
   executionService,
   agentService,

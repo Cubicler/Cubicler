@@ -1,0 +1,19 @@
+# Example providers configuration for Cubicler
+# This file defines available providers and their specs/context sources
+version: 1
+kind: providers
+providers:
+  - name: "weather_api"
+    description: "A provider for Weather API"
+    spec_source: "http://localhost:4000/spec/weather_api.yaml" # URL to the spec file
+    context_source: "http://localhost:4000/context/weather_api.md" # URL to the context how to use the spec
+    
+  - name: "mock_service"
+    description: "A mock service for testing"
+    spec_source: "http://localhost:4000/spec/mock_service.yaml" # URL to the spec file
+    context_source: "http://localhost:4000/context/mock_service.md" # URL to the context how to use the spec
+    
+  - name: "local_provider"
+    description: "A local provider for development"
+    spec_source: "./local-spec.yaml" # Can also be a local file
+    context_source: "./local-context.md" # Can also be a local file

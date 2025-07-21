@@ -51,20 +51,6 @@ describe('Integration Test - Full Cubicler Flow', () => {
     expect(response.body.prompt).toContain('You are a helpful assistant for testing Cubicler integration');
   });
 
-  it('should serve the function spec via GET /spec', async () => {
-    const response = await request(app)
-      .get('/spec')
-      .expect(200);
-
-    expect(response.body).toHaveLength(1);
-    expect(response.body[0].name).toBe('getUserById');
-    expect(response.body[0].description).toBe('Get user information by ID');
-    
-    // Should not include override parameters in the AI spec
-    expect(response.body[0].parameters.properties).not.toHaveProperty('include_details');
-    expect(response.body[0].parameters.properties).toHaveProperty('id');
-  });
-
   it('should execute function calls via POST /execute/:function_name', async () => {
     const response = await request(app)
       .post('/execute/mock_service.getData')
@@ -96,7 +82,6 @@ describe('Integration Test - Full Cubicler Flow', () => {
     expect(response.body.services.prompt.status).toBe('healthy');
     expect(response.body.services.agents.status).toBe('healthy');
     expect(response.body.services.providers.status).toBe('healthy');
-    expect(response.body.services.spec.status).toBe('healthy');
     expect(response.body.timestamp).toBeDefined();
   });
 });
