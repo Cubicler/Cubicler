@@ -4,7 +4,7 @@ import {
   validateAndConvertPayload,
   convertParametersForQuery 
 } from '../../src/utils/parameter-helper.js';
-import type { ParameterDefinition } from '../../src/utils/types.js';
+import type { ParameterDefinition } from '../../src/model/definitions.js';
 
 describe('parameterHelper', () => {
   describe('validateAndConvertParameter', () => {

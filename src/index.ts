@@ -3,6 +3,7 @@ import specService from './core/spec-service.js';
 import functionService from './core/function-service.js';
 import providerService from './core/provider-service.js';
 import executionService from './core/execution-service.js';
+import agentService from './core/agent-service.js';
 import express from 'express';
 import type { Request, Response } from 'express';
 import type { HealthStatus, FunctionCallParameters } from './model/types.js';
@@ -27,6 +28,17 @@ app.get('/spec', async (req: Request, res: Response) => {
   try {
     const functions = await specService.getFunctions();
     res.json(functions);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ error: errorMessage });
+  }
+});
+
+// GET /agents endpoint
+app.get('/agents', async (req: Request, res: Response) => {
+  try {
+    const availableAgents = await agentService.getAvailableAgents();
+    res.json({ availableAgents });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     res.status(500).json({ error: errorMessage });
