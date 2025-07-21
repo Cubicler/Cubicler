@@ -34,7 +34,7 @@ export interface FunctionDefinition {
   override_payload?: JSONValue;
 }
 
-export interface CubiclerSpec {
+export interface ProviderDefinition {
   version: number;
   services: Record<string, ServiceDefinition>;
   functions: Record<string, FunctionDefinition>;
@@ -85,3 +85,35 @@ export type FunctionCallResult = JSONValue;
 export interface FunctionCallParameters extends JSONObject {
   payload?: JSONValue;
 }
+
+export interface Agent {
+  name: string;
+  endpoints: string;
+}
+
+export interface Provider {
+  name: string;
+  description: string;
+  spec_source: string; // URL to spec file
+  context_source: string; // URL to context file
+}
+
+export interface AgentsList {
+  version: number;
+  kind: "agents";
+  agents: Agent[];
+}
+
+export interface ProvidersList {
+  version: number;
+  kind: "providers";
+  providers: Provider[];
+}
+
+export interface ProviderSpecResponse {
+  context: string;
+  functions: FunctionSpec[];
+}
+
+// Re-export Cache utilities for convenience
+export { Cache, createEnvCache } from './cache.js';

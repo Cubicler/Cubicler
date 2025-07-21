@@ -2,8 +2,9 @@ import { readFileSync } from 'fs';
 import { load } from 'js-yaml';
 import { config } from 'dotenv';
 import { substituteEnvVars, substituteEnvVarsInObject } from '../utils/env-helper.js';
+import { convertToFunctionSpecs, getFunctionByName } from '../utils/definition-helper.js';
 import type { 
-  CubiclerSpec, 
+  ProviderDefinition, 
   FunctionDefinition, 
   ProcessedEndpoint, 
   FunctionSpec,
@@ -17,7 +18,7 @@ config();
  * @returns Promise that resolves to the parsed spec
  * @throws Error if spec source is not defined or fetch/parse fails
  */
-async function _getSpec(): Promise<CubiclerSpec> {
+async function _getSpec(): Promise<ProviderDefinition> {
   const specSource = process.env.CUBICLER_SPEC_SOURCE;
   if (!specSource) {
     throw new Error('CUBICLER_SPEC_SOURCE is not defined in environment variables');
@@ -35,7 +36,7 @@ async function _getSpec(): Promise<CubiclerSpec> {
     yamlText = readFileSync(specSource, 'utf-8');
   }
   
-  const spec = load(yamlText) as CubiclerSpec;
+  const spec = load(yamlText) as ProviderDefinition;
   if (!spec || typeof spec !== 'object') {
     throw new Error('Invalid YAML spec format');
   }
@@ -49,54 +50,19 @@ async function _getSpec(): Promise<CubiclerSpec> {
  */
 async function getFunctions(): Promise<FunctionSpec[]> {
   const spec = await _getSpec();
-  
-  return Object.entries(spec.functions).map(([name, details]) => {
-    const service = spec.services[details.service];
-    if (!service) {
-      throw new Error(`Service ${details.service} not found in spec`);
-    }
-    
-    const endpoint = service.endpoints[details.endpoint];
-    if (!endpoint) {
-      throw new Error(`Endpoint ${details.endpoint} not found in service ${details.service}`);
-    }
-
-    const parameters: FunctionSpec['parameters'] = {
-      type: 'object',
-      properties: { ...endpoint.parameters },
-    };
-
-    // Add payload as a flattened parameter named "payload"
-    if (endpoint.payload) {
-      parameters.properties.payload = endpoint.payload;
-    }
-
-    // Remove override parameters from AI function spec
-    if (details.override_parameters) {
-      Object.keys(details.override_parameters).forEach(key => {
-        if (parameters.properties[key]) {
-          delete parameters.properties[key];
-        }
-      });
-    }
-
-    // Remove override payload from AI function spec
-    if (details.override_payload && parameters.properties.payload) {
-      delete parameters.properties.payload;
-    }
-
-    return {
-      name,
-      description: details.description,
-      parameters,
-    };
-  });
+  return convertToFunctionSpecs(spec);
 }
 
 /**
  * Gets a specific function definition by name
  * @param functionName - The name of the function to retrieve
  * @returns Promise that resolves to the function spec
+ * @throws Error if function is not found
+ */
+/**
+ * Gets a specific function definition by name (raw from spec)
+ * @param functionName - The name of the function to retrieve
+ * @returns Promise that resolves to the function definition
  * @throws Error if function is not found
  */
 async function getFunction(functionName: string): Promise<FunctionDefinition> {
@@ -106,6 +72,17 @@ async function getFunction(functionName: string): Promise<FunctionDefinition> {
     throw new Error(`Function ${functionName} not found in spec`);
   }
   return functionSpec;
+}
+
+/**
+ * Gets a specific function spec by name (converted for AI agents)
+ * @param functionName - The name of the function to retrieve
+ * @returns Promise that resolves to the function spec
+ * @throws Error if function is not found
+ */
+async function getFunctionSpec(functionName: string): Promise<FunctionSpec> {
+  const spec = await _getSpec();
+  return getFunctionByName(spec, functionName);
 }
 
 /**
@@ -172,4 +149,4 @@ async function getOverridePayload(functionName: string): Promise<JSONValue | und
   }
 }
 
-export default { getFunctions, getFunction, getEndpoint, getOverrideParameters, getOverridePayload };
+export default { getFunctions, getFunction, getFunctionSpec, getEndpoint, getOverrideParameters, getOverridePayload };

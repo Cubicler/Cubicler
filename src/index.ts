@@ -1,6 +1,7 @@
 import promptService from './core/prompt-service.js';
 import specService from './core/spec-service.js';
 import functionService from './core/function-service.js';
+import providerService from './core/provider-service.js';
 import express from 'express';
 import type { Request, Response } from 'express';
 import type { HealthStatus, FunctionCallParameters } from './utils/types.js';
@@ -82,6 +83,24 @@ app.post('/call/:function_name', async (req: Request, res: Response) => {
   }
 });
 
+// GET /provider/{providerName}/spec endpoint
+app.get('/provider/:providerName/spec', async (req: Request, res: Response) => {
+  const { providerName } = req.params;
+
+  if (!providerName) {
+    res.status(400).json({ error: 'Provider name is required' });
+    return;
+  }
+
+  try {
+    const result = await providerService.getProviderSpec(providerName);
+    res.json(result);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ error: errorMessage });
+  }
+});
+
 // Export the app for testing
 export { app };
 
@@ -90,6 +109,7 @@ export default {
   promptService,
   specService,
   functionService,
+  providerService,
   app,
 };
 
