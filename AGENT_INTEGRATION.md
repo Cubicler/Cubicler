@@ -8,7 +8,7 @@ This guide defines the exact API contract and integration flow that AI agents mu
 
 ## 🎯 Agent Integration Contract
 
-An **Agent** in Cubicler is an AI service that implements a specific API contract:
+An **CubicAgent** in Cubicler is an AI service that implements a specific API contract:
 
 1. **Implements `POST /call` endpoint** to receive requests from Cubicler
 2. **Calls back to Cubicler** to discover provider capabilities via `/provider/:providerName/spec`  
@@ -21,7 +21,7 @@ An **Agent** in Cubicler is an AI service that implements a specific API contrac
 
 ```text
 ┌─────────────────┐    1. POST /call        ┌──────────────────┐
-│   Cubicler      │────────────────────────►│   Your Agent     │
+│   Cubicler      │────────────────────────►│ Your CubicAgent  │
 │ (Orchestrator)  │   AgentRequest          │   Service        │
 └─────────────────┘                         └──────────────────┘
         ▲                                             │
@@ -36,7 +36,7 @@ An **Agent** in Cubicler is an AI service that implements a specific API contrac
         │                                             │ 3. Spec + Context
         │                                             ▼
         │                                   ┌──────────────────┐
-        │                                   │   Your Agent     │
+        │                                   │ Your CubicAgent  │
         └───────────────────────────────────│ (Build Functions)│
                 4. Function Execution       └──────────────────┘
                                                       │
@@ -49,17 +49,17 @@ An **Agent** in Cubicler is an AI service that implements a specific API contrac
 ### Step-by-Step Flow
 
 1. **Cubicler → Agent**: `POST /call` with `AgentRequest` containing prompt, provider list, and messages
-2. **Agent → Cubicler**: `GET /provider/:providerName/spec` to get detailed function specs  
-3. **Cubicler → Agent**: Returns spec and context for the provider
-4. **Agent**: Rebuilds its function definitions and prompts based on received specs
-5. **Agent → Cubicler**: (Optional) `POST /execute/:functionName` to execute functions
-6. **Agent → Cubicler**: Returns final response to user
+2. **CubicAgent → Cubicler**: `GET /provider/:providerName/spec` to get detailed function specs  
+3. **Cubicler → CubicAgent**: Returns spec and context for the provider
+4. **CubicAgent**: Rebuilds its function definitions and prompts based on received specs
+5. **CubicAgent → Cubicler**: (Optional) `POST /execute/:functionName` to execute functions
+6. **CubicAgent → Cubicler**: Returns final response to user
 
 ---
 
 ## 📋 Required API Contract
 
-### 1. Agent Endpoint: `POST /call`
+### 1. CubicAgent Endpoint: `POST /call`
 
 Your agent **MUST** implement this endpoint to receive requests from Cubicler.
 
@@ -164,7 +164,7 @@ Content-Type: application/json
 
 ## 💡 Implementation Examples
 
-### Basic Agent Implementation
+### Basic CubicAgent Implementation
 
 ```javascript
 const express = require('express');

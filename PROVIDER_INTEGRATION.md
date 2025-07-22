@@ -6,16 +6,16 @@ This guide shows you how to build provider services that integrate with Cubicler
 
 ---
 
-## 🎯 What is a Provider?
+## 🎯 What is a CubicProvider?
 
-A **Provider** is an external service that:
+A **CubicProvider** is an external service that:
 
 1. **Exposes REST APIs** that perform specific business functions
 2. **Provides a YAML spec** describing available functions and their parameters  
 3. **Provides context documentation** explaining how to use these functions
 4. **Handles authentication, validation, and business logic** independently
 
-**Providers enable:** Weather services, user management, email sending, database queries, file processing, payment processing, and more.
+**CubicProviders enable:** Weather services, user management, email sending, database queries, file processing, payment processing, and more.
 
 ---
 
@@ -23,7 +23,7 @@ A **Provider** is an external service that:
 
 ```text
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Cubicler      │    │   Your Provider  │    │  External APIs  │
+│   Cubicler      │    │Your CubicProvider│    │  External APIs  │
 │  (Orchestrator) │◄──►│    Service       │◄──►│  / Databases    │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
         ▲                        │
@@ -39,7 +39,7 @@ A **Provider** is an external service that:
 
 ## 🚀 Quick Start
 
-### 1. Create a Basic Provider Service
+### 1. Create a Basic CubicProvider Service
 
 Let's build a simple user management provider:
 
@@ -285,7 +285,7 @@ All functions return user objects with the following structure:
 
 ---
 
-## 📋 Provider Registration
+## 📋 CubicProvider Registration
 
 ### 1. Add to Providers List
 
@@ -301,7 +301,7 @@ providers:
     context_source: "http://localhost:4000/context/user_service.md"
 ```
 
-### 2. Test Your Provider
+### 2. Test Your CubicProvider
 
 ```bash
 # Start your provider service

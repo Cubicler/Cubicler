@@ -28,7 +28,7 @@ Frontend: Shows user "The weather in Paris is sunny, 25°C"
 
 Modern AI systems need to connect multiple components: frontend apps, AI agents, and external services. But most frameworks tightly couple these components, making updates and scaling challenging. Cubicler addresses this by:
 
-- **Orchestrating 4 key components:** Frontend Services ↔ Cubicler ↔ AI Agents ↔ External Providers
+- **Orchestrating 4 key components:** Frontend Services ↔ Cubicler ↔ CubicAgents ↔ External Providers
 - Decoupling configuration from code using hot-swappable YAML/Markdown files
 - Enabling seamless integration between chat apps (Telegram, Slack) and AI agents
 - Providing a secure, modular middleware for AI-to-API orchestration
@@ -44,8 +44,8 @@ Modern AI systems need to connect multiple components: frontend apps, AI agents,
 
 1. 🖥️ **Frontend Services** (Telegram, Slack, Chat Apps, Web Apps)
 2. 🏢 **Cubicler** (The Orchestrator - this project)
-3. 🤖 **AI Agents** (GPT, Claude, Gemini, etc.)
-4. 🔌 **External Providers** (REST APIs, databases, services)
+3. 🤖 **CubicAgents** (GPT, Claude, Gemini, etc.)
+4. 🔌 **CubicProviders** (REST APIs, databases, services)
 
 **What Cubicler handles:**
 
@@ -61,11 +61,12 @@ Modern AI systems need to connect multiple components: frontend apps, AI agents,
 **The Complete Flow:**
 
 1. **Frontend** (Telegram bot, Slack app, etc.) → sends user request to Cubicler
-2. **Cubicler** → routes request to appropriate AI Agent  
-3. **AI Agent** → processes request, may ask Cubicler to execute external functions
-4. **Cubicler** → executes functions via External Providers, returns results to Agent
-5. **AI Agent** → sends final response back through Cubicler to Frontend
-6. **Update anytime** → Edit YAML/Markdown files (agents, providers, prompts) - no restart needed!
+2. **Cubicler** → routes request to appropriate CubicAgent  
+3. **CubicAgent** → processes request, may ask Cubicler to execute external functions
+4. **Cubicler** → executes functions via External Providers (CubicProvider), returns results to Agent
+5. **CubicProvider** → handle REST API call from Cubicler
+6. **CubicAgent** → sends final response back through Cubicler to Frontend
+7. **Update anytime** → Edit YAML/Markdown files (agents, providers, prompts) - no restart needed!
 
 **Perfect for:** Telegram bots, Slack apps, Discord bots, web chat interfaces, or any system that needs AI agents connected to real services.
 
@@ -76,7 +77,7 @@ Modern AI systems need to connect multiple components: frontend apps, AI agents,
 Comprehensive guides for different types of developers:
 
 - **🖥️ [Frontend Integration Guide](FRONTEND_INTEGRATION.md)** - For frontend developers building chat apps, Telegram bots, or web interfaces
-- **🔌 [Provider Development Guide](PROVIDER_DEVELOPMENT.md)** - For backend developers creating external API services
+- **🔌 [Provider Integration Guide](PROVIDER_INTEGRATION.md)** - For backend developers creating external API services
 - **🤖 [Agent Integration Guide](AGENT_INTEGRATION.md)** - For AI developers building OpenAI, Claude, or custom AI agents
 
 ---
@@ -187,7 +188,7 @@ Cubicler acts as the **central orchestrator** in a 4-component architecture:
 
 ```text
 ┌─────────────────┐    1. User Request      ┌──────────────┐    2. Route to Agent    ┌─────────────┐
-│  Frontend App   │ ──────────────────────► │   Cubicler   │ ──────────────────────► │ AI Agent    │
+│  Frontend App   │ ──────────────────────► │   Cubicler   │ ──────────────────────► │ CubicAgent  │
 │ (Telegram,      │                         │(Orchestrator)│                         │(GPT, Claude)│
 │  Slack, etc.)   │ ◄────────────────────── │              │ ◄────────────────────── │             │
 └─────────────────┘    6. Final Response    └──────────────┘    5. Agent Response    └─────────────┘
@@ -196,7 +197,7 @@ Cubicler acts as the **central orchestrator** in a 4-component architecture:
                                                     │ │   Function                         │ │
                                                     │ ▼                                    │ │
                                             ┌──────────────┐                               │ │
-                                            │   External   │ ◄─────────────────────────────┘ │
+                                            │    Cubic     │ ◄─────────────────────────────┘ │
                                             │   Provider   │                                 │
                                             │ (REST APIs)  │ ────────────────────────────────┘
                                             └──────────────┘    3a. Function Request
@@ -205,11 +206,12 @@ Cubicler acts as the **central orchestrator** in a 4-component architecture:
 **Step-by-Step:**
 
 1. **Frontend** sends user request to Cubicler
-2. **Cubicler** routes to appropriate AI Agent based on configuration
-3. **AI Agent** processes request, may request function execution from Cubicler
+2. **Cubicler** routes to appropriate CubicAgent based on configuration
+3. **CubicAgent** processes request, may request function execution from Cubicler
 4. **Cubicler** calls External Provider APIs and returns data to Agent
-5. **AI Agent** sends response back to Cubicler
-6. **Cubicler** returns final response to Frontend
+5. **CubicProvider** handle REST API call and returns the result to Cubicler
+6. **CubicAgent** sends response back to Cubicler
+7. **Cubicler** returns final response to Frontend
 
 ### 📝 Configuration Files
 
@@ -262,18 +264,18 @@ POST /call/weather_agent
 }
 ```
 
-**Cubicler → AI Agent:** Routes request to weather_agent
+**Cubicler → CubicAgent:** Routes request to weather_agent
 
-**AI Agent → Cubicler:** "I need weather data"
+**CubicAgent → Cubicler:** "I need weather data"
 
 ```json
 POST /execute/getWeather
 {"city": "Paris", "country": "France"}
 ```
 
-**Cubicler → External Provider:** Calls weather API
+**Cubicler → CubicProvider:** Calls weather API
 
-**Full Response Chain:** Weather data → AI Agent → Cubicler → Frontend → User sees "It's sunny and 25°C in Paris!"
+**Full Response Chain:** Weather data → CubicAgent → Cubicler → Frontend → User sees "It's sunny and 25°C in Paris!"
 
 > 📖 **Want to build this yourself?** Check our [Frontend Integration Guide](FRONTEND_INTEGRATION.md) and [Agent Integration Guide](AGENT_INTEGRATION.md).
 

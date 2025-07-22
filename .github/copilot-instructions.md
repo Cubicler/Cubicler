@@ -8,7 +8,9 @@ You're here to help improve and expand Cubicler — a proper desk for AI Agents:
 
 ## 🧱 System Overview
 
-Cubicler acts as the **orchestrator/middleware** between frontend services, AI agents, and REST APIs. 
+Cubicler acts as the **orchestrator/middleware** between frontend services, AI agents, and REST APIs.
+We use the term **CubicAgent** to refer to AI agents that integrate with Cubicler.
+While the term **CubicProvider** refers to external services that expose REST APIs and provide function specs.
 
 **Current Implementation:**
 - Uses `agents.yaml` that defines which agents are available and their endpoints
@@ -176,15 +178,15 @@ functions:
 ## High-Level Flow
 
 1. **POST /call is called**:
-   Cubicler will call the selected/default AI Agent with:
+   Cubicler will call the selected/default CubicAgent with:
    - prompts from `prompts.md` or `prompts.<agentName>.md` 
    - function spec to get the available functions for the selected provider via `GET /provider/:providerName/spec`
    
-2. **AI Agent decides**:
-   Based on the prompts and function spec, the AI Agent will determine what it needs to do:
+2. **CubicAgent decides**:
+   Based on the prompts and function spec, the CubicAgent will determine what it needs to do:
    - Call `GET /provider/:providerName/spec` to get the function spec and context for a specific provider:
-     - Returned spec will be included in the AI Agent's function spec
-     - Returned context will be sent to the AI Agent for understanding the function spec
+     - Returned spec will be included in the CubicAgent's function spec
+     - Returned context will be sent to the CubicAgent for understanding the function spec
    - Call `POST /execute/:functionName` to execute a function call:
      - Cubicler will convert the AI agent's function call into a REST API call to the correct provider and return the results
    - Return a response
