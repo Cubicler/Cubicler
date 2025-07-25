@@ -1,5 +1,7 @@
 # 🏢 Cubicler
 
+![Cubicler Logo](cubicler_logo_inline.jpeg)
+
 > *A modular AI orchestration framework where AI agents go to work*
 
 [![npm version](https://badge.fury.io/js/cubicler.svg)](https://badge.fury.io/js/cubicler)
