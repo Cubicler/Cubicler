@@ -80,7 +80,7 @@ Your agent **MUST** implement this endpoint to receive requests from Cubicler.
   ],
   "messages": [
     {
-      "role": "user",
+      "sender": "user",
       "content": "What's the weather in Paris?"
     }
   ]

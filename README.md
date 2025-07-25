@@ -259,7 +259,7 @@ You have access to multiple providers through the Cubicler framework.
 POST /call/weather_agent
 {
   "messages": [
-    {"role": "user", "content": "What's the weather in Paris?"}
+    {"sender": "user", "content": "What's the weather in Paris?"}
   ]
 }
 ```
@@ -363,7 +363,7 @@ Calls an AI agent with messages. The agent will use the available providers to f
 ```json
 {
   "messages": [
-    {"role": "user", "content": "Get user information for ID 123"}
+    {"sender": "user", "content": "Get user information for ID 123"}
   ]
 }
 ```
