@@ -1,4 +1,5 @@
 import { jest } from '@jest/globals';
+import axios from 'axios';
 import agentService from '../../src/core/agent-service.js';
 import type { AgentsList } from '../../src/model/types.js';
 
@@ -7,9 +8,15 @@ jest.mock('fs', () => ({
   readFileSync: jest.fn()
 }));
 
-// Mock fetch
-const mockFetch = jest.fn() as jest.MockedFunction<typeof fetch>;
-global.fetch = mockFetch;
+// Mock axios
+jest.mock('axios');
+const mockAxios = axios as jest.Mocked<typeof axios>;
+
+// Create a manual mock for axios.isAxiosError
+Object.defineProperty(axios, 'isAxiosError', {
+  value: jest.fn().mockReturnValue(true),
+  writable: true
+});
 
 describe('Agent Service', () => {
   const originalEnv = process.env;
@@ -59,16 +66,18 @@ describe('Agent Service', () => {
       };
 
       process.env.CUBICLER_AGENTS_LIST = 'https://example.com/agents.yaml';
-      mockFetch.mockResolvedValue({
-        ok: true,
-        text: async () => 'version: 1\nkind: agents\nagents:\n  - name: gemini-1.5\n    endpoints: localhost:3002/call'
-      } as Response);
+      mockAxios.mockResolvedValue({
+        status: 200,
+        statusText: 'OK',
+        data: 'version: 1\nkind: agents\nagents:\n  - name: gemini-1.5\n    endpoints: localhost:3002/call'
+      });
 
       const result = await agentService.getAvailableAgents();
 
       expect(result).toEqual(['gemini-1.5']);
-      expect(mockFetch).toHaveBeenCalledWith('https://example.com/agents.yaml', expect.objectContaining({
-        signal: expect.any(AbortSignal)
+      expect(mockAxios).toHaveBeenCalledWith(expect.objectContaining({
+        url: 'https://example.com/agents.yaml',
+        timeout: expect.any(Number)
       }));
     });
 
@@ -100,10 +109,14 @@ describe('Agent Service', () => {
 
     it('should throw error when HTTP fetch fails', async () => {
       process.env.CUBICLER_AGENTS_LIST = 'https://example.com/agents.yaml';
-      mockFetch.mockResolvedValue({
-        ok: false,
-        statusText: 'Not Found'
-      } as Response);
+      const error = {
+        isAxiosError: true,
+        response: {
+          status: 404,
+          statusText: 'Not Found'
+        }
+      };
+      mockAxios.mockRejectedValue(error);
 
       await expect(agentService.getAvailableAgents()).rejects.toThrow('Failed to fetch agents list: Not Found');
     });

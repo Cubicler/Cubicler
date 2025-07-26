@@ -1,5 +1,6 @@
 import { readFileSync } from 'fs';
 import { load } from 'js-yaml';
+import axios, { AxiosRequestConfig } from 'axios';
 import providerService from './provider-service.js';
 import { 
   validateAndConvertParameters, 
@@ -77,10 +78,10 @@ async function loadProviderDefinition(specUrl: string): Promise<ProviderDefiniti
     try {
       const response = await fetchWithProviderTimeout(specUrl);
       
-      if (!response.ok) {
+      if (response.status < 200 || response.status >= 300) {
         throw new Error(`Failed to fetch provider spec: ${response.statusText}`);
       }
-      yamlText = await response.text();
+      yamlText = response.data;
     } catch (error) {
       if (error instanceof Error && error.message.includes('timeout')) {
         throw new Error(`Provider spec fetch timeout: ${error.message}`);
@@ -172,7 +173,7 @@ async function callProviderFunction(
 
   const method = endpointDef.method;
 
-  const requestOptions: RequestInit = {
+  const requestOptions: AxiosRequestConfig = {
     method,
     headers: {
       'Content-Type': 'application/json',
@@ -191,20 +192,29 @@ async function callProviderFunction(
 
   // Handle payload for request body
   if (finalPayload !== undefined && finalPayload !== null) {
-    requestOptions.body = JSON.stringify(finalPayload);
+    requestOptions.data = finalPayload;
   }
 
   try {
     const response = await fetchWithProviderTimeout(url, requestOptions);
     
-    if (!response.ok) {
+    if (response.status < 200 || response.status >= 300) {
       throw new Error(`Failed to call provider function: ${response.statusText}`);
     }
 
-    return await response.json() as FunctionCallResult;
+    return response.data as FunctionCallResult;
   } catch (error) {
     if (error instanceof Error && error.message.includes('timeout')) {
       throw new Error(`Provider call timeout: ${error.message}`);
+    }
+    // Handle axios errors
+    if (axios.isAxiosError(error)) {
+      const statusText = error.response?.statusText || 'Unknown error';
+      throw new Error(`Failed to call provider function: ${statusText}`);
+    }
+    // Re-throw if already properly formatted
+    if (error instanceof Error && error.message.includes('Failed to call provider function:')) {
+      throw error;
     }
     throw error;
   }

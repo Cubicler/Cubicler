@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs';
 import { load } from 'js-yaml';
 import { config } from 'dotenv';
+import axios from 'axios';
 import { Cache, createEnvCache } from '../utils/cache.js';
 import { fetchWithDefaultTimeout } from '../utils/fetch-helper.js';
 import type { AgentsList } from '../model/types.js';
@@ -38,11 +39,19 @@ async function fetchAgentsList(): Promise<AgentsList> {
   let yamlText: string;
   
   if (agentsSource.startsWith('http')) {
-    const response = await fetchWithDefaultTimeout(agentsSource);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch agents list: ${response.statusText}`);
+    try {
+      const response = await fetchWithDefaultTimeout(agentsSource);
+      if (response.status < 200 || response.status >= 300) {
+        throw new Error(`Failed to fetch agents list: ${response.statusText}`);
+      }
+      yamlText = response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const statusText = error.response?.statusText || 'Unknown error';
+        throw new Error(`Failed to fetch agents list: ${statusText}`);
+      }
+      throw error;
     }
-    yamlText = await response.text();
   } else {
     yamlText = readFileSync(agentsSource, 'utf-8');
   }

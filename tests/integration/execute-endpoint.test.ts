@@ -1,10 +1,17 @@
 import { jest } from '@jest/globals';
+import axios from 'axios';
 import request from 'supertest';
 import { app } from '../../src/index.js';
 
-// Mock fetch for the execution service to call external APIs
-const mockFetch = jest.fn() as jest.MockedFunction<typeof fetch>;
-global.fetch = mockFetch;
+// Mock axios for the execution service to call external APIs
+jest.mock('axios');
+const mockAxios = axios as jest.Mocked<typeof axios>;
+
+// Create a manual mock for axios.isAxiosError
+Object.defineProperty(axios, 'isAxiosError', {
+  value: jest.fn().mockReturnValue(true),
+  writable: true
+});
 
 describe('POST /execute/:functionName endpoint', () => {
   const originalEnv = process.env;
@@ -23,17 +30,17 @@ describe('POST /execute/:functionName endpoint', () => {
 
   it('should execute weather_api.getWeather function successfully', async () => {
     // Mock the external API response
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: async () => ({
+    mockAxios.mockResolvedValue({
+      status: 200,
+      data: {
         id: 'weather-123',
         city: 'New York',
         country: 'US',
         temperature: 22,
         conditions: 'Sunny',
         description: 'Clear blue sky'
-      })
-    } as Response);
+      }
+    });
 
     const response = await request(app)
       .post('/execute/weather_api.getWeather')
@@ -52,15 +59,17 @@ describe('POST /execute/:functionName endpoint', () => {
     });
 
     // Verify the external API was called correctly
-    expect(mockFetch).toHaveBeenCalledWith(
-      'https://api.weather.com/api/weather/New York/US',
+    expect(mockAxios).toHaveBeenCalledWith(
       expect.objectContaining({
+        url: 'https://api.weather.com/api/weather/New York/US',
         method: 'POST',
         headers: expect.objectContaining({
           'Content-Type': 'application/json',
-          'X-Client-Version': 'cubicler/1.0'
+          'X-Client-Version': 'cubicler/1.0',
+          'Authorization': 'Bearer {{env.API_KEY}}'
         }),
-        body: JSON.stringify({ filters: ['now'] })
+        data: { filters: ['now'] },
+        timeout: 30000
       })
     );
   });
@@ -106,10 +115,12 @@ describe('POST /execute/:functionName endpoint', () => {
 
   it('should return 500 when external API call fails', async () => {
     // Mock failed external API response
-    mockFetch.mockResolvedValue({
-      ok: false,
-      statusText: 'Service Unavailable'
-    } as Response);
+    mockAxios.mockRejectedValue({
+      response: {
+        status: 503,
+        statusText: 'Service Unavailable'
+      }
+    });
 
     const response = await request(app)
       .post('/execute/weather_api.getWeather')
@@ -124,14 +135,14 @@ describe('POST /execute/:functionName endpoint', () => {
 
   it('should execute mock_service.getData function successfully', async () => {
     // Mock the external API response for mock service
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: async () => ({
+    mockAxios.mockResolvedValue({
+      status: 200,
+      data: {
         id: 'mock-456',
         data: 'test data',
         timestamp: '2025-07-21T10:00:00Z'
-      })
-    } as Response);
+      }
+    });
 
     const response = await request(app)
       .post('/execute/mock_service.getData')

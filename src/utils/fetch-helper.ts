@@ -1,80 +1,87 @@
+import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
 import { getProviderCallTimeout, getAgentCallTimeout, getDefaultCallTimeout } from './env-helper.js';
 
 /**
- * Fetch with timeout using provider timeout configuration
- * @param url - URL to fetch
- * @param options - Standard fetch options (RequestInit)
- * @returns Promise that resolves to Response
+ * HTTP request with timeout using provider timeout configuration
+ * @param url - URL to request
+ * @param options - Axios request configuration
+ * @returns Promise that resolves to AxiosResponse
  * @throws Error if request fails or times out
  */
 export async function fetchWithProviderTimeout(
   url: string, 
-  options: RequestInit = {}
-): Promise<Response> {
+  options: AxiosRequestConfig = {}
+): Promise<AxiosResponse> {
   const timeoutMs = getProviderCallTimeout();
-  return fetchWithTimeout(url, options, timeoutMs);
+  return axiosWithTimeout(url, options, timeoutMs);
 }
 
 /**
- * Fetch with timeout using agent timeout configuration
- * @param url - URL to fetch
- * @param options - Standard fetch options (RequestInit)
- * @returns Promise that resolves to Response
+ * HTTP request with timeout using agent timeout configuration
+ * @param url - URL to request
+ * @param options - Axios request configuration
+ * @returns Promise that resolves to AxiosResponse
  * @throws Error if request fails or times out
  */
 export async function fetchWithAgentTimeout(
   url: string, 
-  options: RequestInit = {}
-): Promise<Response> {
+  options: AxiosRequestConfig = {}
+): Promise<AxiosResponse> {
   const timeoutMs = getAgentCallTimeout();
-  return fetchWithTimeout(url, options, timeoutMs);
+  return axiosWithTimeout(url, options, timeoutMs);
 }
 
 /**
- * Fetch with timeout using default timeout configuration
- * @param url - URL to fetch
- * @param options - Standard fetch options (RequestInit)
- * @returns Promise that resolves to Response
+ * HTTP request with timeout using default timeout configuration
+ * @param url - URL to request
+ * @param options - Axios request configuration
+ * @returns Promise that resolves to AxiosResponse
  * @throws Error if request fails or times out
  */
 export async function fetchWithDefaultTimeout(
   url: string, 
-  options: RequestInit = {}
-): Promise<Response> {
+  options: AxiosRequestConfig = {}
+): Promise<AxiosResponse> {
   const timeoutMs = getDefaultCallTimeout();
-  return fetchWithTimeout(url, options, timeoutMs);
+  return axiosWithTimeout(url, options, timeoutMs);
 }
 
 /**
- * Fetch with custom timeout
- * @param url - URL to fetch
- * @param options - Standard fetch options (RequestInit)
+ * HTTP request with custom timeout
+ * @param url - URL to request
+ * @param options - Axios request configuration
  * @param timeoutMs - Timeout in milliseconds
- * @returns Promise that resolves to Response
+ * @returns Promise that resolves to AxiosResponse
  * @throws Error if request fails or times out
  */
-export async function fetchWithTimeout(
+export async function axiosWithTimeout(
   url: string, 
-  options: RequestInit = {}, 
+  options: AxiosRequestConfig = {}, 
   timeoutMs: number
-): Promise<Response> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-  const mergedOptions: RequestInit = {
+): Promise<AxiosResponse> {
+  const mergedOptions: AxiosRequestConfig = {
     ...options,
-    signal: controller.signal,
+    timeout: timeoutMs,
+    url: url,
   };
 
   try {
-    const response = await fetch(url, mergedOptions);
-    clearTimeout(timeoutId);
+    const response = await axios(mergedOptions);
     return response;
   } catch (error) {
-    clearTimeout(timeoutId);
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error(`Request timeout after ${timeoutMs}ms`);
+    if (axios.isAxiosError(error)) {
+      if (error.code === 'ECONNABORTED') {
+        throw new Error(`Request timeout after ${timeoutMs}ms`);
+      }
+      // Re-throw the axios error to be handled by the calling code
+      throw error;
     }
     throw error;
   }
 }
+
+/**
+ * Legacy alias for backward compatibility
+ * @deprecated Use axiosWithTimeout instead
+ */
+export const fetchWithTimeout = axiosWithTimeout;

@@ -1,3 +1,4 @@
+import axios from 'axios';
 import promptService from './prompt-service.js';
 import providerService from './provider-service.js';
 import agentService from './agent-service.js';
@@ -56,14 +57,14 @@ async function callAgent(agentName: string | undefined, request: CallRequest): P
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(agentRequest),
+      data: agentRequest,
     });
 
-    if (!response.ok) {
+    if (response.status < 200 || response.status >= 300) {
       throw new Error(`Agent call failed: ${response.status} ${response.statusText}`);
     }
 
-    const result = await response.json();
+    const result = response.data;
     
     if (!result.message || typeof result.message !== 'string') {
       throw new Error('Invalid agent response format: missing or invalid message field');
@@ -73,8 +74,13 @@ async function callAgent(agentName: string | undefined, request: CallRequest): P
       message: result.message
     };
   } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status || 0;
+      const statusText = error.response?.statusText || 'Unknown error';
+      throw new Error(`Agent call failed: ${status} ${statusText}`);
+    }
     if (error instanceof Error) {
-      if (error.name === 'TimeoutError') {
+      if (error.name === 'TimeoutError' || error.message.includes('timeout')) {
         throw new Error(`Agent call timed out after 90 seconds`);
       }
       throw error;

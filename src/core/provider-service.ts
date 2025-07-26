@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs';
 import { load } from 'js-yaml';
 import { config } from 'dotenv';
+import axios from 'axios';
 import { Cache, createEnvCache } from '../utils/cache.js';
 import { convertToFunctionSpecs } from '../utils/definition-helper.js';
 import { fetchWithDefaultTimeout } from '../utils/fetch-helper.js';
@@ -83,8 +84,8 @@ async function fetchProvidersFromUrl(providersSource: string): Promise<Providers
   try {
     const response = await fetchWithDefaultTimeout(providersSource);
     
-    if (response.ok) {
-      const yamlText = await response.text();
+    if (response.status >= 200 && response.status < 300) {
+      const yamlText = response.data;
       const providers = load(yamlText) as ProvidersList;
       
       if (!providers || typeof providers !== 'object') {
@@ -101,6 +102,10 @@ async function fetchProvidersFromUrl(providersSource: string): Promise<Providers
   } catch (error) {
     if (error instanceof Error && error.message.includes('timeout')) {
       errors.push(`Provider fetch timeout: ${error.message}`);
+    } else if (axios.isAxiosError(error)) {
+      const status = error.response?.status || 0;
+      const statusText = error.response?.statusText || 'Unknown error';
+      errors.push(`Fetch failed: ${status} ${statusText}`);
     } else {
       errors.push(`Fetch error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -150,8 +155,8 @@ async function fetchProviderDefinitionFromUrl(specUrl: string): Promise<Provider
   try {
     const response = await fetchWithDefaultTimeout(specUrl);
     
-    if (response.ok) {
-      const yamlText = await response.text();
+    if (response.status >= 200 && response.status < 300) {
+      const yamlText = response.data;
       const spec = load(yamlText) as ProviderDefinition;
       
       if (!spec || typeof spec !== 'object') {
@@ -164,6 +169,10 @@ async function fetchProviderDefinitionFromUrl(specUrl: string): Promise<Provider
   } catch (error) {
     if (error instanceof Error && error.message.includes('timeout')) {
       errors.push(`Provider spec fetch timeout: ${error.message}`);
+    } else if (axios.isAxiosError(error)) {
+      const status = error.response?.status || 0;
+      const statusText = error.response?.statusText || 'Unknown error';
+      errors.push(`Spec fetch failed: ${status} ${statusText}`);
     } else {
       errors.push(`Spec fetch error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -208,13 +217,17 @@ async function fetchProviderContextFromUrl(contextUrl: string): Promise<string> 
 
   try {
     const response = await fetchWithDefaultTimeout(contextUrl);
-    if (response.ok) {
-      return await response.text();
+    if (response.status >= 200 && response.status < 300) {
+      return response.data;
     }
     errors.push(`Context fetch failed: ${response.status} ${response.statusText}`);
   } catch (error) {
     if (error instanceof Error && error.message.includes('timeout')) {
       errors.push(`Context fetch timeout: ${error.message}`);
+    } else if (axios.isAxiosError(error)) {
+      const status = error.response?.status || 0;
+      const statusText = error.response?.statusText || 'Unknown error';
+      errors.push(`Context fetch failed: ${status} ${statusText}`);
     } else {
       errors.push(`Context fetch error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }

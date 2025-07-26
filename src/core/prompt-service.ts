@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync } from 'fs';
 import { config } from 'dotenv';
+import axios from 'axios';
 import { Cache, createEnvCache } from '../utils/cache.js';
 import { fetchWithDefaultTimeout } from '../utils/fetch-helper.js';
 import agentService from './agent-service.js';
@@ -67,8 +68,8 @@ async function fetchPromptsFromUrl(promptsSource: string): Promise<PromptsData> 
   // Try to fetch as single prompt first
   try {
     const response = await fetchWithDefaultTimeout(promptsSource);
-    if (response.ok) {
-      prompts.default = await response.text();
+    if (response.status >= 200 && response.status < 300) {
+      prompts.default = response.data;
       // Try to fetch agent-specific prompts too
       const agentPrompts = await fetchAgentSpecificPromptsFromUrl(promptsSource, errors);
       prompts.agents = { ...prompts.agents, ...agentPrompts };
@@ -78,6 +79,10 @@ async function fetchPromptsFromUrl(promptsSource: string): Promise<PromptsData> 
   } catch (error) {
     if (error instanceof Error && error.message.includes('timeout')) {
       errors.push(`Single file fetch timeout: ${error.message}`);
+    } else if (axios.isAxiosError(error)) {
+      const status = error.response?.status || 0;
+      const statusText = error.response?.statusText || 'Unknown error';
+      errors.push(`Single file fetch failed: ${status} ${statusText}`);
     } else {
       errors.push(`Single file fetch error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -87,8 +92,8 @@ async function fetchPromptsFromUrl(promptsSource: string): Promise<PromptsData> 
   try {
     // Try default prompt
     const defaultResponse = await fetchWithDefaultTimeout(`${promptsSource}/prompts.md`);
-    if (defaultResponse.ok) {
-      prompts.default = await defaultResponse.text();
+    if (defaultResponse.status >= 200 && defaultResponse.status < 300) {
+      prompts.default = defaultResponse.data;
       // Try to fetch agent-specific prompts
       const agentPrompts = await fetchAgentSpecificPromptsFromUrl(promptsSource, errors);
       prompts.agents = { ...prompts.agents, ...agentPrompts };
@@ -98,6 +103,10 @@ async function fetchPromptsFromUrl(promptsSource: string): Promise<PromptsData> 
   } catch (error) {
     if (error instanceof Error && error.message.includes('timeout')) {
       errors.push(`Multi-file fetch timeout: ${error.message}`);
+    } else if (axios.isAxiosError(error)) {
+      const status = error.response?.status || 0;
+      const statusText = error.response?.statusText || 'Unknown error';
+      errors.push(`Multi-file fetch failed: ${status} ${statusText}`);
     } else {
       errors.push(`Multi-file fetch error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -125,8 +134,8 @@ async function fetchAgentSpecificPromptsFromUrl(promptsSource: string, errors: s
       try {
         const url = `${promptsSource}/prompts.${agentName}.md`;
         const agentResponse = await fetchWithDefaultTimeout(url);
-        if (agentResponse.ok) {
-          agentPrompts[agentName] = await agentResponse.text();
+        if (agentResponse.status >= 200 && agentResponse.status < 300) {
+          agentPrompts[agentName] = agentResponse.data;
         }
         // Don't add to errors if agent-specific prompt doesn't exist - it's optional
       } catch (error) {

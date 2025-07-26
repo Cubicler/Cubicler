@@ -1,8 +1,15 @@
 import { jest } from '@jest/globals';
+import axios from 'axios';
 
-// Mock fetch
-const mockFetch = jest.fn() as jest.MockedFunction<typeof fetch>;
-global.fetch = mockFetch;
+// Mock axios
+jest.mock('axios');
+const mockAxios = axios as jest.Mocked<typeof axios>;
+
+// Create a manual mock for axios.isAxiosError
+Object.defineProperty(axios, 'isAxiosError', {
+  value: jest.fn().mockReturnValue(true),
+  writable: true
+});
 
 // Mock provider service completely
 const mockProviderService = {
@@ -73,17 +80,18 @@ describe('Execution Service', () => {
   describe('executeFunction', () => {
     it('should execute provider function successfully', async () => {
       // Mock successful API response
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: async () => ({
+      mockAxios.mockResolvedValue({
+        status: 200,
+        statusText: 'OK',
+        data: {
           id: '123',
           city: 'New York',
           country: 'US',
           temperature: 20,
           conditions: 'Sunny',
           description: 'Clear sky'
-        })
-      } as Response);
+        }
+      });
 
       const result = await executionService.executeFunction('weather_api.getWeather', {
         city: 'New York'
@@ -106,11 +114,15 @@ describe('Execution Service', () => {
     });
 
     it('should throw error when API call fails', async () => {
-      // Mock failed API response
-      mockFetch.mockResolvedValue({
-        ok: false,
-        statusText: 'Internal Server Error'
-      } as Response);
+      // Mock failed API response using axios error
+      const error = {
+        isAxiosError: true,
+        response: {
+          status: 500,
+          statusText: 'Internal Server Error'
+        }
+      };
+      mockAxios.mockRejectedValue(error);
 
       await expect(executionService.executeFunction('weather_api.getWeather', {
         city: 'New York'
