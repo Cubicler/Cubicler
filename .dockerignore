@@ -6,7 +6,7 @@ npm-debug.log
 coverage
 tests
 *.test.js
-jest.config.js
+vitest.config.ts
 .github
 LICENSE
 README.md

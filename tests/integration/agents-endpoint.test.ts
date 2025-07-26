@@ -1,4 +1,4 @@
-import { jest } from '@jest/globals';
+import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
 import request from 'supertest';
 import { app } from '../../src/index.js';
 import agentService from '../../src/core/agent-service.js';
@@ -7,7 +7,7 @@ describe('GET /agents endpoint', () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
-    jest.resetModules();
+    vi.resetModules();
     process.env = { ...originalEnv };
     process.env.CUBICLER_AGENTS_LIST = './tests/mocks/test-agents.yaml';
     process.env.AGENTS_LIST_CACHE_ENABLED = 'false'; // Disable cache for tests

@@ -1,16 +1,16 @@
-import { jest } from '@jest/globals';
+import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
 import { Cache, createEnvCache } from '../../src/utils/cache.js';
 
 describe('Cache Utility', () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     process.env = { ...originalEnv };
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
     process.env = originalEnv;
   });
 
@@ -35,7 +35,7 @@ describe('Cache Utility', () => {
       expect(cache.get('key1')).toBe('value1');
       
       // Advance time by 1001ms
-      jest.advanceTimersByTime(1001);
+      vi.advanceTimersByTime(1001);
       
       expect(cache.get('key1')).toBeUndefined();
     });

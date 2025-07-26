@@ -1,4 +1,4 @@
-import { jest } from '@jest/globals';
+import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
 import request from 'supertest';
 import { app } from '../../src/index.js';
 import providerService from '../../src/core/provider-service.js';
@@ -7,7 +7,7 @@ describe('GET /provider/:providerName/spec endpoint', () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
-    jest.resetModules();
+    vi.resetModules();
     process.env = { ...originalEnv };
     process.env.CUBICLER_PROVIDERS_LIST = './tests/mocks/test-providers.yaml';
     process.env.PROVIDER_SPEC_CACHE_ENABLED = 'false';

@@ -1,15 +1,15 @@
-import { jest } from '@jest/globals';
+import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
 import axios from 'axios';
 import request from 'supertest';
 import { app } from '../../src/index.js';
 
 // Mock axios for the execution service to call external APIs
-jest.mock('axios');
-const mockAxios = axios as jest.Mocked<typeof axios>;
+vi.mock('axios');
+const mockAxios = axios as any;
 
 // Create a manual mock for axios.isAxiosError
 Object.defineProperty(axios, 'isAxiosError', {
-  value: jest.fn().mockReturnValue(true),
+  value: vi.fn().mockReturnValue(true),
   writable: true
 });
 
@@ -17,11 +17,11 @@ describe('POST /execute/:functionName endpoint', () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
-    jest.resetModules();
+    vi.resetModules();
     process.env = { ...originalEnv };
     process.env.CUBICLER_PROVIDERS_LIST = './tests/mocks/test-providers.yaml';
     process.env.PROVIDER_SPEC_CACHE_ENABLED = 'false'; // Disable cache for tests
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   afterEach(() => {

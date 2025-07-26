@@ -1,11 +1,11 @@
-import { jest } from '@jest/globals';
+import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
 import providerService from '../../src/core/provider-service.js';
 
 describe('Provider Service', () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
-    jest.resetModules();
+    vi.resetModules();
     process.env = { ...originalEnv };
     
     process.env.CUBICLER_PROVIDERS_LIST = './tests/mocks/test-providers.yaml';
@@ -86,7 +86,7 @@ describe('Provider Service', () => {
     it('should throw detailed error when remote providers list fetch fails', async () => {
       process.env.CUBICLER_PROVIDERS_LIST = 'https://example.com/providers.yaml';
       
-      global.fetch = jest.fn(() => Promise.resolve({
+      global.fetch = vi.fn(() => Promise.resolve({
         ok: false,
         status: 404,
         statusText: 'Not Found'

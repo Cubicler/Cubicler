@@ -1,16 +1,16 @@
-import { jest } from '@jest/globals';
+import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
 import axios from 'axios';
 import promptService from '../../src/core/prompt-service.js';
 import mockFs from 'mock-fs';
 import dotenv from 'dotenv';
 
 // Mock axios
-jest.mock('axios');
-const mockAxios = axios as jest.Mocked<typeof axios>;
+vi.mock('axios');
+const mockAxios = axios as any;
 
 // Create a manual mock for axios.isAxiosError
 Object.defineProperty(axios, 'isAxiosError', {
-  value: jest.fn().mockReturnValue(true),
+  value: vi.fn().mockReturnValue(true),
   writable: true
 });
 
@@ -22,7 +22,7 @@ describe('promptService', () => {
       './tests/mocks/prompts.md': 'Default Test Prompt',
       './tests/mocks/prompts.gpt-4o.md': 'GPT-4o Specific Prompt',
     });
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     // Clear cache before each test
     promptService.clearCache();
   });
@@ -114,7 +114,8 @@ describe('promptService', () => {
     process.env.CUBICLER_AGENTS_LIST = 'https://example.com/agents.yaml';
     
     // Mock the agent service call directly
-    const originalGetAvailableAgents = jest.spyOn(require('../../src/core/agent-service.js').default, 'getAvailableAgents');
+    const { default: agentService } = await import('../../src/core/agent-service.js');
+    const originalGetAvailableAgents = vi.spyOn(agentService, 'getAvailableAgents');
     originalGetAvailableAgents.mockResolvedValue(['gpt-4o', 'claude-3.5', 'gemini-1.5']);
     
         // Mock axios to return different responses for different URLs

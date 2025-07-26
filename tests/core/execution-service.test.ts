@@ -1,38 +1,33 @@
-import { jest } from '@jest/globals';
-import axios from 'axios';
-
-// Mock axios
-jest.mock('axios');
-const mockAxios = axios as jest.Mocked<typeof axios>;
-
-// Create a manual mock for axios.isAxiosError
-Object.defineProperty(axios, 'isAxiosError', {
-  value: jest.fn().mockReturnValue(true),
-  writable: true
-});
+import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
 
 // Mock provider service completely
 const mockProviderService = {
-  getProviders: jest.fn() as jest.MockedFunction<any>,
-  getProviderSpec: jest.fn() as jest.MockedFunction<any>,
-  loadProviders: jest.fn() as jest.MockedFunction<any>
+  getProviders: vi.fn(),
+  getProviderSpec: vi.fn(),
+  loadProviders: vi.fn()
 };
 
-jest.mock('../../src/core/provider-service.js', () => ({
-  __esModule: true,
-  default: mockProviderService
+// Mock axios
+const mockAxios = Object.assign(vi.fn(), {
+  isAxiosError: vi.fn().mockReturnValue(true)
+});
+
+vi.mock('axios', () => ({
+  default: mockAxios,
+  isAxiosError: mockAxios.isAxiosError,
 }));
 
-// Now import the execution service
-import executionService from '../../src/core/execution-service.js';
+vi.mock('../../src/core/provider-service.js', () => ({
+  default: mockProviderService
+}));
 
 describe('Execution Service', () => {
   const originalEnv = process.env;
 
-  beforeEach(() => {
-    jest.resetModules();
+  beforeEach(async () => {
+    vi.resetModules();
     process.env = { ...originalEnv };
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Mock provider list
     mockProviderService.getProviders.mockResolvedValue([
@@ -93,6 +88,7 @@ describe('Execution Service', () => {
         }
       });
 
+      const { default: executionService } = await import('../../src/core/execution-service.js');
       const result = await executionService.executeFunction('weather_api.getWeather', {
         city: 'New York'
       });
@@ -108,6 +104,7 @@ describe('Execution Service', () => {
     });
 
     it('should throw error for invalid function name format', async () => {
+      const { default: executionService } = await import('../../src/core/execution-service.js');
       await expect(executionService.executeFunction('invalidname', {})).rejects.toThrow(
         "Invalid function name format. Expected 'provider.function', got 'invalidname'"
       );
@@ -124,6 +121,7 @@ describe('Execution Service', () => {
       };
       mockAxios.mockRejectedValue(error);
 
+      const { default: executionService } = await import('../../src/core/execution-service.js');
       await expect(executionService.executeFunction('weather_api.getWeather', {
         city: 'New York'
       })).rejects.toThrow('Failed to call provider function: Internal Server Error');

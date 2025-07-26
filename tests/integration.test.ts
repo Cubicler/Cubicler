@@ -1,4 +1,4 @@
-import { jest } from '@jest/globals';
+import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
 import express, { Request, Response } from 'express';
 import request from 'supertest';
 import { app } from '../src/index.js';

@@ -138,7 +138,7 @@ describe('parameterHelper', () => {
     });
 
     it('should warn about undefined parameters', () => {
-      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation();
       const parameters = { 
         id: 'test-id',
         unknownParam: 'value'
