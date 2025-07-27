@@ -16,26 +16,35 @@ app.get('/prompt/:agentName', async (req: Request, res: Response) => {
   const { agentName } = req.params;
 
   if (!agentName) {
+    console.log(`⚠️ [Server] GET /prompt - Missing agent name`);
     res.status(400).json({ error: 'Agent name is required' });
     return;
   }
 
+  console.log(`📝 [Server] GET /prompt/${agentName} - Fetching prompt`);
+
   try {
     const prompt = await promptService.getPrompt(agentName);
+    console.log(`✅ [Server] GET /prompt/${agentName} - Success (${prompt.length} chars)`);
     res.json({ prompt });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`❌ [Server] GET /prompt/${agentName} - Error: ${errorMessage}`);
     res.status(500).json({ error: errorMessage });
   }
 });
 
 // GET /agents endpoint
 app.get('/agents', async (req: Request, res: Response) => {
+  console.log(`🤖 [Server] GET /agents - Fetching available agents`);
+  
   try {
     const availableAgents = await agentService.getAvailableAgents();
+    console.log(`✅ [Server] GET /agents - Success (${availableAgents.length} agents)`);
     res.json({ availableAgents });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`❌ [Server] GET /agents - Error: ${errorMessage}`);
     res.status(500).json({ error: errorMessage });
   }
 });
@@ -100,16 +109,21 @@ app.get('/health', async (req: Request, res: Response) => {
 app.post('/call', async (req: Request, res: Response) => {
   const request: CallRequest = req.body;
 
+  console.log(`📞 [Server] POST /call - Default agent call with ${request.messages?.length || 0} messages`);
+
   if (!request.messages || !Array.isArray(request.messages)) {
+    console.log(`⚠️ [Server] POST /call - Invalid request: messages array required`);
     res.status(400).json({ error: 'Messages array is required' });
     return;
   }
 
   try {
     const result = await callService.callAgent(undefined, request);
+    console.log(`✅ [Server] POST /call - Success`);
     res.json(result);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`❌ [Server] POST /call - Error: ${errorMessage}`);
     res.status(500).json({ error: errorMessage });
   }
 });
@@ -119,21 +133,27 @@ app.post('/call/:agent', async (req: Request, res: Response) => {
   const { agent } = req.params;
   const request: CallRequest = req.body;
 
+  console.log(`📞 [Server] POST /call/${agent} - Specific agent call with ${request.messages?.length || 0} messages`);
+
   if (!agent) {
+    console.log(`⚠️ [Server] POST /call/:agent - Missing agent parameter`);
     res.status(400).json({ error: 'Agent name is required' });
     return;
   }
 
   if (!request.messages || !Array.isArray(request.messages)) {
+    console.log(`⚠️ [Server] POST /call/${agent} - Invalid request: messages array required`);
     res.status(400).json({ error: 'Messages array is required' });
     return;
   }
 
   try {
     const result = await callService.callAgent(agent, request);
+    console.log(`✅ [Server] POST /call/${agent} - Success`);
     res.json(result);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`❌ [Server] POST /call/${agent} - Error: ${errorMessage}`);
     res.status(500).json({ error: errorMessage });
   }
 });
@@ -194,7 +214,47 @@ const isMainModule =
   process.argv[1] && (process.argv[1].endsWith('index.ts') || process.argv[1].endsWith('index.js'));
 if (isMainModule) {
   const port = process.env.CUBICLER_PORT || 1503;
-  app.listen(port, () => {
-    console.log(`Cubicler server is running on port ${port}`);
+  console.log(`🚀 [Server] Starting Cubicler server...`);
+  console.log(`📋 [Server] Environment configuration:`);
+  console.log(`   - Port: ${port}`);
+  console.log(`   - Prompts source: ${process.env.CUBICLER_PROMPTS_SOURCE || 'Not configured'}`);
+  console.log(`   - Agents list: ${process.env.CUBICLER_AGENTS_LIST || 'Not configured'}`);
+  console.log(`   - Providers list: ${process.env.CUBICLER_PROVIDERS_LIST || 'Not configured'}`);
+  
+  app.listen(port, async () => {
+    console.log(`✅ [Server] Cubicler server is running on port ${port}`);
+    console.log(`🔗 [Server] Available endpoints:`);
+    console.log(`   GET  /health`);
+    console.log(`   GET  /agents`);
+    console.log(`   GET  /prompt/:agentName`);
+    console.log(`   POST /call`);
+    console.log(`   POST /call/:agent`);
+    console.log(`   POST /execute/:functionName`);
+    console.log(`   GET  /provider/:providerName/spec`);
+    
+    // Perform initial health check
+    console.log(`\n🏥 [Server] Performing initial health check...`);
+    try {
+      await promptService.fetchPrompts();
+      console.log(`✅ [Server] Prompt service: Healthy`);
+    } catch (error) {
+      console.log(`❌ [Server] Prompt service: Unhealthy - ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+    
+    try {
+      await agentService.getAvailableAgents();
+      console.log(`✅ [Server] Agent service: Healthy`);
+    } catch (error) {
+      console.log(`❌ [Server] Agent service: Unhealthy - ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+    
+    try {
+      await providerService.getProviders();
+      console.log(`✅ [Server] Provider service: Healthy`);
+    } catch (error) {
+      console.log(`❌ [Server] Provider service: Unhealthy - ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+    
+    console.log(`🎉 [Server] Cubicler is ready to handle requests!`);
   });
 }

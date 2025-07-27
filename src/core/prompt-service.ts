@@ -21,16 +21,22 @@ const promptsCache: Cache<PromptsData> = createEnvCache('PROMPTS', 600); // 10 m
  * @throws Error if no prompts are available
  */
 async function getPrompt(agentName: string): Promise<string> {
+  console.log(`📝 [PromptService] Getting prompt for agent: ${agentName}`);
+  
   const prompts = await retrievePrompts();
 
   // Return agent-specific prompt if available, otherwise default
   const prompt = prompts.agents[agentName] || prompts.default;
 
   if (!prompt) {
+    console.error(`❌ [PromptService] No prompts available for agent: ${agentName}`);
     throw new Error(
       `No prompts available. Default prompt is empty and no agent-specific prompt found for '${agentName}'.`
     );
   }
+
+  const promptType = prompts.agents[agentName] ? 'agent-specific' : 'default';
+  console.log(`✅ [PromptService] Successfully retrieved ${promptType} prompt for ${agentName} (${prompt.length} chars)`);
 
   return prompt;
 }
@@ -43,8 +49,11 @@ async function getPrompt(agentName: string): Promise<string> {
 async function fetchPrompts(): Promise<PromptsData> {
   const promptsSource = process.env.CUBICLER_PROMPTS_SOURCE;
   if (!promptsSource) {
+    console.error('❌ [PromptService] CUBICLER_PROMPTS_SOURCE environment variable not defined');
     throw new Error('CUBICLER_PROMPTS_SOURCE is not defined in environment variables');
   }
+
+  console.log(`🔄 [PromptService] Fetching prompts from: ${promptsSource}`);
 
   if (promptsSource.startsWith('http')) {
     return await fetchPromptsFromUrl(promptsSource);
@@ -60,6 +69,8 @@ async function fetchPrompts(): Promise<PromptsData> {
  * @throws Error if unable to fetch prompts from URL
  */
 async function fetchPromptsFromUrl(promptsSource: string): Promise<PromptsData> {
+  console.log(`🌐 [PromptService] Fetching prompts from URL: ${promptsSource}`);
+  
   const prompts: PromptsData = {
     default: '',
     agents: {},
@@ -71,12 +82,14 @@ async function fetchPromptsFromUrl(promptsSource: string): Promise<PromptsData> 
   try {
     const response = await fetchWithDefaultTimeout(promptsSource);
     if (response.status >= 200 && response.status < 300) {
+      console.log(`✅ [PromptService] Successfully fetched single prompt file (${response.data.length} chars)`);
       prompts.default = response.data;
       // Try to fetch agent-specific prompts too
       const agentPrompts = await fetchAgentSpecificPromptsFromUrl(promptsSource, errors);
       prompts.agents = { ...prompts.agents, ...agentPrompts };
       return prompts;
     }
+    console.log(`⚠️ [PromptService] Single file fetch failed: ${response.status} ${response.statusText}`);
     errors.push(`Single file fetch failed: ${response.status} ${response.statusText}`);
   } catch (error) {
     if (error instanceof Error && error.message.includes('timeout')) {
@@ -93,18 +106,22 @@ async function fetchPromptsFromUrl(promptsSource: string): Promise<PromptsData> 
   }
 
   // Try to fetch multiple prompts
+  console.log(`🔍 [PromptService] Trying to fetch multiple prompt files from directory`);
   try {
     // Try default prompt
     const defaultResponse = await fetchWithDefaultTimeout(`${promptsSource}/prompts.md`);
     if (defaultResponse.status >= 200 && defaultResponse.status < 300) {
+      console.log(`✅ [PromptService] Successfully fetched default prompt (${defaultResponse.data.length} chars)`);
       prompts.default = defaultResponse.data;
       // Try to fetch agent-specific prompts
       const agentPrompts = await fetchAgentSpecificPromptsFromUrl(promptsSource, errors);
       prompts.agents = { ...prompts.agents, ...agentPrompts };
       return prompts;
     }
+    console.log(`⚠️ [PromptService] Multi-file default prompt fetch failed: ${defaultResponse.status} ${defaultResponse.statusText}`);
     errors.push(`Multi-file fetch failed: ${defaultResponse.status} ${defaultResponse.statusText}`);
   } catch (error) {
+    console.log(`❌ [PromptService] Multi-file fetch error:`, error instanceof Error ? error.message : 'Unknown error');
     if (error instanceof Error && error.message.includes('timeout')) {
       errors.push(`Multi-file fetch timeout: ${error.message}`);
     } else if (axios.isAxiosError(error)) {
@@ -119,6 +136,7 @@ async function fetchPromptsFromUrl(promptsSource: string): Promise<PromptsData> 
   }
 
   // If we get here, all attempts failed
+  console.error(`❌ [PromptService] All prompt fetch attempts failed. Errors: ${errors.join('; ')}`);
   throw new Error(`Cannot fetch prompts from URL '${promptsSource}'. Errors: ${errors.join('; ')}`);
 }
 

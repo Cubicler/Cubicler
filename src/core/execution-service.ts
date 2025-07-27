@@ -29,42 +29,55 @@ async function executeFunction(
   functionName: string,
   parameters: FunctionCallParameters
 ): Promise<FunctionCallResult> {
+  console.log(`⚡ [ExecutionService] Executing function: ${functionName} with parameters:`, parameters);
+  
   const availableProviders = await providerService.getProviders();
   const providerNames = availableProviders.map((p) => p.name);
 
   const { providerName, originalFunctionName } = parseProviderFunction(functionName, providerNames);
 
   if (!providerName) {
+    console.error(`❌ [ExecutionService] Invalid function name format: ${functionName}`);
     throw new Error(
       `Invalid function name format. Expected 'provider.function', got '${functionName}'`
     );
   }
 
+  console.log(`🔍 [ExecutionService] Parsed function: provider=${providerName}, function=${originalFunctionName}`);
+
   const provider = availableProviders.find((p) => p.name === providerName);
 
   if (!provider) {
+    console.error(`❌ [ExecutionService] Provider '${providerName}' not found. Available providers: ${providerNames.join(', ')}`);
     throw new Error(`Provider '${providerName}' not found`);
   }
 
+  console.log(`🔄 [ExecutionService] Loading provider definition from: ${provider.spec_source}`);
   const providerDefinition = await loadProviderDefinition(provider.spec_source);
 
   const functionDef = providerDefinition.functions[originalFunctionName];
   if (!functionDef) {
+    console.error(`❌ [ExecutionService] Function '${originalFunctionName}' not found in provider '${providerName}'. Available functions: ${Object.keys(providerDefinition.functions).join(', ')}`);
     throw new Error(`Function '${originalFunctionName}' not found in provider '${providerName}'`);
   }
 
+  console.log(`✅ [ExecutionService] Found function definition: ${originalFunctionName} -> service: ${functionDef.service}, endpoint: ${functionDef.endpoint}`);
+
   const service = providerDefinition.services[functionDef.service];
   if (!service) {
+    console.error(`❌ [ExecutionService] Service '${functionDef.service}' not found in provider '${providerName}'. Available services: ${Object.keys(providerDefinition.services).join(', ')}`);
     throw new Error(`Service '${functionDef.service}' not found in provider '${providerName}'`);
   }
 
   const endpoint = service.endpoints[functionDef.endpoint];
   if (!endpoint) {
+    console.error(`❌ [ExecutionService] Endpoint '${functionDef.endpoint}' not found in service '${functionDef.service}'. Available endpoints: ${Object.keys(service.endpoints).join(', ')}`);
     throw new Error(
       `Endpoint '${functionDef.endpoint}' not found in service '${functionDef.service}'`
     );
   }
 
+  console.log(`🚀 [ExecutionService] Preparing to call ${endpoint.method} ${service.base_url}${endpoint.path}`);
   const processedEndpoint = processEndpoint(service, endpoint);
 
   return await callProviderFunction(functionDef, processedEndpoint, parameters);

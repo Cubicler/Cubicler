@@ -22,9 +22,12 @@ const specCache: Cache<CachedProviderSpec> = createEnvCache('PROVIDER_SPEC', 600
  * Get provider spec and context for AI agents
  */
 async function getProviderSpec(providerName: string): Promise<ProviderSpecResponse> {
+  console.log(`🏢 [ProviderService] Getting spec for provider: ${providerName}`);
+  
   // Check cache first
   const cached = specCache.get(providerName);
   if (cached) {
+    console.log(`🚀 [ProviderService] Returning cached spec for ${providerName} (${cached.functions.length} functions)`);
     return {
       context: cached.context,
       functions: cached.functions,
@@ -33,6 +36,7 @@ async function getProviderSpec(providerName: string): Promise<ProviderSpecRespon
 
   const provider = await findProvider(providerName);
 
+  console.log(`🔄 [ProviderService] Fetching spec and context for ${providerName}`);
   const [providerDefinition, providerContext] = await Promise.all([
     retrievesProviderDefinition(provider.spec_source),
     retrievesProviderContext(provider.context_source),
@@ -40,6 +44,7 @@ async function getProviderSpec(providerName: string): Promise<ProviderSpecRespon
 
   // Convert spec to function specs with provider naming convention
   const functions = convertToFunctionSpecs(providerDefinition, providerName);
+  console.log(`✅ [ProviderService] Successfully processed ${functions.length} functions for ${providerName}`);
 
   // Cache the result
   specCache.set(providerName, {
@@ -57,13 +62,17 @@ async function getProviderSpec(providerName: string): Promise<ProviderSpecRespon
  * Find a provider by name
  */
 async function findProvider(providerName: string): Promise<Provider> {
+  console.log(`🔍 [ProviderService] Looking for provider: ${providerName}`);
+  
   const availableProviders = await retrieveProvidersList();
   const provider = availableProviders.providers.find((p: Provider) => p.name === providerName);
 
   if (!provider) {
+    console.error(`❌ [ProviderService] Provider '${providerName}' not found. Available providers: ${availableProviders.providers.map(p => p.name).join(', ')}`);
     throw new Error(`Provider '${providerName}' not found in providers list`);
   }
 
+  console.log(`✅ [ProviderService] Found provider: ${providerName}`);
   return provider;
 }
 
@@ -76,23 +85,30 @@ async function findProvider(providerName: string): Promise<Provider> {
 async function fetchProvidersFromUrl(providersSource: string): Promise<ProvidersList> {
   const errors: string[] = [];
 
+  console.log(`🌐 [ProviderService] Fetching providers from URL: ${providersSource}`);
+
   try {
     const response = await fetchWithDefaultTimeout(providersSource);
 
     if (response.status >= 200 && response.status < 300) {
+      console.log(`✅ [ProviderService] Successfully fetched providers from URL`);
       const yamlText = response.data;
       const providers = load(yamlText) as ProvidersList;
 
       if (!providers || typeof providers !== 'object') {
+        console.error(`❌ [ProviderService] Invalid providers YAML format`);
         throw new Error('Invalid providers YAML format');
       }
 
       if (providers.kind !== 'providers') {
+        console.error(`❌ [ProviderService] Invalid providers YAML: kind is "${providers.kind}", expected "providers"`);
         throw new Error('Invalid providers YAML: kind must be "providers"');
       }
 
+      console.log(`✅ [ProviderService] Successfully parsed providers YAML with ${providers.providers?.length || 0} providers`);
       return providers;
     }
+    console.log(`⚠️ [ProviderService] HTTP error: ${response.status} ${response.statusText}`);
     errors.push(`Fetch failed: ${response.status} ${response.statusText}`);
   } catch (error) {
     if (error instanceof Error && error.message.includes('timeout')) {
