@@ -1,3 +1,4 @@
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import {
   validateAndConvertParameter,
   validateAndConvertParameters,
@@ -140,7 +141,7 @@ describe('parameterHelper', () => {
     });
 
     it('should warn about undefined parameters', () => {
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const parameters = {
         id: 'test-id',
         unknownParam: 'value',
