@@ -10,7 +10,7 @@ const mockAxios = axios as any;
 // Create a manual mock for axios.isAxiosError
 Object.defineProperty(axios, 'isAxiosError', {
   value: vi.fn().mockReturnValue(true),
-  writable: true
+  writable: true,
 });
 
 describe('POST /execute/:functionName endpoint', () => {
@@ -38,14 +38,14 @@ describe('POST /execute/:functionName endpoint', () => {
         country: 'US',
         temperature: 22,
         conditions: 'Sunny',
-        description: 'Clear blue sky'
-      }
+        description: 'Clear blue sky',
+      },
     });
 
     const response = await request(app)
       .post('/execute/weather_api.getWeather')
       .send({
-        city: 'New York'
+        city: 'New York',
       })
       .expect(200);
 
@@ -55,7 +55,7 @@ describe('POST /execute/:functionName endpoint', () => {
       country: 'US',
       temperature: 22,
       conditions: 'Sunny',
-      description: 'Clear blue sky'
+      description: 'Clear blue sky',
     });
 
     // Verify the external API was called correctly
@@ -66,28 +66,22 @@ describe('POST /execute/:functionName endpoint', () => {
         headers: expect.objectContaining({
           'Content-Type': 'application/json',
           'X-Client-Version': 'cubicler/1.0',
-          'Authorization': 'Bearer {{env.API_KEY}}'
+          Authorization: 'Bearer {{env.API_KEY}}',
         }),
         data: { filters: ['now'] },
-        timeout: 30000
+        timeout: 30000,
       })
     );
   });
 
   it('should return 404 for missing function name', async () => {
-    const response = await request(app)
-      .post('/execute/')
-      .send({})
-      .expect(404); // Express returns 404 for missing route params
+    await request(app).post('/execute/').send({}).expect(404); // Express returns 404 for missing route params
 
     // This test verifies the route pattern requires the functionName parameter
   });
 
   it('should return 500 for invalid function name format', async () => {
-    const response = await request(app)
-      .post('/execute/invalidFunctionName')
-      .send({})
-      .expect(500);
+    const response = await request(app).post('/execute/invalidFunctionName').send({}).expect(500);
 
     expect(response.body).toHaveProperty('error');
     expect(response.body.error).toContain('Invalid function name format');
@@ -110,7 +104,9 @@ describe('POST /execute/:functionName endpoint', () => {
       .expect(500);
 
     expect(response.body).toHaveProperty('error');
-    expect(response.body.error).toContain("Function 'nonExistentFunction' not found in provider 'weather_api'");
+    expect(response.body.error).toContain(
+      "Function 'nonExistentFunction' not found in provider 'weather_api'"
+    );
   });
 
   it('should return 500 when external API call fails', async () => {
@@ -118,14 +114,14 @@ describe('POST /execute/:functionName endpoint', () => {
     mockAxios.mockRejectedValue({
       response: {
         status: 503,
-        statusText: 'Service Unavailable'
-      }
+        statusText: 'Service Unavailable',
+      },
     });
 
     const response = await request(app)
       .post('/execute/weather_api.getWeather')
       .send({
-        city: 'New York'
+        city: 'New York',
       })
       .expect(500);
 
@@ -140,21 +136,21 @@ describe('POST /execute/:functionName endpoint', () => {
       data: {
         id: 'mock-456',
         data: 'test data',
-        timestamp: '2025-07-21T10:00:00Z'
-      }
+        timestamp: '2025-07-21T10:00:00Z',
+      },
     });
 
     const response = await request(app)
       .post('/execute/mock_service.getData')
       .send({
-        query: 'test query'
+        query: 'test query',
       })
       .expect(200);
 
     expect(response.body).toEqual({
       id: 'mock-456',
       data: 'test data',
-      timestamp: '2025-07-21T10:00:00Z'
+      timestamp: '2025-07-21T10:00:00Z',
     });
   });
 });

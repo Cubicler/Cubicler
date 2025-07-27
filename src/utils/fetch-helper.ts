@@ -1,5 +1,9 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
-import { getProviderCallTimeout, getAgentCallTimeout, getDefaultCallTimeout } from './env-helper.js';
+import {
+  getAgentCallTimeout,
+  getDefaultCallTimeout,
+  getProviderCallTimeout,
+} from './env-helper.js';
 
 /**
  * HTTP request with timeout using provider timeout configuration
@@ -9,7 +13,7 @@ import { getProviderCallTimeout, getAgentCallTimeout, getDefaultCallTimeout } fr
  * @throws Error if request fails or times out
  */
 export async function fetchWithProviderTimeout(
-  url: string, 
+  url: string,
   options: AxiosRequestConfig = {}
 ): Promise<AxiosResponse> {
   const timeoutMs = getProviderCallTimeout();
@@ -24,7 +28,7 @@ export async function fetchWithProviderTimeout(
  * @throws Error if request fails or times out
  */
 export async function fetchWithAgentTimeout(
-  url: string, 
+  url: string,
   options: AxiosRequestConfig = {}
 ): Promise<AxiosResponse> {
   const timeoutMs = getAgentCallTimeout();
@@ -39,7 +43,7 @@ export async function fetchWithAgentTimeout(
  * @throws Error if request fails or times out
  */
 export async function fetchWithDefaultTimeout(
-  url: string, 
+  url: string,
   options: AxiosRequestConfig = {}
 ): Promise<AxiosResponse> {
   const timeoutMs = getDefaultCallTimeout();
@@ -55,14 +59,14 @@ export async function fetchWithDefaultTimeout(
  * @throws Error if request fails or times out
  */
 export async function axiosWithTimeout(
-  url: string, 
-  options: AxiosRequestConfig = {}, 
+  url: string,
+  options: AxiosRequestConfig = {},
   timeoutMs: number
 ): Promise<AxiosResponse> {
   const mergedOptions: AxiosRequestConfig = {
     ...options,
     timeout: timeoutMs,
-    url: url,
+    url,
   };
 
   try {

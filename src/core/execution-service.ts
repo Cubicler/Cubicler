@@ -2,22 +2,20 @@ import { readFileSync } from 'fs';
 import { load } from 'js-yaml';
 import axios, { AxiosRequestConfig } from 'axios';
 import providerService from './provider-service.js';
-import { 
-  validateAndConvertParameters, 
-  validateAndConvertPayload, 
-  convertParametersForQuery 
+import {
+  convertParametersForQuery,
+  validateAndConvertParameters,
+  validateAndConvertPayload,
 } from '../utils/parameter-helper.js';
-import { parseFunctionName, parseProviderFunction } from '../utils/definition-helper.js';
+import { parseProviderFunction } from '../utils/definition-helper.js';
 import { substituteEnvVars, substituteEnvVarsInObject } from '../utils/env-helper.js';
 import { fetchWithProviderTimeout } from '../utils/fetch-helper.js';
-import type { 
-  FunctionCallParameters, 
-  FunctionCallResult, 
-  ParsedFunctionName} from '../model/types.js';
+import type { FunctionCallParameters, FunctionCallResult } from '../model/types.js';
 import type {
+  EndpointDefinition,
+  FunctionDefinition,
   ProviderDefinition,
-  FunctionDefinition, ServiceDefinition,
-  EndpointDefinition
+  ServiceDefinition,
 } from '../model/definitions.js';
 
 /**
@@ -28,26 +26,28 @@ import type {
  * @throws Error if function is not found or call fails
  */
 async function executeFunction(
-  functionName: string, 
+  functionName: string,
   parameters: FunctionCallParameters
 ): Promise<FunctionCallResult> {
   const availableProviders = await providerService.getProviders();
-  const providerNames = availableProviders.map(p => p.name);
-  
+  const providerNames = availableProviders.map((p) => p.name);
+
   const { providerName, originalFunctionName } = parseProviderFunction(functionName, providerNames);
-  
+
   if (!providerName) {
-    throw new Error(`Invalid function name format. Expected 'provider.function', got '${functionName}'`);
+    throw new Error(
+      `Invalid function name format. Expected 'provider.function', got '${functionName}'`
+    );
   }
 
-  const provider = availableProviders.find(p => p.name === providerName);
-  
+  const provider = availableProviders.find((p) => p.name === providerName);
+
   if (!provider) {
     throw new Error(`Provider '${providerName}' not found`);
   }
 
   const providerDefinition = await loadProviderDefinition(provider.spec_source);
-  
+
   const functionDef = providerDefinition.functions[originalFunctionName];
   if (!functionDef) {
     throw new Error(`Function '${originalFunctionName}' not found in provider '${providerName}'`);
@@ -60,7 +60,9 @@ async function executeFunction(
 
   const endpoint = service.endpoints[functionDef.endpoint];
   if (!endpoint) {
-    throw new Error(`Endpoint '${functionDef.endpoint}' not found in service '${functionDef.service}'`);
+    throw new Error(
+      `Endpoint '${functionDef.endpoint}' not found in service '${functionDef.service}'`
+    );
   }
 
   const processedEndpoint = processEndpoint(service, endpoint);
@@ -73,11 +75,11 @@ async function executeFunction(
  */
 async function loadProviderDefinition(specUrl: string): Promise<ProviderDefinition> {
   let yamlText: string;
-  
+
   if (specUrl.startsWith('http')) {
     try {
       const response = await fetchWithProviderTimeout(specUrl);
-      
+
       if (response.status < 200 || response.status >= 300) {
         throw new Error(`Failed to fetch provider spec: ${response.statusText}`);
       }
@@ -91,12 +93,12 @@ async function loadProviderDefinition(specUrl: string): Promise<ProviderDefiniti
   } else {
     yamlText = readFileSync(specUrl, 'utf-8');
   }
-  
+
   const spec = load(yamlText) as ProviderDefinition;
   if (!spec || typeof spec !== 'object') {
     throw new Error('Invalid provider spec YAML format');
   }
-  
+
   return spec;
 }
 
@@ -105,17 +107,17 @@ async function loadProviderDefinition(specUrl: string): Promise<ProviderDefiniti
  */
 function processEndpoint(service: ServiceDefinition, endpoint: EndpointDefinition) {
   const processedBaseUrl = substituteEnvVars(service.base_url);
-  
+
   const mergedHeaders = {
     ...(service.default_headers || {}),
     ...(endpoint.headers || {}),
   };
   const processedHeaders = substituteEnvVarsInObject(mergedHeaders);
 
-  return { 
-    ...endpoint, 
-    base_url: processedBaseUrl, 
-    headers: processedHeaders 
+  return {
+    ...endpoint,
+    base_url: processedBaseUrl,
+    headers: processedHeaders,
   };
 }
 
@@ -129,34 +131,46 @@ async function callProviderFunction(
 ): Promise<FunctionCallResult> {
   const overrideParameters = functionDef.override_parameters || {};
   const overridePayload = functionDef.override_payload;
-  
+
   let url = `${endpointDef.base_url}${endpointDef.path}`;
-  
+
   const { payload, ...urlParameters } = parameters;
-  
-  const validatedUrlParameters = validateAndConvertParameters(urlParameters, endpointDef.parameters);
-  const validatedOverrideParameters = validateAndConvertParameters(overrideParameters, endpointDef.parameters);
-  
+
+  const validatedUrlParameters = validateAndConvertParameters(
+    urlParameters,
+    endpointDef.parameters
+  );
+  const validatedOverrideParameters = validateAndConvertParameters(
+    overrideParameters,
+    endpointDef.parameters
+  );
+
   // Merge URL parameters with overrides (overrides take precedence)
   const allUrlParameters = { ...validatedUrlParameters, ...validatedOverrideParameters };
-  
+
   let finalPayload = payload;
   if (endpointDef.payload) {
     if (payload !== undefined) {
       finalPayload = validateAndConvertPayload(payload, endpointDef.payload);
     }
-    
+
     if (overridePayload !== undefined) {
-      if (endpointDef.payload?.type === 'object' && 
-          typeof finalPayload === 'object' && finalPayload !== null && !Array.isArray(finalPayload) &&
-          typeof overridePayload === 'object' && overridePayload !== null && !Array.isArray(overridePayload)) {
+      if (
+        endpointDef.payload?.type === 'object' &&
+        typeof finalPayload === 'object' &&
+        finalPayload !== null &&
+        !Array.isArray(finalPayload) &&
+        typeof overridePayload === 'object' &&
+        overridePayload !== null &&
+        !Array.isArray(overridePayload)
+      ) {
         finalPayload = { ...finalPayload, ...overridePayload };
       } else {
         finalPayload = overridePayload;
       }
     }
   }
-  
+
   // Replace path parameters
   const pathParams: string[] = [];
   url = url.replace(/{(\w+)}/g, (match: string, paramName: string) => {
@@ -166,10 +180,10 @@ async function callProviderFunction(
     }
     return match;
   });
-  
+
   // Remaining parameters (not used in path) go to query params
   const queryParameters = { ...allUrlParameters };
-  pathParams.forEach(param => delete queryParameters[param]);
+  pathParams.forEach((param) => delete queryParameters[param]);
 
   const method = endpointDef.method;
 
@@ -197,7 +211,7 @@ async function callProviderFunction(
 
   try {
     const response = await fetchWithProviderTimeout(url, requestOptions);
-    
+
     if (response.status < 200 || response.status >= 300) {
       throw new Error(`Failed to call provider function: ${response.statusText}`);
     }

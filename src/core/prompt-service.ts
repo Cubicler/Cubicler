@@ -22,14 +22,16 @@ const promptsCache: Cache<PromptsData> = createEnvCache('PROMPTS', 600); // 10 m
  */
 async function getPrompt(agentName: string): Promise<string> {
   const prompts = await retrievePrompts();
-  
+
   // Return agent-specific prompt if available, otherwise default
   const prompt = prompts.agents[agentName] || prompts.default;
-  
+
   if (!prompt) {
-    throw new Error(`No prompts available. Default prompt is empty and no agent-specific prompt found for '${agentName}'.`);
+    throw new Error(
+      `No prompts available. Default prompt is empty and no agent-specific prompt found for '${agentName}'.`
+    );
   }
-  
+
   return prompt;
 }
 
@@ -60,7 +62,7 @@ async function fetchPrompts(): Promise<PromptsData> {
 async function fetchPromptsFromUrl(promptsSource: string): Promise<PromptsData> {
   const prompts: PromptsData = {
     default: '',
-    agents: {}
+    agents: {},
   };
 
   const errors: string[] = [];
@@ -84,7 +86,9 @@ async function fetchPromptsFromUrl(promptsSource: string): Promise<PromptsData> 
       const statusText = error.response?.statusText || 'Unknown error';
       errors.push(`Single file fetch failed: ${status} ${statusText}`);
     } else {
-      errors.push(`Single file fetch error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      errors.push(
+        `Single file fetch error: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -108,7 +112,9 @@ async function fetchPromptsFromUrl(promptsSource: string): Promise<PromptsData> 
       const statusText = error.response?.statusText || 'Unknown error';
       errors.push(`Multi-file fetch failed: ${status} ${statusText}`);
     } else {
-      errors.push(`Multi-file fetch error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      errors.push(
+        `Multi-file fetch error: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -122,13 +128,16 @@ async function fetchPromptsFromUrl(promptsSource: string): Promise<PromptsData> 
  * @param errors - Array to collect any errors encountered
  * @returns Record of agent names to their specific prompts
  */
-async function fetchAgentSpecificPromptsFromUrl(promptsSource: string, errors: string[]): Promise<Record<string, string>> {
+async function fetchAgentSpecificPromptsFromUrl(
+  promptsSource: string,
+  errors: string[]
+): Promise<Record<string, string>> {
   const agentPrompts: Record<string, string> = {};
-  
+
   try {
     // Get list of available agent names
     const agentNames = await agentService.getAvailableAgents();
-    
+
     // Try to fetch prompt for each agent
     for (const agentName of agentNames) {
       try {
@@ -138,16 +147,18 @@ async function fetchAgentSpecificPromptsFromUrl(promptsSource: string, errors: s
           agentPrompts[agentName] = agentResponse.data;
         }
         // Don't add to errors if agent-specific prompt doesn't exist - it's optional
-      } catch (error) {
+      } catch {
         // Agent-specific prompts are optional, so we don't fail the entire operation
         // but we can log for debugging purposes if needed
       }
     }
   } catch (error) {
     // If we can't get agents list, that's not necessarily a fatal error for prompts
-    errors.push(`Failed to fetch agents list for agent-specific prompts: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    errors.push(
+      `Failed to fetch agents list for agent-specific prompts: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
-  
+
   return agentPrompts;
 }
 
@@ -160,7 +171,7 @@ async function fetchAgentSpecificPromptsFromUrl(promptsSource: string, errors: s
 function fetchPromptsFromFile(promptsSource: string): PromptsData {
   const prompts: PromptsData = {
     default: '',
-    agents: {}
+    agents: {},
   };
 
   const errors: string[] = [];
@@ -171,7 +182,9 @@ function fetchPromptsFromFile(promptsSource: string): PromptsData {
     prompts.default = singlePrompt;
     return prompts;
   } catch (error) {
-    errors.push(`Single file read error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    errors.push(
+      `Single file read error: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 
   // Try as folder
@@ -189,7 +202,7 @@ function fetchPromptsFromFile(promptsSource: string): PromptsData {
           prompts.agents[agentName] = readFileSync(`${promptsSource}/${file}`, 'utf-8');
         }
       }
-    } catch (error) {
+    } catch {
       // Agent-specific prompts are optional, so we don't add this to errors
     }
 
@@ -199,7 +212,9 @@ function fetchPromptsFromFile(promptsSource: string): PromptsData {
   }
 
   // If we get here, all attempts failed
-  throw new Error(`Cannot fetch prompts from path '${promptsSource}'. Errors: ${errors.join('; ')}`);
+  throw new Error(
+    `Cannot fetch prompts from path '${promptsSource}'. Errors: ${errors.join('; ')}`
+  );
 }
 
 /**
@@ -212,10 +227,10 @@ async function retrievePrompts(): Promise<PromptsData> {
   }
 
   const prompts = await fetchPrompts();
-  
+
   // Cache the result
   promptsCache.set('prompts_data', prompts);
-  
+
   return prompts;
 }
 
@@ -226,8 +241,8 @@ function clearCache(): void {
   promptsCache.clear();
 }
 
-export default { 
+export default {
   getPrompt,
   fetchPrompts,
-  clearCache
+  clearCache,
 };

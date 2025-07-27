@@ -21,6 +21,7 @@ CMD ["sh", "-c", "npm run build && npm start"]
 FROM base AS build
 RUN npm ci
 COPY src/ ./src/
+COPY tsup.config.ts ./
 RUN npm run build
 
 # Production stage

@@ -4,12 +4,12 @@ import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
 const mockProviderService = {
   getProviders: vi.fn(),
   getProviderSpec: vi.fn(),
-  loadProviders: vi.fn()
+  loadProviders: vi.fn(),
 };
 
 // Mock axios
 const mockAxios = Object.assign(vi.fn(), {
-  isAxiosError: vi.fn().mockReturnValue(true)
+  isAxiosError: vi.fn().mockReturnValue(true),
 });
 
 vi.mock('axios', () => ({
@@ -18,7 +18,7 @@ vi.mock('axios', () => ({
 }));
 
 vi.mock('../../src/core/provider-service.js', () => ({
-  default: mockProviderService
+  default: mockProviderService,
 }));
 
 describe('Execution Service', () => {
@@ -31,8 +31,16 @@ describe('Execution Service', () => {
 
     // Mock provider list
     mockProviderService.getProviders.mockResolvedValue([
-      { name: 'weather_api', description: 'Weather API', spec_source: './tests/mocks/provider-weather-spec.yaml' },
-      { name: 'mock_service', description: 'Mock Service', spec_source: './tests/mocks/provider-mock-spec.yaml' }
+      {
+        name: 'weather_api',
+        description: 'Weather API',
+        spec_source: './tests/mocks/provider-weather-spec.yaml',
+      },
+      {
+        name: 'mock_service',
+        description: 'Mock Service',
+        spec_source: './tests/mocks/provider-mock-spec.yaml',
+      },
     ]);
 
     // Mock provider spec
@@ -49,11 +57,11 @@ describe('Execution Service', () => {
                 parameters: { city: { type: 'string' }, country: { type: 'string' } },
                 payload: {
                   type: 'object',
-                  properties: { filters: { type: 'array', items: { type: 'string' } } }
-                }
-              }
-            }
-          }
+                  properties: { filters: { type: 'array', items: { type: 'string' } } },
+                },
+              },
+            },
+          },
         },
         functions: {
           getWeather: {
@@ -61,10 +69,10 @@ describe('Execution Service', () => {
             endpoint: 'get_weather',
             description: 'Get weather information by city and country',
             override_parameters: { country: 'US' },
-            override_payload: { filters: ['now'] }
-          }
-        }
-      }
+            override_payload: { filters: ['now'] },
+          },
+        },
+      },
     });
   });
 
@@ -84,13 +92,13 @@ describe('Execution Service', () => {
           country: 'US',
           temperature: 20,
           conditions: 'Sunny',
-          description: 'Clear sky'
-        }
+          description: 'Clear sky',
+        },
       });
 
       const { default: executionService } = await import('../../src/core/execution-service.js');
       const result = await executionService.executeFunction('weather_api.getWeather', {
-        city: 'New York'
+        city: 'New York',
       });
 
       expect(result).toEqual({
@@ -99,7 +107,7 @@ describe('Execution Service', () => {
         country: 'US',
         temperature: 20,
         conditions: 'Sunny',
-        description: 'Clear sky'
+        description: 'Clear sky',
       });
     });
 
@@ -116,15 +124,17 @@ describe('Execution Service', () => {
         isAxiosError: true,
         response: {
           status: 500,
-          statusText: 'Internal Server Error'
-        }
+          statusText: 'Internal Server Error',
+        },
       };
       mockAxios.mockRejectedValue(error);
 
       const { default: executionService } = await import('../../src/core/execution-service.js');
-      await expect(executionService.executeFunction('weather_api.getWeather', {
-        city: 'New York'
-      })).rejects.toThrow('Failed to call provider function: Internal Server Error');
+      await expect(
+        executionService.executeFunction('weather_api.getWeather', {
+          city: 'New York',
+        })
+      ).rejects.toThrow('Failed to call provider function: Internal Server Error');
     });
   });
 });

@@ -1,12 +1,12 @@
-import type { JSONValue, JSONObject } from '../model/types.js';
+import type { JSONObject, JSONValue } from '../model/types.js';
 
 /**
  * Helper function to substitute environment variables in strings
  * @param str - The string that may contain environment variable placeholders
  * @returns The string with environment variables substituted
  */
-export function substituteEnvVars(str: string): string;
-export function substituteEnvVars(str: JSONValue | undefined | null): JSONValue | undefined | null;
+export function substituteEnvVars(_str: string): string;
+export function substituteEnvVars(_str: JSONValue | undefined | null): JSONValue | undefined | null;
 export function substituteEnvVars(str: JSONValue | undefined | null): JSONValue | undefined | null {
   if (typeof str !== 'string') return str;
   return str.replace(/\{\{env\.(\w+)\}\}/g, (match: string, envVar: string) => {
@@ -23,7 +23,7 @@ export function substituteEnvVars(str: JSONValue | undefined | null): JSONValue 
 export function getEnvBoolean(envVar: string, defaultValue: boolean = false): boolean {
   const value = process.env[envVar];
   if (!value) return defaultValue;
-  
+
   const lowerValue = value.toLowerCase();
   return lowerValue === 'true' || lowerValue === '1';
 }
@@ -45,13 +45,13 @@ export function isStrictParamsEnabled(): boolean {
 export function getEnvTimeout(envVar: string, defaultValue: number): number {
   const value = process.env[envVar];
   if (!value) return defaultValue;
-  
+
   const parsed = parseInt(value, 10);
   if (isNaN(parsed) || parsed <= 0) {
     console.warn(`Invalid timeout value for ${envVar}: ${value}. Using default: ${defaultValue}ms`);
     return defaultValue;
   }
-  
+
   return parsed;
 }
 
@@ -86,16 +86,17 @@ export function getDefaultCallTimeout(): number {
  * @param obj - The object containing values that may have environment variable placeholders
  * @returns A new object with environment variables substituted
  */
-export function substituteEnvVarsInObject<T extends JSONObject>(obj: T): T;
-export function substituteEnvVarsInObject(obj: undefined): undefined;
-export function substituteEnvVarsInObject<T extends JSONObject>(obj: T | undefined): T | undefined;
+export function substituteEnvVarsInObject<T extends JSONObject>(_obj: T): T;
+export function substituteEnvVarsInObject(_obj: undefined): undefined;
+export function substituteEnvVarsInObject<T extends JSONObject>(_obj: T | undefined): T | undefined;
 export function substituteEnvVarsInObject<T extends JSONObject>(obj: T | undefined): T | undefined {
   if (!obj) return obj;
-  
+
   const result: JSONObject = {};
   for (const [key, value] of Object.entries(obj)) {
     const substituted = substituteEnvVars(value);
-    if (substituted !== undefined) { // Keep null values but filter out undefined
+    if (substituted !== undefined) {
+      // Keep null values but filter out undefined
       result[key] = substituted;
     }
   }

@@ -1,23 +1,25 @@
 import { ParsedFunctionName } from '../model/types';
-import { AgentFunctionDefinition } from '../model/definitions';
-import { ProviderDefinition } from '../model/definitions';
+import { AgentFunctionDefinition, ProviderDefinition } from '../model/definitions';
 
 /**
  * Converts a provider definition to AI agent function specifications
  * This function flattens endpoint parameters and payload into function specs,
  * while hiding override parameters/payload from AI agents
- * 
+ *
  * @param spec - The provider definition containing services and functions
  * @param providerName - The name of the provider (used for function naming convention)
  * @returns Array of function specifications for AI agents
  */
-export function convertToFunctionSpecs(spec: ProviderDefinition, providerName?: string): AgentFunctionDefinition[] {
+export function convertToFunctionSpecs(
+  spec: ProviderDefinition,
+  providerName?: string
+): AgentFunctionDefinition[] {
   return Object.entries(spec.functions).map(([name, details]) => {
     const service = spec.services[details.service];
     if (!service) {
       throw new Error(`Service ${details.service} not found in spec`);
     }
-    
+
     const endpoint = service.endpoints[details.endpoint];
     if (!endpoint) {
       throw new Error(`Endpoint ${details.endpoint} not found in service ${details.service}`);
@@ -35,7 +37,7 @@ export function convertToFunctionSpecs(spec: ProviderDefinition, providerName?: 
 
     // Remove override parameters from AI function spec
     if (details.override_parameters) {
-      Object.keys(details.override_parameters).forEach(key => {
+      Object.keys(details.override_parameters).forEach((key) => {
         if (parameters.properties[key]) {
           delete parameters.properties[key];
         }
@@ -60,7 +62,7 @@ export function convertToFunctionSpecs(spec: ProviderDefinition, providerName?: 
 
 /**
  * Validates that a provider definition has the correct structure
- * 
+ *
  * @param spec - The provider definition to validate
  * @returns True if valid, throws error otherwise
  */
@@ -89,11 +91,15 @@ export function validateProviderDefinition(spec: ProviderDefinition): boolean {
 
     const service = spec.services[functionDef.service];
     if (!service) {
-      throw new Error(`Function ${functionName}: references non-existent service ${functionDef.service}`);
+      throw new Error(
+        `Function ${functionName}: references non-existent service ${functionDef.service}`
+      );
     }
 
     if (!service.endpoints || !service.endpoints[functionDef.endpoint]) {
-      throw new Error(`Function ${functionName}: references non-existent endpoint ${functionDef.endpoint} in service ${functionDef.service}`);
+      throw new Error(
+        `Function ${functionName}: references non-existent endpoint ${functionDef.endpoint} in service ${functionDef.service}`
+      );
     }
   }
 
@@ -102,28 +108,32 @@ export function validateProviderDefinition(spec: ProviderDefinition): boolean {
 
 /**
  * Gets a specific function definition by name from a provider definition
- * 
+ *
  * @param spec - The provider definition to search
  * @param functionName - The name of the function to retrieve (can be with or without provider prefix)
  * @param providerName - The name of the provider (used for function naming convention)
  * @returns The function specification for AI agents
  * @throws Error if function is not found
  */
-export function getFunctionByName(spec: ProviderDefinition, functionName: string, providerName?: string): AgentFunctionDefinition {
+export function getFunctionByName(
+  spec: ProviderDefinition,
+  functionName: string,
+  providerName?: string
+): AgentFunctionDefinition {
   const functions = convertToFunctionSpecs(spec, providerName);
-  const targetFunction = functions.find(f => f.name === functionName);
-  
+  const targetFunction = functions.find((f) => f.name === functionName);
+
   if (!targetFunction) {
     throw new Error(`Function '${functionName}' not found in provider definition`);
   }
-  
+
   return targetFunction;
 }
 
 /**
  * Parses a function name to extract provider name and original function name
  * Uses dot notation: "provider.function"
- * 
+ *
  * @param functionName - The function name to parse
  * @returns Object with providerName and originalFunctionName
  */
@@ -133,7 +143,7 @@ export function parseFunctionName(functionName: string): ParsedFunctionName {
     const providerName = functionName.substring(0, dotIndex);
     const originalFunctionName = functionName.substring(dotIndex + 1);
     const result: ParsedFunctionName = {
-      originalFunctionName: originalFunctionName
+      originalFunctionName,
     };
     if (providerName !== undefined) {
       result.providerName = providerName;
@@ -141,34 +151,34 @@ export function parseFunctionName(functionName: string): ParsedFunctionName {
     return result;
   }
   return {
-    originalFunctionName: functionName
+    originalFunctionName: functionName,
   };
 }
 
 /**
  * Parses a function name against known provider names to handle complex cases
  * This is more robust for providers with dots in their names
- * 
+ *
  * @param functionName - The function name to parse
  * @param availableProviders - List of known provider names
  * @returns Object with providerName and originalFunctionName
  */
 export function parseProviderFunction(
-  functionName: string, 
+  functionName: string,
   availableProviders: string[]
 ): ParsedFunctionName {
   // Sort providers by length (longest first) to handle prefixes correctly
   const sortedProviders = [...availableProviders].sort((a, b) => b.length - a.length);
-  
+
   for (const providerName of sortedProviders) {
-    if (functionName.startsWith(providerName + '.')) {
+    if (functionName.startsWith(`${providerName}.`)) {
       return {
-        providerName: providerName,
-        originalFunctionName: functionName.substring(providerName.length + 1)
+        providerName,
+        originalFunctionName: functionName.substring(providerName.length + 1),
       };
     }
   }
-  
+
   // Fallback to simple parsing
   return parseFunctionName(functionName);
 }

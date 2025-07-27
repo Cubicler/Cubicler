@@ -3,7 +3,7 @@ import promptService from './prompt-service.js';
 import providerService from './provider-service.js';
 import agentService from './agent-service.js';
 import { fetchWithAgentTimeout } from '../utils/fetch-helper.js';
-import type { CallRequest, CallResponse, Message, AgentRequest, Agent } from '../model/types.js';
+import type { Agent, AgentRequest, CallRequest, CallResponse } from '../model/types.js';
 
 /**
  * Call an AI agent with the provided messages
@@ -12,13 +12,16 @@ import type { CallRequest, CallResponse, Message, AgentRequest, Agent } from '..
  * @returns Promise that resolves to the agent's response
  * @throws Error if agent is not found or call fails
  */
-async function callAgent(agentName: string | undefined, request: CallRequest): Promise<CallResponse> {
+async function callAgent(
+  agentName: string | undefined,
+  request: CallRequest
+): Promise<CallResponse> {
   const agents = await agentService.getAgents();
-  
+
   let selectedAgent: Agent;
   if (agentName) {
     // Find specific agent
-    const foundAgent = agents.agents.find(agent => agent.name === agentName);
+    const foundAgent = agents.agents.find((agent) => agent.name === agentName);
     if (!foundAgent) {
       throw new Error(`Agent '${agentName}' not found`);
     }
@@ -38,16 +41,16 @@ async function callAgent(agentName: string | undefined, request: CallRequest): P
   const prompt = await promptService.getPrompt(selectedAgent.name);
 
   const providers = await providerService.getProviders();
-  const providerInfo = providers.map(provider => ({
+  const providerInfo = providers.map((provider) => ({
     name: provider.name,
-    description: provider.description
+    description: provider.description,
   }));
 
   // Prepare request for the agent
   const agentRequest: AgentRequest = {
     prompt,
     providers: providerInfo,
-    messages: request.messages
+    messages: request.messages,
   };
 
   // Call the agent
@@ -65,13 +68,13 @@ async function callAgent(agentName: string | undefined, request: CallRequest): P
     }
 
     const result = response.data;
-    
+
     if (!result.message || typeof result.message !== 'string') {
       throw new Error('Invalid agent response format: missing or invalid message field');
     }
 
     return {
-      message: result.message
+      message: result.message,
     };
   } catch (error) {
     if (axios.isAxiosError(error)) {
@@ -90,5 +93,5 @@ async function callAgent(agentName: string | undefined, request: CallRequest): P
 }
 
 export default {
-  callAgent
+  callAgent,
 };

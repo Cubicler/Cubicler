@@ -1,75 +1,80 @@
-import { convertToFunctionSpecs, validateProviderDefinition, getFunctionByName, parseFunctionName } from '../../src/utils/definition-helper.js';
+import { describe, it, expect } from 'vitest';
+import {
+  convertToFunctionSpecs,
+  validateProviderDefinition,
+  getFunctionByName,
+  parseFunctionName,
+} from '../../src/utils/definition-helper.js';
 import type { ProviderDefinition } from '../../src/model/definitions.js';
-import type { ParsedFunctionName } from '../../src/model/types.js';
 
 describe('Definition Helper', () => {
   const mockProviderDefinition: ProviderDefinition = {
     version: 1,
     services: {
       api_service: {
-        base_url: "https://api.example.com",
+        base_url: 'https://api.example.com',
         endpoints: {
           get_data: {
-            method: "GET",
-            path: "/data",
+            method: 'GET',
+            path: '/data',
             parameters: {
               limit: {
-                type: "number"
-              }
+                type: 'number',
+              },
             },
             payload: {
-              type: "object",
+              type: 'object',
               properties: {
                 query: {
-                  type: "string"
-                }
-              }
-            }
+                  type: 'string',
+                },
+              },
+            },
           },
           post_data: {
-            method: "POST", 
-            path: "/data",
+            method: 'POST',
+            path: '/data',
             parameters: {
               id: {
-                type: "string"
-              }
-            }
-          }
-        }
-      }
+                type: 'string',
+              },
+            },
+          },
+        },
+      },
     },
     functions: {
       search_data: {
-        description: "Search for data using the API",
-        service: "api_service",
-        endpoint: "get_data",
+        description: 'Search for data using the API',
+        service: 'api_service',
+        endpoint: 'get_data',
         override_parameters: {
-          limit: 10
-        }
+          limit: 10,
+        },
       },
       create_data: {
-        description: "Create new data via API",
-        service: "api_service", 
-        endpoint: "post_data"
-      }
-    }
+        description: 'Create new data via API',
+        service: 'api_service',
+        endpoint: 'post_data',
+      },
+    },
   };
 
   describe('convertToFunctionSpecs', () => {
     it('should convert provider definition to function specs', () => {
       const result = convertToFunctionSpecs(mockProviderDefinition);
-      
+
       expect(result).toHaveLength(2);
-      
-      const searchFunc = result.find(f => f.name === 'search_data');
-      const createFunc = result.find(f => f.name === 'create_data');
-      
+
+      const searchFunc = result.find((f) => f.name === 'search_data');
+      const createFunc = result.find((f) => f.name === 'create_data');
+
       expect(searchFunc).toBeDefined();
       expect(searchFunc!.name).toBe('search_data');
       expect(searchFunc!.description).toBe('Search for data using the API');
       expect(searchFunc!.parameters.properties).toHaveProperty('payload');
       expect(searchFunc!.parameters.properties).not.toHaveProperty('limit'); // Override parameter should be hidden
-      
+
       expect(createFunc).toBeDefined();
       expect(createFunc!.name).toBe('create_data');
       expect(createFunc!.description).toBe('Create new data via API');
@@ -78,16 +83,16 @@ describe('Definition Helper', () => {
 
     it('should use provider naming convention when providerName is provided', () => {
       const result = convertToFunctionSpecs(mockProviderDefinition, 'test_provider');
-      
+
       expect(result).toHaveLength(2);
-      
-      const searchFunc = result.find(f => f.name === 'test_provider.search_data');
-      const createFunc = result.find(f => f.name === 'test_provider.create_data');
-      
+
+      const searchFunc = result.find((f) => f.name === 'test_provider.search_data');
+      const createFunc = result.find((f) => f.name === 'test_provider.create_data');
+
       expect(searchFunc).toBeDefined();
       expect(searchFunc!.name).toBe('test_provider.search_data');
       expect(searchFunc!.description).toBe('Search for data using the API');
-      
+
       expect(createFunc).toBeDefined();
       expect(createFunc!.name).toBe('test_provider.create_data');
       expect(createFunc!.description).toBe('Create new data via API');
@@ -95,15 +100,15 @@ describe('Definition Helper', () => {
 
     it('should handle payload in function specs', () => {
       const result = convertToFunctionSpecs(mockProviderDefinition);
-      const searchFunction = result.find(f => f.name === 'search_data');
-      
+      const searchFunction = result.find((f) => f.name === 'search_data');
+
       expect(searchFunction?.parameters.properties.payload).toEqual({
-        type: "object",
+        type: 'object',
         properties: {
           query: {
-            type: "string"
-          }
-        }
+            type: 'string',
+          },
+        },
       });
     });
 
@@ -112,14 +117,16 @@ describe('Definition Helper', () => {
         ...mockProviderDefinition,
         functions: {
           invalid_function: {
-            description: "Invalid function",
-            service: "non_existent_service",
-            endpoint: "some_endpoint"
-          }
-        }
+            description: 'Invalid function',
+            service: 'non_existent_service',
+            endpoint: 'some_endpoint',
+          },
+        },
       };
 
-      expect(() => convertToFunctionSpecs(invalidSpec)).toThrow('Service non_existent_service not found in spec');
+      expect(() => convertToFunctionSpecs(invalidSpec)).toThrow(
+        'Service non_existent_service not found in spec'
+      );
     });
 
     it('should throw error for non-existent endpoint', () => {
@@ -127,14 +134,16 @@ describe('Definition Helper', () => {
         ...mockProviderDefinition,
         functions: {
           invalid_function: {
-            description: "Invalid function",
-            service: "api_service",
-            endpoint: "non_existent_endpoint"
-          }
-        }
+            description: 'Invalid function',
+            service: 'api_service',
+            endpoint: 'non_existent_endpoint',
+          },
+        },
       };
 
-      expect(() => convertToFunctionSpecs(invalidSpec)).toThrow('Endpoint non_existent_endpoint not found in service api_service');
+      expect(() => convertToFunctionSpecs(invalidSpec)).toThrow(
+        'Endpoint non_existent_endpoint not found in service api_service'
+      );
     });
   });
 
@@ -145,22 +154,30 @@ describe('Definition Helper', () => {
     });
 
     it('should throw error for invalid object', () => {
-      expect(() => validateProviderDefinition(null as any)).toThrow('Invalid provider definition: must be an object');
-      expect(() => validateProviderDefinition("invalid" as any)).toThrow('Invalid provider definition: must be an object');
+      expect(() => validateProviderDefinition(null as any)).toThrow(
+        'Invalid provider definition: must be an object'
+      );
+      expect(() => validateProviderDefinition('invalid' as any)).toThrow(
+        'Invalid provider definition: must be an object'
+      );
     });
 
     it('should throw error for missing services', () => {
       const invalidSpec = { ...mockProviderDefinition };
       delete (invalidSpec as any).services;
-      
-      expect(() => validateProviderDefinition(invalidSpec)).toThrow('Invalid provider definition: missing or invalid services');
+
+      expect(() => validateProviderDefinition(invalidSpec)).toThrow(
+        'Invalid provider definition: missing or invalid services'
+      );
     });
 
     it('should throw error for missing functions', () => {
       const invalidSpec = { ...mockProviderDefinition };
       delete (invalidSpec as any).functions;
-      
-      expect(() => validateProviderDefinition(invalidSpec)).toThrow('Invalid provider definition: missing or invalid functions');
+
+      expect(() => validateProviderDefinition(invalidSpec)).toThrow(
+        'Invalid provider definition: missing or invalid functions'
+      );
     });
 
     it('should throw error for function with missing service reference', () => {
@@ -168,13 +185,15 @@ describe('Definition Helper', () => {
         ...mockProviderDefinition,
         functions: {
           invalid_function: {
-            description: "Invalid function",
-            endpoint: "some_endpoint"
-          }
-        }
+            description: 'Invalid function',
+            endpoint: 'some_endpoint',
+          },
+        },
       };
 
-      expect(() => validateProviderDefinition(invalidSpec as any)).toThrow('Function invalid_function: missing service reference');
+      expect(() => validateProviderDefinition(invalidSpec as any)).toThrow(
+        'Function invalid_function: missing service reference'
+      );
     });
 
     it('should throw error for function with missing endpoint reference', () => {
@@ -182,13 +201,15 @@ describe('Definition Helper', () => {
         ...mockProviderDefinition,
         functions: {
           invalid_function: {
-            description: "Invalid function",
-            service: "api_service"
-          }
-        }
+            description: 'Invalid function',
+            service: 'api_service',
+          },
+        },
       };
 
-      expect(() => validateProviderDefinition(invalidSpec as any)).toThrow('Function invalid_function: missing endpoint reference');
+      expect(() => validateProviderDefinition(invalidSpec as any)).toThrow(
+        'Function invalid_function: missing endpoint reference'
+      );
     });
 
     it('should throw error for function referencing non-existent service', () => {
@@ -196,14 +217,16 @@ describe('Definition Helper', () => {
         ...mockProviderDefinition,
         functions: {
           invalid_function: {
-            description: "Invalid function",
-            service: "non_existent_service",
-            endpoint: "some_endpoint"
-          }
-        }
+            description: 'Invalid function',
+            service: 'non_existent_service',
+            endpoint: 'some_endpoint',
+          },
+        },
       };
 
-      expect(() => validateProviderDefinition(invalidSpec)).toThrow('Function invalid_function: references non-existent service non_existent_service');
+      expect(() => validateProviderDefinition(invalidSpec)).toThrow(
+        'Function invalid_function: references non-existent service non_existent_service'
+      );
     });
 
     it('should throw error for function referencing non-existent endpoint', () => {
@@ -211,21 +234,23 @@ describe('Definition Helper', () => {
         ...mockProviderDefinition,
         functions: {
           invalid_function: {
-            description: "Invalid function",
-            service: "api_service",
-            endpoint: "non_existent_endpoint"
-          }
-        }
+            description: 'Invalid function',
+            service: 'api_service',
+            endpoint: 'non_existent_endpoint',
+          },
+        },
       };
 
-      expect(() => validateProviderDefinition(invalidSpec)).toThrow('Function invalid_function: references non-existent endpoint non_existent_endpoint in service api_service');
+      expect(() => validateProviderDefinition(invalidSpec)).toThrow(
+        'Function invalid_function: references non-existent endpoint non_existent_endpoint in service api_service'
+      );
     });
   });
 
   describe('getFunctionByName', () => {
     it('should return specific function spec by name', () => {
       const result = getFunctionByName(mockProviderDefinition, 'search_data');
-      
+
       expect(result.name).toBe('search_data');
       expect(result.description).toBe('Search for data using the API');
       expect(result.parameters.properties).toHaveProperty('payload');
@@ -233,8 +258,12 @@ describe('Definition Helper', () => {
     });
 
     it('should return specific function spec by name with provider naming convention', () => {
-      const result = getFunctionByName(mockProviderDefinition, 'test_provider.search_data', 'test_provider');
-      
+      const result = getFunctionByName(
+        mockProviderDefinition,
+        'test_provider.search_data',
+        'test_provider'
+      );
+
       expect(result.name).toBe('test_provider.search_data');
       expect(result.description).toBe('Search for data using the API');
       expect(result.parameters.properties).toHaveProperty('payload');
@@ -242,35 +271,37 @@ describe('Definition Helper', () => {
     });
 
     it('should throw error for non-existent function', () => {
-      expect(() => getFunctionByName(mockProviderDefinition, 'non_existent_function')).toThrow("Function 'non_existent_function' not found in provider definition");
+      expect(() => getFunctionByName(mockProviderDefinition, 'non_existent_function')).toThrow(
+        "Function 'non_existent_function' not found in provider definition"
+      );
     });
   });
 
   describe('parseFunctionName', () => {
     it('should parse function name with provider prefix', () => {
       const result = parseFunctionName('weather.getWeatherData');
-      
+
       expect(result.providerName).toBe('weather');
       expect(result.originalFunctionName).toBe('getWeatherData');
     });
 
     it('should parse function name with dots in function name', () => {
       const result = parseFunctionName('provider.complex.function.name');
-      
+
       expect(result.providerName).toBe('provider');
       expect(result.originalFunctionName).toBe('complex.function.name');
     });
 
     it('should handle function name without provider prefix', () => {
       const result = parseFunctionName('simpleFunction');
-      
+
       expect(result.providerName).toBeUndefined();
       expect(result.originalFunctionName).toBe('simpleFunction');
     });
 
     it('should handle empty provider name', () => {
       const result = parseFunctionName('.functionName');
-      
+
       expect(result.providerName).toBe('');
       expect(result.originalFunctionName).toBe('functionName');
     });

@@ -90,7 +90,7 @@ export interface Provider {
  */
 export interface AgentsList {
   version: number;
-  kind: "agents";
+  kind: 'agents';
   agents: Agent[];
 }
 
@@ -99,7 +99,7 @@ export interface AgentsList {
  */
 export interface ProvidersList {
   version: number;
-  kind: "providers";
+  kind: 'providers';
   providers: Provider[];
 }
 

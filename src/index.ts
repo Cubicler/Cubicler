@@ -5,11 +5,7 @@ import agentService from './core/agent-service.js';
 import providerService from './core/provider-service.js';
 import executionService from './core/execution-service.js';
 import callService from './core/call-service.js';
-import type { 
-  FunctionCallParameters, 
-  HealthStatus,
-  CallRequest
-} from './model/types.js';
+import type { CallRequest, FunctionCallParameters, HealthStatus } from './model/types.js';
 
 // Create Express app
 const app = express();
@@ -33,7 +29,6 @@ app.get('/prompt/:agentName', async (req: Request, res: Response) => {
   }
 });
 
-
 // GET /agents endpoint
 app.get('/agents', async (req: Request, res: Response) => {
   try {
@@ -50,7 +45,7 @@ app.get('/health', async (req: Request, res: Response) => {
   const health: HealthStatus = {
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    services: {}
+    services: {},
   };
 
   // Check prompt service (bypass cache for fresh check)
@@ -69,10 +64,10 @@ app.get('/health', async (req: Request, res: Response) => {
     if (!availableAgents || availableAgents.length === 0) {
       throw new Error('No agents available');
     }
-    health.services.agents = { 
-      status: 'healthy', 
+    health.services.agents = {
+      status: 'healthy',
       count: availableAgents.length,
-      agents: availableAgents
+      agents: availableAgents,
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -86,10 +81,10 @@ app.get('/health', async (req: Request, res: Response) => {
     if (!availableProviders || availableProviders.length === 0) {
       throw new Error('No providers available');
     }
-    health.services.providers = { 
-      status: 'healthy', 
+    health.services.providers = {
+      status: 'healthy',
       count: availableProviders.length,
-      providers: availableProviders.map(p => p.name)
+      providers: availableProviders.map((p) => p.name),
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -195,7 +190,8 @@ export default {
 
 // Start the server only if this file is run directly
 // Check if this module was imported or run directly
-const isMainModule = process.argv[1] && (process.argv[1].endsWith('index.ts') || process.argv[1].endsWith('index.js'));
+const isMainModule =
+  process.argv[1] && (process.argv[1].endsWith('index.ts') || process.argv[1].endsWith('index.js'));
 if (isMainModule) {
   const port = process.env.CUBICLER_PORT || 1503;
   app.listen(port, () => {

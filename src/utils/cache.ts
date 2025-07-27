@@ -33,7 +33,7 @@ export class Cache<T> {
     }
 
     const now = Date.now();
-    
+
     if (now - item.timestamp > this.defaultTtl) {
       this.cache.delete(key);
       return undefined;
@@ -54,7 +54,7 @@ export class Cache<T> {
 
     this.cache.set(key, {
       value,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     });
   }
 
@@ -139,12 +139,12 @@ export function createEnvCache<T>(envPrefix: string, defaultTtlSeconds: number =
   const enabled = process.env[`${envPrefix}_CACHE_ENABLED`] !== 'false';
   const timeoutEnv = process.env[`${envPrefix}_CACHE_TIMEOUT`];
   const ttlSeconds = timeoutEnv ? parseInt(timeoutEnv) : defaultTtlSeconds;
-  
+
   // Use default TTL if parsing failed (NaN)
   const finalTtlSeconds = isNaN(ttlSeconds) ? defaultTtlSeconds : ttlSeconds;
-  
+
   // Convert seconds to milliseconds for internal use
   const ttlMs = finalTtlSeconds * 1000;
-  
+
   return new Cache<T>(ttlMs, enabled);
 }

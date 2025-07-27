@@ -1,4 +1,4 @@
-import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import express, { Request, Response } from 'express';
 import request from 'supertest';
 import { app } from '../src/index.js';
@@ -6,7 +6,7 @@ import type { Server } from 'http';
 
 describe('Integration Test - Full Cubicler Flow', () => {
   let mockApiServer: Server;
-  let mockApiPort = 3002;
+  const mockApiPort = 3002;
 
   beforeAll(async () => {
     // Set up environment variables for testing
@@ -22,14 +22,14 @@ describe('Integration Test - Full Cubicler Flow', () => {
     // Mock endpoint that our function will call
     mockApp.get('/data/:id', (req: Request, res: Response) => {
       const { id } = req.params;
-      
+
       // Verify headers
       expect(req.headers['x-api-key']).toBe('test-key');
-      
+
       res.json({
         id: id,
         data: `Test data for ID: ${id}`,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     });
 
@@ -44,11 +44,11 @@ describe('Integration Test - Full Cubicler Flow', () => {
   });
 
   it('should serve the system prompt via GET /prompt/:agentName', async () => {
-    const response = await request(app)
-      .get('/prompt/default')
-      .expect(200);
+    const response = await request(app).get('/prompt/default').expect(200);
 
-    expect(response.body.prompt).toContain('You are a helpful assistant for testing Cubicler integration');
+    expect(response.body.prompt).toContain(
+      'You are a helpful assistant for testing Cubicler integration'
+    );
   });
 
   it('should execute function calls via POST /execute/:function_name', async () => {
@@ -60,7 +60,7 @@ describe('Integration Test - Full Cubicler Flow', () => {
     expect(response.body).toEqual({
       id: '123',
       data: 'Test data for ID: 123',
-      timestamp: expect.any(String)
+      timestamp: expect.any(String),
     });
   });
 
@@ -70,13 +70,13 @@ describe('Integration Test - Full Cubicler Flow', () => {
       .send({ id: '123' })
       .expect(500);
 
-    expect(response.body.error).toContain('Function \'nonExistentFunction\' not found in provider \'mock_service\'');
+    expect(response.body.error).toContain(
+      "Function 'nonExistentFunction' not found in provider 'mock_service'"
+    );
   });
 
   it('should return health status via GET /health', async () => {
-    const response = await request(app)
-      .get('/health')
-      .expect(200);
+    const response = await request(app).get('/health').expect(200);
 
     expect(response.body.status).toBe('healthy');
     expect(response.body.services.prompt.status).toBe('healthy');

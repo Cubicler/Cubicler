@@ -5,13 +5,8 @@ import axios from 'axios';
 import { Cache, createEnvCache } from '../utils/cache.js';
 import { convertToFunctionSpecs } from '../utils/definition-helper.js';
 import { fetchWithDefaultTimeout } from '../utils/fetch-helper.js';
-import type { 
-  ProvidersList,
-  Provider,
-  ProviderSpecResponse
-} from '../model/types.js';
-import type { AgentFunctionDefinition } from '../model/definitions.js';
-import type { ProviderDefinition } from '../model/definitions.js';
+import type { Provider, ProviderSpecResponse, ProvidersList } from '../model/types.js';
+import type { AgentFunctionDefinition, ProviderDefinition } from '../model/definitions.js';
 
 config();
 
@@ -32,15 +27,15 @@ async function getProviderSpec(providerName: string): Promise<ProviderSpecRespon
   if (cached) {
     return {
       context: cached.context,
-      functions: cached.functions
+      functions: cached.functions,
     };
   }
 
   const provider = await findProvider(providerName);
-  
+
   const [providerDefinition, providerContext] = await Promise.all([
     retrievesProviderDefinition(provider.spec_source),
-    retrievesProviderContext(provider.context_source)
+    retrievesProviderContext(provider.context_source),
   ]);
 
   // Convert spec to function specs with provider naming convention
@@ -49,12 +44,12 @@ async function getProviderSpec(providerName: string): Promise<ProviderSpecRespon
   // Cache the result
   specCache.set(providerName, {
     context: providerContext,
-    functions
+    functions,
   });
 
   return {
     context: providerContext,
-    functions
+    functions,
   };
 }
 
@@ -64,11 +59,11 @@ async function getProviderSpec(providerName: string): Promise<ProviderSpecRespon
 async function findProvider(providerName: string): Promise<Provider> {
   const availableProviders = await retrieveProvidersList();
   const provider = availableProviders.providers.find((p: Provider) => p.name === providerName);
-  
+
   if (!provider) {
     throw new Error(`Provider '${providerName}' not found in providers list`);
   }
-  
+
   return provider;
 }
 
@@ -83,11 +78,11 @@ async function fetchProvidersFromUrl(providersSource: string): Promise<Providers
 
   try {
     const response = await fetchWithDefaultTimeout(providersSource);
-    
+
     if (response.status >= 200 && response.status < 300) {
       const yamlText = response.data;
       const providers = load(yamlText) as ProvidersList;
-      
+
       if (!providers || typeof providers !== 'object') {
         throw new Error('Invalid providers YAML format');
       }
@@ -95,7 +90,7 @@ async function fetchProvidersFromUrl(providersSource: string): Promise<Providers
       if (providers.kind !== 'providers') {
         throw new Error('Invalid providers YAML: kind must be "providers"');
       }
-      
+
       return providers;
     }
     errors.push(`Fetch failed: ${response.status} ${response.statusText}`);
@@ -111,7 +106,9 @@ async function fetchProvidersFromUrl(providersSource: string): Promise<Providers
     }
   }
 
-  throw new Error(`Cannot fetch providers from URL '${providersSource}'. Errors: ${errors.join('; ')}`);
+  throw new Error(
+    `Cannot fetch providers from URL '${providersSource}'. Errors: ${errors.join('; ')}`
+  );
 }
 
 /**
@@ -126,7 +123,7 @@ function fetchProvidersFromFile(providersSource: string): ProvidersList {
   try {
     const yamlText = readFileSync(providersSource, 'utf-8');
     const providers = load(yamlText) as ProvidersList;
-    
+
     if (!providers || typeof providers !== 'object') {
       throw new Error('Invalid providers YAML format');
     }
@@ -134,13 +131,15 @@ function fetchProvidersFromFile(providersSource: string): ProvidersList {
     if (providers.kind !== 'providers') {
       throw new Error('Invalid providers YAML: kind must be "providers"');
     }
-    
+
     return providers;
   } catch (error) {
     errors.push(`File read error: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 
-  throw new Error(`Cannot fetch providers from path '${providersSource}'. Errors: ${errors.join('; ')}`);
+  throw new Error(
+    `Cannot fetch providers from path '${providersSource}'. Errors: ${errors.join('; ')}`
+  );
 }
 
 /**
@@ -154,15 +153,15 @@ async function fetchProviderDefinitionFromUrl(specUrl: string): Promise<Provider
 
   try {
     const response = await fetchWithDefaultTimeout(specUrl);
-    
+
     if (response.status >= 200 && response.status < 300) {
       const yamlText = response.data;
       const spec = load(yamlText) as ProviderDefinition;
-      
+
       if (!spec || typeof spec !== 'object') {
         throw new Error('Invalid provider spec YAML format');
       }
-      
+
       return spec;
     }
     errors.push(`Spec fetch failed: ${response.status} ${response.statusText}`);
@@ -193,17 +192,19 @@ function fetchProviderDefinitionFromFile(specUrl: string): ProviderDefinition {
   try {
     const yamlText = readFileSync(specUrl, 'utf-8');
     const spec = load(yamlText) as ProviderDefinition;
-    
+
     if (!spec || typeof spec !== 'object') {
       throw new Error('Invalid provider spec YAML format');
     }
-    
+
     return spec;
   } catch (error) {
     errors.push(`File read error: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 
-  throw new Error(`Cannot fetch provider spec from path '${specUrl}'. Errors: ${errors.join('; ')}`);
+  throw new Error(
+    `Cannot fetch provider spec from path '${specUrl}'. Errors: ${errors.join('; ')}`
+  );
 }
 
 /**
@@ -229,11 +230,15 @@ async function fetchProviderContextFromUrl(contextUrl: string): Promise<string> 
       const statusText = error.response?.statusText || 'Unknown error';
       errors.push(`Context fetch failed: ${status} ${statusText}`);
     } else {
-      errors.push(`Context fetch error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      errors.push(
+        `Context fetch error: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
-  throw new Error(`Cannot fetch provider context from URL '${contextUrl}'. Errors: ${errors.join('; ')}`);
+  throw new Error(
+    `Cannot fetch provider context from URL '${contextUrl}'. Errors: ${errors.join('; ')}`
+  );
 }
 
 /**
@@ -251,7 +256,9 @@ function fetchProviderContextFromFile(contextUrl: string): string {
     errors.push(`File read error: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 
-  throw new Error(`Cannot fetch provider context from path '${contextUrl}'. Errors: ${errors.join('; ')}`);
+  throw new Error(
+    `Cannot fetch provider context from path '${contextUrl}'. Errors: ${errors.join('; ')}`
+  );
 }
 
 /**
@@ -282,10 +289,10 @@ async function retrieveProvidersList(): Promise<ProvidersList> {
   }
 
   const providers = await fetchProvidersList();
-  
+
   // Cache the result
   providersCache.set('providers_list', providers);
-  
+
   return providers;
 }
 
@@ -332,11 +339,11 @@ function clearCache(): void {
  */
 async function getProviders(): Promise<Provider[]> {
   const providers = await retrieveProvidersList();
-  
+
   if (!providers.providers || providers.providers.length === 0) {
     throw new Error('No providers defined in configuration');
   }
-  
+
   return providers.providers;
 }
 
@@ -355,9 +362,9 @@ async function fetchProviders(): Promise<Provider[]> {
   return providers.providers;
 }
 
-export default { 
-  getProviderSpec, 
-  clearCache, 
+export default {
+  getProviderSpec,
+  clearCache,
   getProviders,
-  fetchProviders
+  fetchProviders,
 };

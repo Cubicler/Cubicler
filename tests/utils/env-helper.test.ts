@@ -1,11 +1,9 @@
-import { 
-  substituteEnvVars, 
-  substituteEnvVarsInObject, 
-  getEnvBoolean, 
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import {
+  substituteEnvVars,
+  substituteEnvVarsInObject,
+  getEnvBoolean,
   isStrictParamsEnabled,
-  getEnvTimeout,
-  getProviderCallTimeout,
-  getAgentCallTimeout
 } from '../../src/utils/env-helper.js';
 
 describe('envHelper', () => {
@@ -19,7 +17,7 @@ describe('envHelper', () => {
   describe('substituteEnvVars', () => {
     it('should substitute environment variables in strings', () => {
       process.env.TEST_VAR = 'test-value';
-      
+
       const result = substituteEnvVars('Hello {{env.TEST_VAR}} world');
       expect(result).toBe('Hello test-value world');
     });
@@ -27,7 +25,7 @@ describe('envHelper', () => {
     it('should handle multiple environment variables in one string', () => {
       process.env.API_KEY = 'secret-key';
       process.env.BASE_URL = 'https://api.example.com';
-      
+
       const result = substituteEnvVars('{{env.BASE_URL}}/auth?key={{env.API_KEY}}');
       expect(result).toBe('https://api.example.com/auth?key=secret-key');
     });
@@ -60,31 +58,31 @@ describe('envHelper', () => {
     it('should substitute environment variables in object values', () => {
       process.env.API_KEY = 'secret-key';
       process.env.BASE_URL = 'https://api.example.com';
-      
+
       const input = {
         authorization: 'Bearer {{env.API_KEY}}',
         baseUrl: '{{env.BASE_URL}}',
-        version: 'v1'
+        version: 'v1',
       };
-      
+
       const result = substituteEnvVarsInObject(input);
       expect(result).toEqual({
         authorization: 'Bearer secret-key',
         baseUrl: 'https://api.example.com',
-        version: 'v1'
+        version: 'v1',
       });
     });
 
     it('should handle objects with missing environment variables', () => {
       const input = {
         authorization: 'Bearer {{env.MISSING_KEY}}',
-        baseUrl: 'https://api.example.com'
+        baseUrl: 'https://api.example.com',
       };
-      
+
       const result = substituteEnvVarsInObject(input);
       expect(result).toEqual({
         authorization: 'Bearer {{env.MISSING_KEY}}',
-        baseUrl: 'https://api.example.com'
+        baseUrl: 'https://api.example.com',
       });
     });
 
@@ -100,43 +98,43 @@ describe('envHelper', () => {
 
     it('should handle objects with non-string values', () => {
       process.env.TEST_VAR = 'test-value';
-      
+
       const input = {
         stringValue: 'Hello {{env.TEST_VAR}}',
         numberValue: 123,
         booleanValue: true,
         nullValue: null,
-        objectValue: { nested: 'value' }
+        objectValue: { nested: 'value' },
       };
-      
+
       const result = substituteEnvVarsInObject(input);
       expect(result).toEqual({
         stringValue: 'Hello test-value',
         numberValue: 123,
         booleanValue: true,
         nullValue: null,
-        objectValue: { nested: 'value' }
+        objectValue: { nested: 'value' },
       });
     });
 
     it('should handle nested placeholder patterns', () => {
       process.env.DOMAIN = 'example.com';
       process.env.PROTOCOL = 'https';
-      
+
       const input = {
-        url: '{{env.PROTOCOL}}://{{env.DOMAIN}}/api'
+        url: '{{env.PROTOCOL}}://{{env.DOMAIN}}/api',
       };
-      
+
       const result = substituteEnvVarsInObject(input);
       expect(result).toEqual({
-        url: 'https://example.com/api'
+        url: 'https://example.com/api',
       });
     });
   });
 
   describe('getEnvBoolean', () => {
     const originalValue = process.env.TEST_BOOLEAN;
-    
+
     afterEach(() => {
       // Restore original env value
       if (originalValue !== undefined) {
@@ -176,7 +174,7 @@ describe('envHelper', () => {
     it('should be case insensitive', () => {
       process.env.TEST_BOOLEAN = 'TRUE';
       expect(getEnvBoolean('TEST_BOOLEAN')).toBe(true);
-      
+
       process.env.TEST_BOOLEAN = 'FALSE';
       expect(getEnvBoolean('TEST_BOOLEAN')).toBe(false);
     });
@@ -184,7 +182,7 @@ describe('envHelper', () => {
 
   describe('isStrictParamsEnabled', () => {
     const originalValue = process.env.CUBICLER_STRICT_PARAMS;
-    
+
     afterEach(() => {
       // Restore original env value
       if (originalValue !== undefined) {

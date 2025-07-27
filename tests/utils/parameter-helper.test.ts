@@ -1,8 +1,8 @@
-import { 
-  validateAndConvertParameter, 
+import {
+  validateAndConvertParameter,
   validateAndConvertParameters,
   validateAndConvertPayload,
-  convertParametersForQuery 
+  convertParametersForQuery,
 } from '../../src/utils/parameter-helper.js';
 import type { ParameterDefinition } from '../../src/model/definitions.js';
 
@@ -84,7 +84,9 @@ describe('parameterHelper', () => {
 
     it('should handle null/undefined values', () => {
       expect(validateAndConvertParameter(null, { type: 'string' }, 'testParam')).toBe(null);
-      expect(validateAndConvertParameter(undefined, { type: 'string' }, 'testParam')).toBe(undefined);
+      expect(validateAndConvertParameter(undefined, { type: 'string' }, 'testParam')).toBe(
+        undefined
+      );
     });
 
     it('should throw error for missing required parameters', () => {
@@ -100,7 +102,7 @@ describe('parameterHelper', () => {
       count: { type: 'number' },
       active: { type: 'boolean' },
       tags: { type: 'array' },
-      metadata: { type: 'object' }
+      metadata: { type: 'object' },
     };
 
     it('should validate and convert multiple parameters', () => {
@@ -109,7 +111,7 @@ describe('parameterHelper', () => {
         count: '45.5',
         active: 'true',
         tags: ['tag1', 'tag2'],
-        metadata: { key: 'value' }
+        metadata: { key: 'value' },
       };
 
       const result = validateAndConvertParameters(parameters, parameterDefinitions);
@@ -119,7 +121,7 @@ describe('parameterHelper', () => {
         count: 45.5,
         active: true,
         tags: ['tag1', 'tag2'],
-        metadata: { key: 'value' }
+        metadata: { key: 'value' },
       });
     });
 
@@ -131,7 +133,7 @@ describe('parameterHelper', () => {
 
     it('should throw error for missing required parameters', () => {
       const parameters = { count: 10 }; // missing required 'id'
-      
+
       expect(() => {
         validateAndConvertParameters(parameters, parameterDefinitions);
       }).toThrow("Required parameter 'id' is missing");
@@ -139,19 +141,21 @@ describe('parameterHelper', () => {
 
     it('should warn about undefined parameters', () => {
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation();
-      const parameters = { 
+      const parameters = {
         id: 'test-id',
-        unknownParam: 'value'
+        unknownParam: 'value',
       };
 
       const result = validateAndConvertParameters(parameters, parameterDefinitions);
 
       expect(result).toEqual({
         id: 'test-id',
-        unknownParam: 'value'
+        unknownParam: 'value',
       });
-      expect(consoleSpy).toHaveBeenCalledWith("Parameter 'unknownParam' is not defined in the spec");
-      
+      expect(consoleSpy).toHaveBeenCalledWith(
+        "Parameter 'unknownParam' is not defined in the spec"
+      );
+
       consoleSpy.mockRestore();
     });
 
@@ -176,7 +180,7 @@ describe('parameterHelper', () => {
     it('should validate object payload', () => {
       const payload = { key: 'value', count: 42 };
       const payloadDef = { type: 'object' as const };
-      
+
       const result = validateAndConvertPayload(payload, payloadDef);
       expect(result).toEqual(payload);
     });
@@ -184,7 +188,7 @@ describe('parameterHelper', () => {
     it('should validate array payload', () => {
       const payload = ['item1', 'item2'];
       const payloadDef = { type: 'array' as const };
-      
+
       const result = validateAndConvertPayload(payload, payloadDef);
       expect(result).toEqual(payload);
     });
@@ -216,7 +220,7 @@ describe('parameterHelper', () => {
         arrayValue: ['a', 'b', 'c'],
         objectValue: { key: 'value' },
         nullValue: null,
-        undefinedValue: undefined
+        undefinedValue: undefined,
       };
 
       const result = convertParametersForQuery(parameters);
@@ -225,8 +229,8 @@ describe('parameterHelper', () => {
         stringValue: 'hello',
         numberValue: '123',
         booleanValue: 'true',
-        arrayValue: '["a","b","c"]',  // Minified JSON
-        objectValue: '{"key":"value"}'  // Minified JSON
+        arrayValue: '["a","b","c"]', // Minified JSON
+        objectValue: '{"key":"value"}', // Minified JSON
         // nullValue and undefinedValue should be excluded
       });
     });
@@ -242,7 +246,7 @@ describe('parameterHelper', () => {
         skipNull: null,
         skipUndefined: undefined,
         keepFalse: false,
-        keepZero: 0
+        keepZero: 0,
       };
 
       const result = convertParametersForQuery(parameters);
@@ -250,34 +254,34 @@ describe('parameterHelper', () => {
       expect(result).toEqual({
         keepThis: 'value',
         keepFalse: 'false',
-        keepZero: '0'
+        keepZero: '0',
       });
     });
 
     it('should properly minify complex objects and arrays', () => {
       const parameters = {
-        complexObject: { 
-          nested: { array: [1, 2, 3] }, 
-          boolean: true 
+        complexObject: {
+          nested: { array: [1, 2, 3] },
+          boolean: true,
         },
         complexArray: [
           { id: 1, name: 'first' },
-          { id: 2, name: 'second' }
-        ]
+          { id: 2, name: 'second' },
+        ],
       };
 
       const result = convertParametersForQuery(parameters);
 
       expect(result).toEqual({
         complexObject: '{"nested":{"array":[1,2,3]},"boolean":true}',
-        complexArray: '[{"id":1,"name":"first"},{"id":2,"name":"second"}]'
+        complexArray: '[{"id":1,"name":"first"},{"id":2,"name":"second"}]',
       });
     });
   });
 
   describe('strict parameter validation', () => {
     const originalEnv = process.env.CUBICLER_STRICT_PARAMS;
-    
+
     afterEach(() => {
       // Restore original env value
       if (originalEnv !== undefined) {
@@ -289,21 +293,21 @@ describe('parameterHelper', () => {
 
     it('should allow unknown parameters when strict mode is disabled', () => {
       process.env.CUBICLER_STRICT_PARAMS = 'false';
-      
+
       const parameters = { known: 'value', unknown: 'should-be-allowed' };
       const definitions = { known: { type: 'string' } as ParameterDefinition };
-      
+
       const result = validateAndConvertParameters(parameters, definitions);
-      
+
       expect(result).toEqual({ known: 'value', unknown: 'should-be-allowed' });
     });
 
     it('should throw error for unknown parameters when strict mode is enabled', () => {
       process.env.CUBICLER_STRICT_PARAMS = 'true';
-      
+
       const parameters = { known: 'value', unknown: 'should-cause-error' };
       const definitions = { known: { type: 'string' } as ParameterDefinition };
-      
+
       expect(() => {
         validateAndConvertParameters(parameters, definitions);
       }).toThrow("Unknown parameter 'unknown' is not allowed in strict mode");
@@ -311,15 +315,15 @@ describe('parameterHelper', () => {
 
     it('should validate payload properties in strict mode', () => {
       process.env.CUBICLER_STRICT_PARAMS = 'true';
-      
+
       const payload = { known: 'value', unknown: 'should-cause-error' };
       const payloadDefinition = {
         type: 'object' as const,
         properties: {
-          known: { type: 'string' as const }
-        }
+          known: { type: 'string' as const },
+        },
       };
-      
+
       expect(() => {
         validateAndConvertPayload(payload, payloadDefinition);
       }).toThrow("Unknown payload property 'unknown' is not allowed in strict mode");
@@ -327,15 +331,15 @@ describe('parameterHelper', () => {
 
     it('should allow payload properties in non-strict mode', () => {
       process.env.CUBICLER_STRICT_PARAMS = 'false';
-      
+
       const payload = { known: 'value', unknown: 'should-be-allowed' };
       const payloadDefinition = {
         type: 'object' as const,
         properties: {
-          known: { type: 'string' as const }
-        }
+          known: { type: 'string' as const },
+        },
       };
-      
+
       const result = validateAndConvertPayload(payload, payloadDefinition);
       expect(result).toEqual({ known: 'value', unknown: 'should-be-allowed' });
     });

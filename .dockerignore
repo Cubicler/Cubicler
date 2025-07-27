@@ -7,6 +7,8 @@ coverage
 tests
 *.test.js
 vitest.config.ts
+.eslintrc.js
+.prettierrc
 .github
 LICENSE
 README.md

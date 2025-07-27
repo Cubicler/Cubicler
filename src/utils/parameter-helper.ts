@@ -10,8 +10,8 @@ import { isStrictParamsEnabled } from './env-helper.js';
  * @returns The validated and converted value
  */
 export function validateAndConvertParameter(
-  value: JSONValue | undefined | null, 
-  parameterDefinition: ParameterDefinition, 
+  value: JSONValue | undefined | null,
+  parameterDefinition: ParameterDefinition,
   parameterName: string
 ): JSONValue | undefined | null {
   if (value === undefined || value === null) {
@@ -26,14 +26,15 @@ export function validateAndConvertParameter(
   switch (type) {
     case 'string':
       return String(value);
-    
-    case 'number':
+
+    case 'number': {
       const numValue = Number(value);
       if (isNaN(numValue)) {
         throw new Error(`Parameter '${parameterName}' must be a valid number, got '${value}'`);
       }
       return numValue;
-    
+    }
+
     case 'boolean':
       if (typeof value === 'boolean') {
         return value;
@@ -47,19 +48,21 @@ export function validateAndConvertParameter(
         return Boolean(value);
       }
       throw new Error(`Parameter '${parameterName}' must be a valid boolean, got '${value}'`);
-    
+
     case 'array':
       if (!Array.isArray(value)) {
         throw new Error(`Parameter '${parameterName}' must be an array, got '${typeof value}'`);
       }
       return value;
-    
+
     case 'object':
       if (typeof value !== 'object' || Array.isArray(value) || value === null) {
-        throw new Error(`Parameter '${parameterName}' must be an object, got '${value === null ? 'null' : typeof value}'`);
+        throw new Error(
+          `Parameter '${parameterName}' must be an object, got '${value === null ? 'null' : typeof value}'`
+        );
       }
       return value;
-    
+
     default:
       throw new Error(`Unsupported parameter type '${type}' for parameter '${parameterName}'`);
   }
@@ -146,7 +149,13 @@ export function validateAndConvertPayload(
   }
 
   // If strict mode is enabled and payload has properties defined, validate against them
-  if (isStrictParamsEnabled() && payloadDefinition.type === 'object' && payloadDefinition.properties && typeof payload === 'object' && !Array.isArray(payload)) {
+  if (
+    isStrictParamsEnabled() &&
+    payloadDefinition.type === 'object' &&
+    payloadDefinition.properties &&
+    typeof payload === 'object' &&
+    !Array.isArray(payload)
+  ) {
     for (const propName of Object.keys(payload)) {
       if (!(propName in payloadDefinition.properties)) {
         throw new Error(`Unknown payload property '${propName}' is not allowed in strict mode`);
@@ -164,25 +173,27 @@ export function validateAndConvertPayload(
  * @param parameters - The parameters to convert
  * @returns Parameters converted to string format suitable for URLSearchParams
  */
-export function convertParametersForQuery(parameters: Record<string, JSONValue | undefined | null>): Record<string, string> {
+export function convertParametersForQuery(
+  parameters: Record<string, JSONValue | undefined | null>
+): Record<string, string> {
   const queryParams: Record<string, string> = {};
-  
+
   for (const [key, value] of Object.entries(parameters)) {
     if (value === undefined || value === null) {
       continue; // Skip null/undefined values
     }
-    
+
     if (typeof value === 'boolean') {
       queryParams[key] = value.toString();
     } else if (typeof value === 'number') {
       queryParams[key] = value.toString();
-    } else if (Array.isArray(value) || (typeof value === 'object')) {
+    } else if (Array.isArray(value) || typeof value === 'object') {
       // For arrays and objects, convert to minified JSON
       queryParams[key] = JSON.stringify(value);
     } else {
       queryParams[key] = String(value);
     }
   }
-  
+
   return queryParams;
 }

@@ -17,12 +17,12 @@ const agentsCache: Cache<AgentsList> = createEnvCache('AGENTS_LIST', 600); // 10
  */
 async function getAvailableAgents(): Promise<string[]> {
   const agents = await retrieveAgentsList();
-  
+
   if (!agents.agents || agents.agents.length === 0) {
     throw new Error('No agents available in the agents list');
   }
-  
-  return agents.agents.map(agent => agent.name);
+
+  return agents.agents.map((agent) => agent.name);
 }
 
 /**
@@ -37,7 +37,7 @@ async function fetchAgentsList(): Promise<AgentsList> {
   }
 
   let yamlText: string;
-  
+
   if (agentsSource.startsWith('http')) {
     try {
       const response = await fetchWithDefaultTimeout(agentsSource);
@@ -55,7 +55,7 @@ async function fetchAgentsList(): Promise<AgentsList> {
   } else {
     yamlText = readFileSync(agentsSource, 'utf-8');
   }
-  
+
   const agents = load(yamlText) as AgentsList;
   if (!agents || typeof agents !== 'object') {
     throw new Error('Invalid agents YAML format');
@@ -64,7 +64,7 @@ async function fetchAgentsList(): Promise<AgentsList> {
   if (agents.kind !== 'agents') {
     throw new Error('Invalid agents YAML: kind must be "agents"');
   }
-  
+
   return agents;
 }
 
@@ -80,7 +80,7 @@ async function fetchAvailableAgents(): Promise<string[]> {
     throw new Error('No agents defined in configuration');
   }
 
-  return agents.agents.map(agent => agent.name);
+  return agents.agents.map((agent) => agent.name);
 }
 
 /**
@@ -93,10 +93,10 @@ async function retrieveAgentsList(): Promise<AgentsList> {
   }
 
   const agents = await fetchAgentsList();
-  
+
   // Cache the result
   agentsCache.set('agents_list', agents);
-  
+
   return agents;
 }
 
@@ -118,5 +118,5 @@ export default {
   getAvailableAgents,
   getAgents,
   fetchAvailableAgents,
-  clearCache
+  clearCache,
 };

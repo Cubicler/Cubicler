@@ -67,7 +67,7 @@ export interface ProviderDefinition {
 export interface FullEndpointDefinition extends EndpointDefinition {
   base_url: string;
   headers: Record<string, string>;
-}/**
+} /**
  * Function specification for AI agents - contains flattened parameters from endpoint definition
  */
 
@@ -80,4 +80,3 @@ export interface AgentFunctionDefinition {
     required?: string[];
   };
 }
-
