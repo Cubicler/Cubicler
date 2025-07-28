@@ -202,6 +202,7 @@ This tells Cubicler which external services AI agents can use. You can use `{{en
 #### Using Environment Variables in Configuration
 
 Set your environment variables:
+
 ```bash
 export API_TOKEN="sk-1234567890abcdef"
 export WEATHER_URL="https://api.weather.com" 
@@ -211,6 +212,7 @@ export DATABASE_URL="postgresql://user:pass@localhost:5432/db"
 Then use them in your configuration files:
 
 **agents.json with environment variables:**
+
 ```json
 {
   "basePrompt": "You are a helpful AI assistant.",
@@ -227,6 +229,7 @@ Then use them in your configuration files:
 ```
 
 **providers.json with environment variables:**
+
 ```json
 {
   "mcpServers": [
