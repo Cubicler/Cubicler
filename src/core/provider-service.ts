@@ -1,8 +1,8 @@
 import { config } from 'dotenv';
 import type { ServersProviding } from '../interface/servers-providing.js';
-import type { ProvidersConfigProviding } from '../interface/provider-config-providing.js';
+import type { ProvidersConfigProviding } from '../interface/providers-config-providing.js';
 import { ToolsListProviding } from '../interface/tools-list-providing.js';
-import { AvailableServersResponse, ServerToolsResponse } from '../model/tools.js';
+import { AvailableServersResponse } from '../model/tools.js';
 
 config();
 
@@ -15,6 +15,11 @@ class ProviderService implements ServersProviding {
   private readonly configProvider: ProvidersConfigProviding;
   private toolsProviders: ToolsListProviding[];
 
+  /**
+   * Creates a new ProviderService instance
+   * @param configProvider - Provider configuration service for accessing server configurations
+   * @param toolsProviders - Array of tools list providers for MCP and REST servers
+   */
   constructor(configProvider: ProvidersConfigProviding, toolsProviders: ToolsListProviding[]) {
     this.configProvider = configProvider;
     this.toolsProviders = toolsProviders;
@@ -22,6 +27,7 @@ class ProviderService implements ServersProviding {
 
   /**
    * Get all available servers (both MCP and REST)
+   * @returns Available servers response with total count and server details
    */
   async getAvailableServers(): Promise<AvailableServersResponse> {
     const config = await this.configProvider.getProvidersConfig();
@@ -79,28 +85,11 @@ class ProviderService implements ServersProviding {
       servers,
     };
   }
-
-  /**
-   * Get tools from a specific server
-   */
-  async getServerTools(serverIdentifier: string): Promise<ServerToolsResponse> {
-    for (const provider of this.toolsProviders) {
-      if (provider.identifier !== serverIdentifier) continue;
-      try {
-        const tools = await provider.toolsList();
-        return { tools };
-      } catch (error) {
-        console.warn(`⚠️ [ProviderService] Failed to get tools from ${serverIdentifier}:`, error);
-        throw error;
-      }
-    }
-    throw new Error(`Server not found: ${serverIdentifier}`);
-  }
 }
 
 import providerMcpService from './provider-mcp-service.js';
 import providerRestService from './provider-rest-service.js';
-import configProvider from '../utils/provider-repository.js';
+import configProvider from '../repository/provider-repository.js';
 
 // Export the class for dependency injection and a default instance for backward compatibility
 export { ProviderService };

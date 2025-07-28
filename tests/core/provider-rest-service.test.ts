@@ -1,6 +1,6 @@
 import { beforeEach, describe, it, expect, vi, type MockedFunction } from 'vitest';
 import { ProviderRESTService } from '../../src/core/provider-rest-service.js';
-import type { ProvidersConfigProviding } from '../../src/interface/provider-config-providing.js';
+import type { ProvidersConfigProviding } from '../../src/interface/providers-config-providing.js';
 import type { ProvidersConfig, RESTServer } from '../../src/model/providers.js';
 import type { AxiosResponse } from 'axios';
 import * as fetchHelper from '../../src/utils/fetch-helper.js';
@@ -408,31 +408,6 @@ describe('ProviderRESTService', () => {
 
       const canHandle = await providerRESTService.canHandleRequest('mcp_server.function');
       expect(canHandle).toBe(false);
-    });
-  });
-
-  describe('executeRESTTool', () => {
-    it('should execute REST tool directly', async () => {
-      const mockResponse = { success: true };
-      mockFetch.mockResolvedValue(createMockAxiosResponse(mockResponse));
-
-      const result = await providerRESTService.executeRESTTool('user_api', 'get_user', {
-        userId: '123',
-      });
-
-      expect(result).toEqual(mockResponse);
-    });
-
-    it('should throw error for non-existent server in direct execution', async () => {
-      await expect(
-        providerRESTService.executeRESTTool('non_existent', 'function', {})
-      ).rejects.toThrow('REST server not found: non_existent');
-    });
-
-    it('should throw error for non-existent endpoint in direct execution', async () => {
-      await expect(
-        providerRESTService.executeRESTTool('user_api', 'non_existent', {})
-      ).rejects.toThrow('REST endpoint not found: non_existent in server user_api');
     });
   });
 

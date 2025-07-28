@@ -8,6 +8,11 @@ export class Cache<T> {
   private defaultTtl: number;
   private enabled: boolean;
 
+  /**
+   * Creates a new cache instance
+   * @param defaultTtl - Default time to live in milliseconds (default: 300000ms = 5 minutes)
+   * @param enabled - Whether caching is enabled by default (default: true)
+   */
   constructor(defaultTtl: number = 300000, enabled: boolean = true) {
     this.defaultTtl = defaultTtl;
     this.enabled = enabled;
@@ -42,6 +47,7 @@ export class Cache<T> {
    * Set an item in cache
    * @param key - The cache key
    * @param value - The value to cache
+   * @returns void
    */
   set(key: string, value: T): void {
     if (!this.enabled) {
@@ -57,6 +63,7 @@ export class Cache<T> {
   /**
    * Delete an item from cache
    * @param key - The cache key
+   * @returns true if the item was deleted, false if it didn't exist
    */
   delete(key: string): boolean {
     return this.cache.delete(key);
@@ -64,6 +71,7 @@ export class Cache<T> {
 
   /**
    * Clear all items from cache
+   * @returns void
    */
   clear(): void {
     this.cache.clear();
@@ -72,6 +80,7 @@ export class Cache<T> {
   /**
    * Check if an item exists in cache (regardless of expiration)
    * @param key - The cache key
+   * @returns true if the key exists in cache, false otherwise
    */
   has(key: string): boolean {
     return this.cache.has(key);
@@ -79,6 +88,7 @@ export class Cache<T> {
 
   /**
    * Get cache size
+   * @returns The number of items currently in the cache
    */
   size(): number {
     return this.cache.size;
@@ -86,6 +96,7 @@ export class Cache<T> {
 
   /**
    * Get all cache keys
+   * @returns An array of all cache keys currently stored
    */
   keys(): string[] {
     return Array.from(this.cache.keys());
@@ -94,6 +105,7 @@ export class Cache<T> {
   /**
    * Enable or disable caching
    * @param enabled - Whether caching should be enabled
+   * @returns void
    */
   setEnabled(enabled: boolean): void {
     this.enabled = enabled;
@@ -104,6 +116,7 @@ export class Cache<T> {
 
   /**
    * Check if caching is enabled
+   * @returns true if caching is enabled, false otherwise
    */
   isEnabled(): boolean {
     return this.enabled;
@@ -112,6 +125,7 @@ export class Cache<T> {
   /**
    * Set default TTL
    * @param ttl - Time to live in milliseconds
+   * @returns void
    */
   setDefaultTtl(ttl: number): void {
     this.defaultTtl = ttl;
@@ -119,6 +133,7 @@ export class Cache<T> {
 
   /**
    * Get default TTL
+   * @returns The default time to live in milliseconds
    */
   getDefaultTtl(): number {
     return this.defaultTtl;

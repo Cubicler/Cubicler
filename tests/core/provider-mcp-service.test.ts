@@ -259,67 +259,6 @@ describe('ProviderMCPService', () => {
     });
   });
 
-  describe('getToolsFromServer', () => {
-    it('should convert MCP tools to ToolDefinition format', async () => {
-      const mockMCPTools = [
-        {
-          name: 'get_weather',
-          description: 'Get current weather for a location',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              city: { type: 'string' },
-              country: { type: 'string' },
-            },
-          },
-        },
-        {
-          name: 'get_forecast',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              location: { type: 'string' },
-            },
-          },
-        },
-      ];
-
-      mockFetch.mockResolvedValue(
-        createMockAxiosResponse({
-          jsonrpc: '2.0',
-          id: 'tools-request',
-          result: { tools: mockMCPTools },
-        })
-      );
-
-      const tools = await providerMCPService.getToolsFromServer('weather_service');
-
-      expect(tools).toEqual([
-        {
-          name: 'weather_service.get_weather',
-          description: 'Get current weather for a location',
-          parameters: {
-            type: 'object',
-            properties: {
-              city: { type: 'string' },
-              country: { type: 'string' },
-            },
-          },
-        },
-        {
-          name: 'weather_service.get_forecast',
-          description: 'MCP tool: get_forecast',
-          parameters: {
-            type: 'object',
-            properties: {
-              location: { type: 'string' },
-            },
-          },
-        },
-      ]);
-    });
-  });
-
   describe('getAllMCPTools', () => {
     it('should fetch tools from all MCP servers', async () => {
       // Mock tools for weather service
@@ -655,7 +594,7 @@ describe('ProviderMCPService', () => {
         })
       );
 
-      const tools = await providerMCPService.getToolsFromServer('weather_service');
+      const tools = await providerMCPService.getAllMCPTools();
 
       expect(tools[0]).toEqual({
         name: 'weather_service.simple_tool',

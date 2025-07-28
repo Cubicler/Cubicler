@@ -11,8 +11,8 @@ class MCPService {
   private providers: MCPCompatible[];
 
   /**
-   * Constructor with dependency injection
-   * @param providers Array of MCPCompatible services
+   * Creates a new MCPService instance
+   * @param providers - Array of MCPCompatible services
    */
   constructor(providers: MCPCompatible[] = []) {
     this.providers = providers;
@@ -21,6 +21,8 @@ class MCPService {
 
   /**
    * Initialize all injected providers
+   * @returns Promise that resolves when all providers are initialized
+   * @throws Error if any provider fails to initialize
    */
   async initialize(): Promise<void> {
     console.log('🔄 [MCPService] Initializing all providers...');
@@ -38,6 +40,8 @@ class MCPService {
 
   /**
    * Handle MCP request (main entry point for /mcp endpoint)
+   * @param request - MCP request object with method and parameters
+   * @returns MCP response object with result or error
    */
   async handleMCPRequest(request: MCPRequest): Promise<MCPResponse> {
     console.log(`📡 [MCPService] Handling MCP request: ${request.method}`);
@@ -144,42 +148,6 @@ class MCPService {
           message: `Failed to list tools: ${error instanceof Error ? error.message : 'Unknown error'}`,
         },
       };
-    }
-  }
-
-  /**
-   * Get tools from a specific server identifier
-   * This method is used by ProviderService for cubicler.fetch_server_tools
-   */
-  async getServerTools(serverIdentifier: string): Promise<ToolDefinition[]> {
-    console.log(`🔧 [MCPService] Getting tools for server: ${serverIdentifier}`);
-
-    try {
-      // Try each provider to see if it can handle this server
-      for (const provider of this.providers) {
-        if (provider.identifier !== serverIdentifier) continue;
-        try {
-          const tools = await provider.toolsList();
-          if (tools.length > 0) {
-            console.log(
-              `✅ [MCPService] Found ${tools.length} tools for server ${serverIdentifier}`
-            );
-            return tools;
-          }
-        } catch {
-          console.warn(
-            `⚠️ [MCPService] Provider ${provider.identifier} does not handle server ${serverIdentifier}`
-          );
-          // Provider doesn't handle this server, try next one
-          continue;
-        }
-      }
-
-      // No provider found for this server
-      throw new Error(`Server not found: ${serverIdentifier}`);
-    } catch (error) {
-      console.error(`❌ [MCPService] Failed to get tools for server ${serverIdentifier}:`, error);
-      throw error;
     }
   }
 

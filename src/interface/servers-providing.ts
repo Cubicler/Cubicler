@@ -1,5 +1,5 @@
 /**
- * Interface for services that provide server listing and tools
+ * Interface for services that provide server listing
  */
 
 export interface ServersProviding {
@@ -7,11 +7,4 @@ export interface ServersProviding {
    * Get all available servers (both MCP and REST)
    */
   getAvailableServers(): Promise<import('../model/tools.js').AvailableServersResponse>;
-
-  /**
-   * Get tools from a specific server
-   */
-  getServerTools(
-    _serverIdentifier: string
-  ): Promise<import('../model/tools.js').ServerToolsResponse>;
 }

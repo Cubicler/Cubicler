@@ -253,37 +253,4 @@ describe('Agent Service', () => {
       expect(result).toBe('You are specialized.');
     });
   });
-
-  describe('clearCache', () => {
-    it('should clear the agents cache', async () => {
-      process.env.CUBICLER_AGENTS_LIST = './test-agents.json';
-      mockFs.readFileSync.mockReturnValue(
-        JSON.stringify({
-          agents: [
-            {
-              identifier: 'test_agent',
-              name: 'Test',
-              transport: 'http',
-              url: 'http://localhost:3000',
-            },
-          ],
-        })
-      );
-
-      const { default: agentService } = await import('../../src/core/agent-service.js');
-
-      // Load agents to populate cache
-      await agentService.getAllAgents();
-      expect(mockFs.readFileSync).toHaveBeenCalledTimes(1);
-
-      // Load again, should use cache (no additional fs call)
-      await agentService.getAllAgents();
-      expect(mockFs.readFileSync).toHaveBeenCalledTimes(1);
-
-      // Clear cache and load again
-      agentService.clearCache();
-      await agentService.getAllAgents();
-      expect(mockFs.readFileSync).toHaveBeenCalledTimes(2);
-    });
-  });
 });

@@ -19,7 +19,7 @@ export { default as internalFunctionsService } from './core/internal-tools-servi
 
 // Export utilities and protocols
 export { Cache, createEnvCache } from './utils/cache.js';
-export { default as providersRepository } from './utils/provider-repository.js';
+export { default as providersRepository } from './repository/provider-repository.js';
 export * from './utils/env-helper.js';
 export * from './utils/fetch-helper.js';
 export * from './utils/parameter-helper.js';

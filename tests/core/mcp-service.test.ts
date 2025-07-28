@@ -436,67 +436,6 @@ describe('MCP Service', () => {
     });
   });
 
-  describe('getServerTools', () => {
-    let service: any;
-
-    beforeEach(() => {
-      service = new MCPService([mockProvider1, mockProvider2, mockProvider3]);
-    });
-
-    it('should return tools for existing server', async () => {
-      const tools = await service.getServerTools('weather_service');
-
-      expect(tools).toEqual(sampleTools1);
-      expect(mockProvider1.toolsList).toHaveBeenCalledOnce();
-    });
-
-    it('should return tools for internal service', async () => {
-      const tools = await service.getServerTools('cubicler');
-
-      expect(tools).toEqual(sampleInternalTools);
-      expect(mockProvider3.toolsList).toHaveBeenCalledOnce();
-    });
-
-    it('should throw error for non-existent server', async () => {
-      await expect(service.getServerTools('non_existent_service')).rejects.toThrow(
-        'Server not found: non_existent_service'
-      );
-    });
-
-    it('should handle provider error gracefully and continue searching', async () => {
-      // When a provider matches identifier but fails to get tools,
-      // the service should continue looking through other providers
-      // and eventually throw "Server not found" if no provider can handle it
-      (mockProvider1.toolsList as MockedFunction<any>).mockRejectedValue(
-        new Error('Provider error')
-      );
-
-      await expect(service.getServerTools('weather_service')).rejects.toThrow(
-        'Server not found: weather_service'
-      );
-
-      // Verify that it tried the failing provider
-      expect(mockProvider1.toolsList).toHaveBeenCalledOnce();
-    });
-
-    it('should skip providers that do not match identifier', async () => {
-      const tools = await service.getServerTools('calendar_service');
-
-      expect(tools).toEqual(sampleTools2);
-      expect(mockProvider1.toolsList).not.toHaveBeenCalled();
-      expect(mockProvider2.toolsList).toHaveBeenCalledOnce();
-    });
-
-    it('should handle provider with empty tools list', async () => {
-      const emptyProvider = createMockProvider('empty_service', []);
-      const serviceWithEmpty = new MCPService([emptyProvider]);
-
-      await expect(serviceWithEmpty.getServerTools('empty_service')).rejects.toThrow(
-        'Server not found: empty_service'
-      );
-    });
-  });
-
   describe('integration with actual providers', () => {
     it('should work with default export from mcp-service.js', async () => {
       // This tests the actual default export which includes the real providers
@@ -505,7 +444,7 @@ describe('MCP Service', () => {
 
       expect(actualService).toBeDefined();
       expect(typeof actualService.handleMCPRequest).toBe('function');
-      expect(typeof actualService.getServerTools).toBe('function');
+      expect(typeof actualService.initialize).toBe('function');
     });
   });
 });

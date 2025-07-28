@@ -28,9 +28,4 @@ export interface AgentsProviding {
    * Get all agents with basic information
    */
   getAllAgents(): Promise<AgentInfo[]>;
-
-  /**
-   * Clear the agents cache
-   */
-  clearCache(): void;
 }

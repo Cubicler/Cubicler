@@ -93,7 +93,7 @@ describe('ProviderRepository', () => {
 
     // Clear modules and reimport to get fresh instance
     vi.resetModules();
-    const module = await import('../../src/utils/provider-repository.js');
+    const module = await import('../../src/repository/provider-repository.js');
     ProviderRepository = module.default;
   });
 
@@ -274,7 +274,7 @@ describe('ProviderRepository', () => {
   describe('singleton behavior', () => {
     it('should return the same instance when imported multiple times', async () => {
       // Import again to verify singleton behavior
-      const module2 = await import('../../src/utils/provider-repository.js');
+      const module2 = await import('../../src/repository/provider-repository.js');
       const ProviderRepository2 = module2.default;
 
       expect(ProviderRepository).toBe(ProviderRepository2);

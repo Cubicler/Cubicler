@@ -2,8 +2,7 @@ import { config } from 'dotenv';
 import type { Agent, AgentInfo, AgentsConfig } from '../model/agents.js';
 import type { AgentsProviding } from '../interface/agents-providing.js';
 import type { ServersProviding } from '../interface/servers-providing.js';
-import { Cache, createEnvCache } from '../utils/cache.js';
-import { loadConfigFromSource, validateAgentsConfig } from '../utils/config-helper.js';
+import type { AgentsConfigProviding } from '../interface/agents-config-providing.js';
 import { loadPrompt } from '../utils/prompt-helper.js';
 
 config();
@@ -13,10 +12,15 @@ config();
  * Handles agent configuration with base/default/agent-specific prompt composition
  */
 export class AgentService implements AgentsProviding {
-  // Cache for agents configuration
-  private agentsCache: Cache<AgentsConfig> = createEnvCache('AGENTS', 600); // 10 minutes default
-
-  constructor(private serversProvider: ServersProviding) {}
+  /**
+   * Creates a new AgentService instance
+   * @param serversProvider - Provider service for accessing server information
+   * @param agentsConfigProvider - Repository for accessing agents configuration
+   */
+  constructor(
+    private serversProvider: ServersProviding,
+    private agentsConfigProvider: AgentsConfigProviding
+  ) {}
 
   /**
    * Compose prompt for a specific agent
@@ -27,9 +31,11 @@ export class AgentService implements AgentsProviding {
    * 1. If agent has specific prompt: basePrompt + agent.prompt
    * 2. If no agent-specific prompt: basePrompt + defaultPrompt
    * 3. If no basePrompt: use defaultPrompt or agent.prompt alone
+   * @param agentIdentifier - Optional agent identifier. If not provided, uses default agent
+   * @returns The composed prompt string for the agent
    */
   async getAgentPrompt(agentIdentifier?: string): Promise<string> {
-    const config = await this.loadAgents();
+    const config = await this.agentsConfigProvider.getAgentsConfig();;
 
     let agent: Agent;
     if (agentIdentifier) {
@@ -71,6 +77,8 @@ export class AgentService implements AgentsProviding {
 
   /**
    * Get agent information for dispatch (without sensitive details)
+   * @param agentIdentifier - Optional agent identifier. If not provided, uses default agent
+   * @returns Agent information object with identifier, name, and description
    */
   async getAgentInfo(agentIdentifier?: string): Promise<AgentInfo> {
     const agent = agentIdentifier
@@ -86,9 +94,10 @@ export class AgentService implements AgentsProviding {
 
   /**
    * Get all agents with basic information
+   * @returns Array of agent information objects
    */
   async getAllAgents(): Promise<AgentInfo[]> {
-    const config = await this.loadAgents();
+    const config = await this.agentsConfigProvider.getAgentsConfig();;
 
     return config.agents.map((agent) => ({
       identifier: agent.identifier,
@@ -99,6 +108,8 @@ export class AgentService implements AgentsProviding {
 
   /**
    * Check if an agent exists
+   * @param agentIdentifier - The agent identifier to check
+   * @returns true if the agent exists, false otherwise
    */
   async hasAgent(agentIdentifier: string): Promise<boolean> {
     try {
@@ -111,19 +122,14 @@ export class AgentService implements AgentsProviding {
 
   /**
    * Get agent URL for communication
+   * @param agentIdentifier - Optional agent identifier. If not provided, uses default agent
+   * @returns The URL endpoint for the agent
    */
   async getAgentUrl(agentIdentifier?: string): Promise<string> {
     const agent = agentIdentifier
       ? await this.getAgent(agentIdentifier)
       : await this.getDefaultAgent();
     return agent.url;
-  }
-
-  /**
-   * Clear the agents cache
-   */
-  clearCache(): void {
-    this.agentsCache.clear();
   }
 
   /**
@@ -170,35 +176,10 @@ export class AgentService implements AgentsProviding {
   }
 
   /**
-   * Load agents configuration from source (file or URL)
-   */
-  private async loadAgents(): Promise<AgentsConfig> {
-    const cached = this.agentsCache.get('config');
-    if (cached) {
-      return cached;
-    }
-
-    const config = await loadConfigFromSource<AgentsConfig>(
-      'CUBICLER_AGENTS_LIST',
-      'agents configuration'
-    );
-
-    // Validate configuration structure
-    validateAgentsConfig(config);
-
-    // Cache the result
-    this.agentsCache.set('config', config);
-
-    console.log(`✅ [AgentService] Loaded ${config.agents.length} agents`);
-
-    return config;
-  }
-
-  /**
    * Get a specific agent by identifier
    */
   private async getAgent(agentIdentifier: string): Promise<Agent> {
-    const config = await this.loadAgents();
+    const config = await this.agentsConfigProvider.getAgentsConfig();;
     const agent = config.agents.find((a) => a.identifier === agentIdentifier);
 
     if (!agent) {
@@ -212,7 +193,7 @@ export class AgentService implements AgentsProviding {
    * Get the first available agent (default agent)
    */
   private async getDefaultAgent(): Promise<Agent> {
-    const config = await this.loadAgents();
+    const config = await this.agentsConfigProvider.getAgentsConfig();;
 
     if (config.agents.length === 0) {
       throw new Error('No agents available');
@@ -227,6 +208,9 @@ export class AgentService implements AgentsProviding {
   }
 }
 
-// Export singleton instance with provider service injected
+// Export singleton instance with provider service and agent repository injected
 import providerService from './provider-service.js';
-export default new AgentService(providerService);
+import agentRepository from '../repository/agent-repository.js';
+
+// Export default instance for backward compatibility
+export default new AgentService(providerService, agentRepository);

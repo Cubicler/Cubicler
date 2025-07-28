@@ -1,8 +1,8 @@
 import type { JSONObject, JSONValue, MCPRequest, MCPResponse } from '../model/types.js';
 import type { MCPTool, ToolDefinition } from '../model/tools.js';
 import { fetchWithDefaultTimeout } from '../utils/fetch-helper.js';
-import type { ProvidersConfigProviding } from '../interface/provider-config-providing.js';
-import providersRepository from '../utils/provider-repository.js';
+import type { ProvidersConfigProviding } from '../interface/providers-config-providing.js';
+import providersRepository from '../repository/provider-repository.js';
 import { MCPCompatible } from '../interface/mcp-compatible.js';
 
 /**
@@ -13,12 +13,17 @@ class ProviderMCPService implements MCPCompatible {
   readonly identifier = 'provider-mcp';
   private readonly providerConfig: ProvidersConfigProviding;
 
+  /**
+   * Creates a new ProviderMCPService instance
+   * @param providerConfig - Provider configuration service for accessing MCP server configurations
+   */
   constructor(providerConfig: ProvidersConfigProviding = providersRepository) {
     this.providerConfig = providerConfig;
   }
 
   /**
    * Initialize the MCP provider service
+   * @returns Promise that resolves when all MCP servers are initialized
    */
   async initialize(): Promise<void> {
     console.log('🔄 [ProviderMCPService] Initializing MCP provider service...');
@@ -42,6 +47,7 @@ class ProviderMCPService implements MCPCompatible {
 
   /**
    * Get list of tools this service provides (MCPCompatible)
+   * @returns Array of tool definitions from all MCP servers
    */
   async toolsList(): Promise<ToolDefinition[]> {
     return await this.getAllMCPTools();
@@ -49,6 +55,8 @@ class ProviderMCPService implements MCPCompatible {
 
   /**
    * Check if this service can handle the given tool name
+   * @param toolName - Name of the tool to check (format: server.function)
+   * @returns true if this service can handle the tool, false otherwise
    */
   async canHandleRequest(toolName: string): Promise<boolean> {
     const parts = toolName.split('.');
@@ -62,6 +70,10 @@ class ProviderMCPService implements MCPCompatible {
 
   /**
    * Execute a tool call (MCPCompatible)
+   * @param toolName - Name of the tool to execute (format: server.function)
+   * @param parameters - Parameters to pass to the tool
+   * @returns Result of the tool execution
+   * @throws Error if tool execution fails
    */
   async toolsCall(toolName: string, parameters: JSONObject): Promise<JSONValue> {
     return await this.executeToolByName(toolName, parameters);
@@ -70,7 +82,7 @@ class ProviderMCPService implements MCPCompatible {
   /**
    * Get all tools from all MCP servers only
    */
-  async getAllMCPTools(): Promise<ToolDefinition[]> {
+  private async getAllMCPTools(): Promise<ToolDefinition[]> {
     const config = await this.providerConfig.getProvidersConfig();
     const mcpServers = config.mcpServers || [];
     const allMCPTools: ToolDefinition[] = [];
@@ -104,21 +116,9 @@ class ProviderMCPService implements MCPCompatible {
   }
 
   /**
-   * Get tools from a specific MCP server (by server identifier)
-   */
-  async getToolsFromServer(serverIdentifier: string): Promise<ToolDefinition[]> {
-    const mcpTools = await this.getMCPTools(serverIdentifier);
-    return mcpTools.map((tool) => ({
-      name: `${serverIdentifier}.${tool.name}`,
-      description: tool.description || `MCP tool: ${tool.name}`,
-      parameters: tool.inputSchema || { type: 'object', properties: {} },
-    }));
-  }
-
-  /**
    * Execute a tool by parsing the full function name {serverIdentifier}.{functionName}
    */
-  async executeToolByName(fullFunctionName: string, parameters: JSONObject): Promise<JSONValue> {
+  private async executeToolByName(fullFunctionName: string, parameters: JSONObject): Promise<JSONValue> {
     console.log(`⚙️ [ProviderMCPService] Executing MCP tool: ${fullFunctionName}`);
 
     // Parse the function name
@@ -145,7 +145,7 @@ class ProviderMCPService implements MCPCompatible {
   /**
    * Send an MCP request to a specific server
    */
-  async sendMCPRequest(serverIdentifier: string, request: MCPRequest): Promise<MCPResponse> {
+  private async sendMCPRequest(serverIdentifier: string, request: MCPRequest): Promise<MCPResponse> {
     console.log(
       `📡 [ProviderMCPService] Sending MCP request to ${serverIdentifier}:`,
       request.method
@@ -196,7 +196,7 @@ class ProviderMCPService implements MCPCompatible {
    * Get tools from an MCP server
    * Implements the MCP tools/list method
    */
-  async getMCPTools(serverIdentifier: string): Promise<MCPTool[]> {
+  private async getMCPTools(serverIdentifier: string): Promise<MCPTool[]> {
     const request: MCPRequest = {
       jsonrpc: '2.0',
       id: 'tools-request',
@@ -222,7 +222,7 @@ class ProviderMCPService implements MCPCompatible {
   /**
    * Execute an MCP tool/function
    */
-  async executeMCPTool(
+  private async executeMCPTool(
     serverIdentifier: string,
     toolName: string,
     parameters: JSONObject
@@ -249,7 +249,7 @@ class ProviderMCPService implements MCPCompatible {
   /**
    * Initialize connection to an MCP server
    */
-  async initializeMCPServer(serverIdentifier: string): Promise<void> {
+  private async initializeMCPServer(serverIdentifier: string): Promise<void> {
     console.log(`🔄 [ProviderMCPService] Initializing MCP server: ${serverIdentifier}`);
 
     const request: MCPRequest = {
@@ -280,7 +280,7 @@ class ProviderMCPService implements MCPCompatible {
   /**
    * Check if a server is an MCP server
    */
-  async isMCPServer(serverIdentifier: string): Promise<boolean> {
+  private async isMCPServer(serverIdentifier: string): Promise<boolean> {
     const config = await this.providerConfig.getProvidersConfig();
     const mcpServer = config.mcpServers?.find((s) => s.identifier === serverIdentifier);
     return mcpServer !== undefined;

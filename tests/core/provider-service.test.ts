@@ -133,48 +133,4 @@ describe('Provider Service', () => {
       expect(result.servers[0].toolsCount).toBe(3);
     });
   });
-
-  describe('getServerTools', () => {
-    it('should get tools from MCP server', async () => {
-      const mockTools = [
-        { name: 'weather_service.get_weather', description: 'Get weather data' },
-        { name: 'weather_service.get_forecast', description: 'Get weather forecast' },
-      ];
-
-      mockMcpToolsProvider.toolsList.mockResolvedValue(mockTools);
-
-      const result = await providerService.getServerTools('weather_service');
-
-      expect(result.tools).toEqual(mockTools);
-      expect(mockMcpToolsProvider.toolsList).toHaveBeenCalledTimes(1);
-    });
-
-    it('should get tools from REST server', async () => {
-      const mockTools = [
-        { name: 'user_api.get_user', description: 'Get user by ID' },
-        { name: 'user_api.create_user', description: 'Create new user' },
-      ];
-
-      mockRestToolsProvider.toolsList.mockResolvedValue(mockTools);
-
-      const result = await providerService.getServerTools('user_api');
-
-      expect(result.tools).toEqual(mockTools);
-      expect(mockRestToolsProvider.toolsList).toHaveBeenCalledTimes(1);
-    });
-
-    it('should throw error for non-existent server', async () => {
-      await expect(providerService.getServerTools('non_existent')).rejects.toThrow(
-        'Server not found: non_existent'
-      );
-    });
-
-    it('should propagate error from tools provider', async () => {
-      mockMcpToolsProvider.toolsList.mockRejectedValue(new Error('MCP server unreachable'));
-
-      await expect(providerService.getServerTools('weather_service')).rejects.toThrow(
-        'MCP server unreachable'
-      );
-    });
-  });
 });

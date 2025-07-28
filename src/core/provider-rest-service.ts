@@ -1,8 +1,8 @@
 import type { JSONObject, JSONValue } from '../model/types.js';
 import { fetchWithDefaultTimeout } from '../utils/fetch-helper.js';
 import { convertToQueryParams, replacePathParameters } from '../utils/parameter-helper.js';
-import type { ProvidersConfigProviding } from '../interface/provider-config-providing.js';
-import providersRepository from '../utils/provider-repository.js';
+import type { ProvidersConfigProviding } from '../interface/providers-config-providing.js';
+import providersRepository from '../repository/provider-repository.js';
 import { MCPCompatible } from '../interface/mcp-compatible.js';
 import { ToolDefinition } from '../model/tools.js';
 
@@ -14,12 +14,17 @@ class ProviderRESTService implements MCPCompatible {
   readonly identifier = 'provider-rest';
   private readonly configProvider: ProvidersConfigProviding;
 
+  /**
+   * Creates a new ProviderRESTService instance
+   * @param configProvider - Provider configuration service for accessing REST server configurations
+   */
   constructor(configProvider: ProvidersConfigProviding) {
     this.configProvider = configProvider;
   }
 
   /**
    * Initialize the REST provider service
+   * @returns Promise that resolves when initialization is complete
    */
   async initialize(): Promise<void> {
     console.log('🔄 [ProviderRESTService] Initializing REST provider service...');
@@ -29,6 +34,7 @@ class ProviderRESTService implements MCPCompatible {
 
   /**
    * Get list of tools this service provides (MCPCompatible)
+   * @returns Array of tool definitions from all REST servers
    */
   async toolsList(): Promise<ToolDefinition[]> {
     // Return all tools from all REST servers
@@ -54,6 +60,10 @@ class ProviderRESTService implements MCPCompatible {
 
   /**
    * Execute a tool call (MCPCompatible)
+   * @param toolName - Name of the tool to execute (format: server.tool)
+   * @param parameters - Parameters to pass to the tool
+   * @returns Result of the tool execution
+   * @throws Error if tool name format is invalid or execution fails
    */
   async toolsCall(toolName: string, parameters: JSONObject): Promise<JSONValue> {
     const parts = toolName.split('.');
@@ -71,6 +81,8 @@ class ProviderRESTService implements MCPCompatible {
 
   /**
    * Check if this service can handle the given tool name
+   * @param toolName - Name of the tool to check (format: server.tool)
+   * @returns true if this service can handle the tool, false otherwise
    */
   async canHandleRequest(toolName: string): Promise<boolean> {
     const parts = toolName.split('.');
@@ -144,7 +156,7 @@ class ProviderRESTService implements MCPCompatible {
   /**
    * Execute a REST tool/function
    */
-  async executeRESTTool(
+  private async executeRESTTool(
     serverIdentifier: string,
     functionName: string,
     parameters: Record<string, JSONValue>

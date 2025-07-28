@@ -11,12 +11,17 @@ class InternalToolsService implements MCPCompatible {
   readonly identifier = 'cubicler';
   private toolsProviders: ToolsListProviding[] = [];
 
+  /**
+   * Creates a new InternalToolsService instance
+   * @param toolsProviders - Array of tools list providers to aggregate tools from
+   */
   constructor(toolsProviders: ToolsListProviding[] = []) {
     this.toolsProviders = toolsProviders;
   }
 
   /**
    * Initialize the internal tools service
+   * @returns Promise that resolves when initialization is complete
    */
   async initialize(): Promise<void> {
     console.log('🔄 [InternalToolsService] Initializing internal tools service...');
@@ -26,6 +31,7 @@ class InternalToolsService implements MCPCompatible {
 
   /**
    * Get list of tools this service provides (MCPCompatible)
+   * @returns Array of tool definitions for internal Cubicler functions
    */
   async toolsList(): Promise<ToolDefinition[]> {
     return [
@@ -56,6 +62,10 @@ class InternalToolsService implements MCPCompatible {
 
   /**
    * Execute a tool call (MCPCompatible)
+   * @param toolName - Name of the tool to execute
+   * @param parameters - Parameters to pass to the tool
+   * @returns Result of the tool execution
+   * @throws Error if tool is unknown or execution fails
    */
   async toolsCall(toolName: string, parameters: JSONObject): Promise<JSONValue> {
     console.log(`⚙️ [InternalToolsService] Executing internal tool: ${toolName}`);
@@ -79,6 +89,8 @@ class InternalToolsService implements MCPCompatible {
 
   /**
    * Check if this service can handle the given tool name
+   * @param toolName - Name of the tool to check
+   * @returns true if this service can handle the tool, false otherwise
    */
   async canHandleRequest(toolName: string): Promise<boolean> {
     const availableTools = this.getToolsDefinitions();

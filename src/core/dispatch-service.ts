@@ -20,7 +20,7 @@ export class DispatchService {
   private serverProvider: ServersProviding;
 
   /**
-   * Constructor with dependency injection
+   * Creates a new DispatchService instance
    * @param toolsProvider - Tools list provider for Cubicler internal tools
    * @param agentProvider - Agent provider for agent operations
    * @param serverProvider - Servers list provider for server information
