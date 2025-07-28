@@ -33,6 +33,10 @@ RUN npm ci --only=production && npm cache clean --force
 # Copy built artifacts
 COPY --from=build /app/dist/ ./dist/
 
+# Copy example configuration files for demo purposes
+COPY providers.example.json ./
+COPY agents.example.json ./
+
 # Create a non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S cubicler -u 1001 && \
