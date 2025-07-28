@@ -1,8 +1,9 @@
 import { readFileSync } from 'fs';
 import { fetchWithDefaultTimeout } from './fetch-helper.js';
-import { getConfigLoadTimeout, getConfigurationSource, isValidUrl } from './env-helper.js';
+import { getConfigLoadTimeout, getConfigurationSource, isValidUrl, substituteEnvVarsInObject } from './env-helper.js';
 import type { ProvidersConfig } from '../model/providers.js';
 import type { AgentsConfig } from '../model/agents.js';
+import type { JSONObject } from '../model/types.js';
 
 /**
  * Configuration loading helper utilities
@@ -76,6 +77,13 @@ export async function loadConfigFromSource<T>(envVar: string, description: strin
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       throw new Error(`Failed to load ${description} from file "${source}": ${errorMessage}`);
     }
+  }
+
+  // Apply environment variable substitution to the loaded configuration
+  const configWithEnvVars = substituteEnvVarsInObject(config as JSONObject);
+  if (configWithEnvVars) {
+    console.log(`🔄 [ConfigHelper] Applied environment variable substitution to ${description}`);
+    return configWithEnvVars as T;
   }
 
   return config;

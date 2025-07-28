@@ -111,10 +111,24 @@ export function substituteEnvVarsInObject<T extends JSONObject>(obj: T | undefin
 
   const result: JSONObject = {};
   for (const [key, value] of Object.entries(obj)) {
-    const substituted = substituteEnvVars(value);
-    if (substituted !== undefined) {
-      // Keep null values but filter out undefined
-      result[key] = substituted;
+    if (value === null || value === undefined) {
+      result[key] = value;
+    } else if (Array.isArray(value)) {
+      // Recursively process arrays
+      result[key] = value.map((item) => {
+        if (item && typeof item === 'object' && !Array.isArray(item)) {
+          return substituteEnvVarsInObject(item as JSONObject);
+        }
+        const substituted = substituteEnvVars(item);
+        return substituted !== undefined ? substituted : item;
+      });
+    } else if (typeof value === 'object') {
+      // Recursively process nested objects
+      result[key] = substituteEnvVarsInObject(value as JSONObject);
+    } else {
+      // Process primitive values (strings, numbers, booleans)
+      const substituted = substituteEnvVars(value);
+      result[key] = substituted !== undefined ? substituted : value;
     }
   }
   return result as T;

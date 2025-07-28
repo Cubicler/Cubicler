@@ -11,8 +11,8 @@ FROM base AS development
 RUN npm ci
 COPY src/ ./src/
 # Copy example files for development/testing only
-COPY spec.example.yaml ./
-COPY prompt.example.md ./
+COPY providers.example.json ./
+COPY agents.example.json ./
 EXPOSE 1503
 # For development, build and start - better for TypeScript
 CMD ["sh", "-c", "npm run build && npm start"]

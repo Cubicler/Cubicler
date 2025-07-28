@@ -6,8 +6,9 @@ npm-debug.log
 coverage
 tests
 *.test.js
+*.test.ts
 vitest.config.ts
-.eslintrc.js
+eslint.config.js
 .prettierrc
 .github
 LICENSE
@@ -16,3 +17,8 @@ docker-compose*.yml
 Dockerfile
 .dockerignore
 DOCKER.md
+DOCKER_HUB.md
+CLIENT_INTEGRATION.md
+PROVIDER_INTEGRATION.md
+AGENT_INTEGRATION.md
+CUBICLER.2.0.md

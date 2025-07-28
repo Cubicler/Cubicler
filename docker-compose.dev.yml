@@ -17,17 +17,21 @@ services:
       - AGENT_CALL_TIMEOUT=${AGENT_CALL_TIMEOUT}
       
       # New orchestration architecture - using example files
-      - CUBICLER_PROMPTS_SOURCE=/app/prompts.example.md
-      - CUBICLER_AGENTS_LIST=/app/agents.example.yaml
-      - CUBICLER_PROVIDERS_LIST=/app/providers.example.yaml
+      - CUBICLER_PROVIDERS_LIST=/app/providers.example.json
+      - CUBICLER_AGENTS_LIST=/app/agents.example.json
+      
+      # Cache configuration
+      - PROVIDERS_CACHE_ENABLED=${PROVIDERS_CACHE_ENABLED:-true}
+      - PROVIDERS_CACHE_TIMEOUT=${PROVIDERS_CACHE_TIMEOUT:-600}
+      - AGENTS_CACHE_ENABLED=${AGENTS_CACHE_ENABLED:-true}
+      - AGENTS_CACHE_TIMEOUT=${AGENTS_CACHE_TIMEOUT:-600}
     volumes:
       # Mount source code for live development
       - ./src:/app/src:ro
       # Mount example configuration files
-      - ./prompts.example.md:/app/prompts.example.md:ro
-      - ./agents.example.yaml:/app/agents.example.yaml:ro
-      - ./providers.example.yaml:/app/providers.example.yaml:ro
+      - ./providers.example.json:/app/providers.example.json:ro
+      - ./agents.example.json:/app/agents.example.json:ro
       # Mount node_modules as a volume to avoid overwriting
       - /app/node_modules
-    command: ["sh", "-c", "npm run build && npm start"]
+    command: ["npm", "run", "dev:watch"]
     restart: unless-stopped

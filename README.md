@@ -124,7 +124,7 @@ CUBICLER_PORT=1503
 
 ### Agents Configuration (`agents.json`)
 
-This tells Cubicler which AI agents are available:
+This tells Cubicler which AI agents are available. You can use `{{env.VARIABLE_NAME}}` to substitute environment variables:
 
 ```json
 {
@@ -135,7 +135,7 @@ This tells Cubicler which AI agents are available:
       "identifier": "gpt_4o",
       "name": "GPT-4O Agent", 
       "transport": "http",
-      "url": "http://localhost:3000/agent",
+      "url": "{{env.GPT_AGENT_URL}}",
       "description": "Advanced reasoning and analysis",
       "prompt": "You specialize in complex problem solving."
     },
@@ -143,16 +143,18 @@ This tells Cubicler which AI agents are available:
       "identifier": "claude_3_5",
       "name": "Claude 3.5 Agent",
       "transport": "http", 
-      "url": "http://localhost:3001/agent",
+      "url": "{{env.CLAUDE_AGENT_URL}}",
       "description": "Creative and analytical tasks"
     }
   ]
 }
 ```
 
+> **💡 Environment Variables**: Use `{{env.VARIABLE_NAME}}` syntax in any string value to substitute environment variables. Perfect for keeping sensitive URLs and tokens secure!
+
 ### Providers Configuration (`providers.json`)
 
-This tells Cubicler which external services AI agents can use:
+This tells Cubicler which external services AI agents can use. You can use `{{env.VARIABLE_NAME}}` to substitute environment variables:
 
 ```json
 {
@@ -162,9 +164,9 @@ This tells Cubicler which external services AI agents can use:
       "name": "Weather Service",
       "description": "Get weather information",
       "transport": "http",
-      "url": "http://localhost:4000/mcp",
+      "url": "{{env.WEATHER_API_URL}}",
       "headers": {
-        "Authorization": "Bearer your-api-key"
+        "Authorization": "Bearer {{env.WEATHER_API_KEY}}"
       }
     }
   ],
@@ -173,9 +175,9 @@ This tells Cubicler which external services AI agents can use:
       "identifier": "user_api", 
       "name": "User API",
       "description": "Manage user information",
-      "url": "http://localhost:5000/api",
+      "url": "{{env.USER_API_BASE_URL}}",
       "defaultHeaders": {
-        "Authorization": "Bearer your-api-key"
+        "Authorization": "Bearer {{env.USER_API_TOKEN}}"
       },
       "endPoints": [
         {
@@ -190,6 +192,89 @@ This tells Cubicler which external services AI agents can use:
   ]
 }
 ```
+
+> **💡 Environment Variables**: Use `{{env.VARIABLE_NAME}}` syntax in any string value to substitute environment variables. For example, `{{env.API_KEY}}` will be replaced with the value of the `API_KEY` environment variable.
+
+### Environment Variable Substitution
+
+**🔄 New Feature!** Cubicler now supports environment variable substitution in both configuration files using the `{{env.VARIABLE_NAME}}` syntax.
+
+#### Using Environment Variables in Configuration
+
+Set your environment variables:
+```bash
+export API_TOKEN="sk-1234567890abcdef"
+export WEATHER_URL="https://api.weather.com" 
+export DATABASE_URL="postgresql://user:pass@localhost:5432/db"
+```
+
+Then use them in your configuration files:
+
+**agents.json with environment variables:**
+```json
+{
+  "basePrompt": "You are a helpful AI assistant.",
+  "agents": [
+    {
+      "identifier": "gpt_4o",
+      "name": "GPT-4O Agent", 
+      "transport": "http",
+      "url": "{{env.GPT_AGENT_URL}}",
+      "description": "Advanced reasoning with API key {{env.API_TOKEN}}"
+    }
+  ]
+}
+```
+
+**providers.json with environment variables:**
+```json
+{
+  "mcpServers": [
+    {
+      "identifier": "weather_service",
+      "name": "Weather Service",
+      "transport": "http",
+      "url": "{{env.WEATHER_URL}}/mcp",
+      "headers": {
+        "Authorization": "Bearer {{env.API_TOKEN}}",
+        "X-Database": "{{env.DATABASE_URL}}"
+      }
+    }
+  ],
+  "restServers": [
+    {
+      "identifier": "user_api",
+      "name": "User API", 
+      "url": "{{env.API_BASE_URL}}/api",
+      "defaultHeaders": {
+        "Authorization": "Bearer {{env.REST_API_TOKEN}}"
+      },
+      "endPoints": [
+        {
+          "name": "get_user",
+          "description": "Get user by ID from {{env.USER_SERVICE_NAME}}",
+          "path": "/users/{userId}",
+          "method": "GET"
+        }
+      ]
+    }
+  ]
+}
+```
+
+#### Benefits of Environment Variable Substitution
+
+- 🔒 **Security**: Keep sensitive API keys out of configuration files
+- 🌍 **Flexibility**: Use different values for development, staging, and production
+- 📦 **Docker-friendly**: Perfect for containerized deployments
+- 🔄 **Dynamic**: Change configurations without editing files
+
+#### How It Works
+
+1. Cubicler loads your configuration files
+2. Scans for `{{env.VARIABLE_NAME}}` patterns
+3. Replaces them with actual environment variable values
+4. If an environment variable is not set, the placeholder remains unchanged
 
 ---
 

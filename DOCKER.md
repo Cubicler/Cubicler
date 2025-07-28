@@ -14,7 +14,7 @@ Use the provided example files to test Cubicler quickly:
 npm run docker:example
 ```
 
-This runs Cubicler using `spec.example.yaml` and `prompt.example.md`.
+This runs Cubicler using `providers.example.json` and `agents.example.json`.
 
 ---
 
@@ -24,12 +24,13 @@ This runs Cubicler using `spec.example.yaml` and `prompt.example.md`.
 
 **Option A: Remote URLs (Recommended)**  
 
-- Host your spec and prompt files online (e.g. GitHub, S3)  
+- Host your providers and agents configuration files online (e.g. GitHub, S3)  
+- Configure using JSON format
 - No local file mounting required
 
 **Option B: Local Files**  
 
-- Keep files locally  
+- Keep configuration files locally  
 - Requires volume mounts in Docker
 
 ---
@@ -47,17 +48,17 @@ Update `.env`:
 **For Remote Files:**
 
 ```env
-CUBICLER_SPEC_SOURCE=https://your-domain.com/specs/agent.yaml
-CUBICLER_PROMPT_SOURCE=https://your-domain.com/prompts/agent.md
-API_KEY=your_secret_key
+CUBICLER_PROVIDERS_LIST=https://your-domain.com/config/providers.json
+CUBICLER_AGENTS_LIST=https://your-domain.com/config/agents.json
+CUBICLER_PORT=1503
 ```
 
 **For Local Files:**
 
 ```env
-CUBICLER_SPEC_SOURCE=/app/config/spec.yaml
-CUBICLER_PROMPT_SOURCE=/app/config/prompt.md
-API_KEY=your_secret_key
+CUBICLER_PROVIDERS_LIST=/app/config/providers.json
+CUBICLER_AGENTS_LIST=/app/config/agents.json
+CUBICLER_PORT=1503
 ```
 
 ---
@@ -68,8 +69,8 @@ In `docker-compose.yml`, uncomment and update:
 
 ```yaml
 volumes:
-  - ./your-spec.yaml:/app/config/spec.yaml:ro
-  - ./your-prompt.md:/app/config/prompt.md:ro
+  - ./your-providers.json:/app/config/providers.json:ro
+  - ./your-agents.json:/app/config/agents.json:ro
 ```
 
 ---
@@ -86,9 +87,23 @@ npm run docker:prod
 
 ```bash
 curl http://localhost:1503/health
-curl http://localhost:1503/spec
-curl http://localhost:1503/prompt
+curl http://localhost:1503/agents
+curl http://localhost:1503/mcp
 ```
+
+---
+
+## 📝 API Endpoints
+
+Cubicler 2.0 provides the following REST API endpoints:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Health check for all services |
+| `/agents` | GET | List all available agents |
+| `/mcp` | POST | MCP protocol endpoint for tool discovery and execution |
+| `/dispatch` | POST | Dispatch messages to default agent |
+| `/dispatch/:agentId` | POST | Dispatch messages to specific agent |
 
 ---
 
@@ -100,7 +115,7 @@ For local development with live reloading:
 npm run docker:dev
 ```
 
-This mounts source files and uses example prompt/spec files. It auto-restarts on file changes.
+This mounts source files and uses example providers/agents configuration files. It auto-restarts on file changes.
 
 ---
 
@@ -127,6 +142,15 @@ npm run docker:stop
 
 # View logs
 npm run docker:logs
+
+# Build and tag for Docker Hub
+npm run docker:build-hub
+
+# Push to Docker Hub
+npm run docker:push-hub
+
+# Build and publish to Docker Hub
+npm run docker:publish
 ```
 
 ---
@@ -150,8 +174,64 @@ npm run docker:logs
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `CUBICLER_PORT` | API server port | `1503` |
-| `CUBICLER_SPEC_SOURCE` | YAML function spec path or URL | `spec.example.yaml` |
-| `CUBICLER_PROMPT_SOURCE` | Prompt file path or URL | `prompt.example.md` |
+| `CUBICLER_PROVIDERS_LIST` | Providers JSON config path or URL | `providers.example.json` |
+| `CUBICLER_AGENTS_LIST` | Agents JSON config path or URL | `agents.example.json` |
+| `PROVIDERS_CACHE_ENABLED` | Enable providers config caching | `true` |
+| `PROVIDERS_CACHE_TIMEOUT` | Cache timeout in seconds | `600` |
+| `AGENTS_CACHE_ENABLED` | Enable agents config caching | `true` |
+| `AGENTS_CACHE_TIMEOUT` | Cache timeout in seconds | `600` |
+| `DEFAULT_CALL_TIMEOUT` | HTTP request timeout in ms | `30000` |
+
+---
+
+### Configuration File Formats
+
+**Providers Configuration (`providers.json`):**
+
+```json
+{
+  "mcpServers": [{
+    "identifier": "weather_service",
+    "name": "Weather Service",
+    "description": "Provides weather information via MCP",
+    "transport": "http",
+    "url": "http://localhost:4000/mcp",
+    "headers": { 
+      "Authorization": "Bearer your-api-key"
+    }
+  }],
+  "restServers": [{
+    "identifier": "legacy_api",
+    "name": "Legacy API",
+    "description": "Legacy REST API without MCP",
+    "url": "http://localhost:5000/api",
+    "defaultHeaders": { "Authorization": "Bearer your-api-key" },
+    "endPoints": [{
+      "name": "get_user_info",
+      "description": "Get user information by user ID",
+      "path": "/users/{userId}",
+      "method": "GET"
+    }]
+  }]
+}
+```
+
+**Agents Configuration (`agents.json`):**
+
+```json
+{
+  "basePrompt": "You are a helpful AI assistant powered by Cubicler.",
+  "defaultPrompt": "You have access to various tools and services.",
+  "agents": [{
+    "identifier": "gpt_4o",
+    "name": "My GPT-4O Agent", 
+    "transport": "http",
+    "url": "http://localhost:3000/agent",
+    "description": "Advanced GPT-4O agent for complex tasks",
+    "prompt": "You specialize in complex reasoning and analysis."
+  }]
+}
+```
 
 ---
 
@@ -160,12 +240,23 @@ npm run docker:logs
 | Local Path | Container Path |
 |------------|----------------|
 | `./src/` | `/app/src/` |
-| `./spec.example.yaml` | `/app/spec.example.yaml` |
-| `./prompt.example.md` | `/app/prompt.example.md` |
+| `./providers.example.json` | `/app/providers.example.json` |
+| `./agents.example.json` | `/app/agents.example.json` |
 
 ---
 
 ## 📦 Pushing to Docker Registry
+
+### Docker Hub (Official)
+
+```bash
+npm run docker:build-hub
+npm run docker:push-hub
+# or combined:
+npm run docker:publish
+```
+
+### Custom Registry
 
 ```bash
 docker build -t your-registry/cubicler:latest .
@@ -189,10 +280,10 @@ curl http://localhost:1503/health
 ```json
 {
   "status": "healthy",
-  "timestamp": "2025-07-19T07:45:02.388Z",
+  "timestamp": "2025-07-28T17:45:02.388Z",
   "services": {
-    "prompt": { "status": "healthy" },
-    "spec": { "status": "healthy" }
+    "providers": { "status": "healthy" },
+    "agents": { "status": "healthy" }
   }
 }
 ```
@@ -202,15 +293,15 @@ curl http://localhost:1503/health
 ```json
 {
   "status": "unhealthy",
-  "timestamp": "2025-07-19T07:45:02.388Z",
+  "timestamp": "2025-07-28T17:45:02.388Z",
   "services": {
-    "prompt": { "status": "unhealthy", "error": "ENOENT: no such file" },
-    "spec": { "status": "healthy" }
+    "providers": { "status": "unhealthy", "error": "ENOENT: no such file" },  
+    "agents": { "status": "healthy" }
   }
 }
 ```
 
-The health check verifies both prompt and spec services are working correctly.
+The health check verifies both providers and agents services are working correctly.
 
 ## 📝 Troubleshooting
 
@@ -220,7 +311,7 @@ The health check verifies both prompt and spec services are working correctly.
 
 - Run `npm run docker:logs`
 - Confirm `.env` values are correct
-- Check accessibility of prompt/spec sources
+- Check accessibility of providers/agents configuration sources
 
 ### Port Conflicts
 

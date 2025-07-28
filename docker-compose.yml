@@ -14,28 +14,30 @@ services:
       
       # New orchestration architecture
       # Option 1: Use URLs (recommended for production)
-      # - CUBICLER_PROMPTS_SOURCE=https://your-domain.com/prompts
-      # - CUBICLER_AGENTS_LIST=https://your-domain.com/agents.yaml
-      # - CUBICLER_PROVIDERS_LIST=https://your-domain.com/providers.yaml
+      # - CUBICLER_PROVIDERS_LIST=https://your-domain.com/providers.json
+      # - CUBICLER_AGENTS_LIST=https://your-domain.com/agents.json
       
       # Option 2: Use local files (mount them as volumes below)
-      - CUBICLER_PROMPTS_SOURCE=/app/config
-      - CUBICLER_AGENTS_LIST=/app/config/agents.yaml
-      - CUBICLER_PROVIDERS_LIST=/app/config/providers.yaml
+      - CUBICLER_PROVIDERS_LIST=/app/config/providers.json
+      - CUBICLER_AGENTS_LIST=/app/config/agents.json
+      
+      # Cache configuration
+      - PROVIDERS_CACHE_ENABLED=${PROVIDERS_CACHE_ENABLED:-true}
+      - PROVIDERS_CACHE_TIMEOUT=${PROVIDERS_CACHE_TIMEOUT:-600}
+      - AGENTS_CACHE_ENABLED=${AGENTS_CACHE_ENABLED:-true}
+      - AGENTS_CACHE_TIMEOUT=${AGENTS_CACHE_TIMEOUT:-600}
       
       # Add your API keys and other service configurations
       # - API_KEY=${API_KEY}
     volumes:
       # Mount your own configuration files when using local file paths
       # Uncomment and modify these lines to point to your actual files:
-      # - ./your-prompts:/app/config:ro
-      # - ./your-agents.yaml:/app/config/agents.yaml:ro
-      # - ./your-providers.yaml:/app/config/providers.yaml:ro
+      # - ./your-providers.json:/app/config/providers.json:ro
+      # - ./your-agents.json:/app/config/agents.json:ro
       
       # For testing with example files:
-      - ./prompts.example.md:/app/config/prompts.md:ro
-      - ./agents.example.yaml:/app/config/agents.yaml:ro
-      - ./providers.example.yaml:/app/config/providers.yaml:ro
+      - ./providers.example.json:/app/config/providers.json:ro
+      - ./agents.example.json:/app/config/agents.json:ro
       
       # Mount logs directory if needed
       - cubicler_logs:/app/logs

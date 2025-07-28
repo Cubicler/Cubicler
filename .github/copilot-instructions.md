@@ -362,6 +362,7 @@ The system routes tool calls by parsing the prefix and delegating to the appropr
 - **ES modules** with `.js` extensions in imports (required for Node.js ES modules)
 - **Interface segregation** - small, focused interfaces over large ones
 - **Dependency injection** pattern for testability and modularity
+- **Documentation** - All public methods must have JSDoc documentation explaining purpose, parameters, return values, and usage examples where helpful
 
 ### Testing Approach
 - **Vitest** for testing framework with Node.js environment
