@@ -46,7 +46,7 @@ Your App: Gets back "It's 28°C and partly cloudy!"
 
 Cubicler connects four types of components:
 
-![Cubicler Architecture](cubicler_arch.jpeg)
+![Cubicler Architecture](cubicler_arch.jpg)
 
 1. **Your app** sends a request to Cubicler
 2. **Cubicler** routes it to the appropriate AI agent
