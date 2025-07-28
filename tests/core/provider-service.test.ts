@@ -12,52 +12,55 @@ describe('Provider Service', () => {
 
     // Mock config provider
     mockConfigProvider = {
-      getProvidersConfig: vi.fn()
+      getProvidersConfig: vi.fn(),
     };
 
     // Mock MCP tools provider
     mockMcpToolsProvider = {
       identifier: 'weather_service',
-      toolsList: vi.fn()
+      toolsList: vi.fn(),
     };
 
     // Mock REST tools provider
     mockRestToolsProvider = {
       identifier: 'user_api',
-      toolsList: vi.fn()
+      toolsList: vi.fn(),
     };
 
     // Create provider service with mocked dependencies
-    providerService = new ProviderService(mockConfigProvider, [mockMcpToolsProvider, mockRestToolsProvider]);
+    providerService = new ProviderService(mockConfigProvider, [
+      mockMcpToolsProvider,
+      mockRestToolsProvider,
+    ]);
   });
 
   describe('getAvailableServers', () => {
     it('should return list of all servers (MCP + REST)', async () => {
       mockConfigProvider.getProvidersConfig.mockResolvedValue({
         mcpServers: [
-          { 
-            identifier: "weather_service", 
-            name: "Weather Service", 
-            description: "Weather API",
-            transport: "http", 
-            url: "http://localhost:4000/mcp" 
-          }
+          {
+            identifier: 'weather_service',
+            name: 'Weather Service',
+            description: 'Weather API',
+            transport: 'http',
+            url: 'http://localhost:4000/mcp',
+          },
         ],
         restServers: [
-          { 
-            identifier: "user_api", 
-            name: "User API", 
-            description: "User management",
-            url: "http://localhost:5000/api",
+          {
+            identifier: 'user_api',
+            name: 'User API',
+            description: 'User management',
+            url: 'http://localhost:5000/api',
             endPoints: [
-              { name: "get_user", description: "Get user", path: "/users/{userId}", method: "GET" }
-            ]
-          }
-        ]
+              { name: 'get_user', description: 'Get user', path: '/users/{userId}', method: 'GET' },
+            ],
+          },
+        ],
       });
 
       mockMcpToolsProvider.toolsList.mockResolvedValue([
-        { name: 'weather_service.get_weather', description: 'Get weather data' }
+        { name: 'weather_service.get_weather', description: 'Get weather data' },
       ]);
 
       const result = await providerService.getAvailableServers();
@@ -71,9 +74,9 @@ describe('Provider Service', () => {
     });
 
     it('should handle empty servers list', async () => {
-      mockConfigProvider.getProvidersConfig.mockResolvedValue({ 
-        mcpServers: [], 
-        restServers: [] 
+      mockConfigProvider.getProvidersConfig.mockResolvedValue({
+        mcpServers: [],
+        restServers: [],
       });
 
       const result = await providerService.getAvailableServers();
@@ -85,13 +88,13 @@ describe('Provider Service', () => {
     it('should handle MCP server tool fetch failure gracefully', async () => {
       mockConfigProvider.getProvidersConfig.mockResolvedValue({
         mcpServers: [
-          { 
-            identifier: "weather_service", 
-            name: "Weather Service", 
-            description: "Weather API"
-          }
+          {
+            identifier: 'weather_service',
+            name: 'Weather Service',
+            description: 'Weather API',
+          },
         ],
-        restServers: []
+        restServers: [],
       });
 
       mockMcpToolsProvider.toolsList.mockRejectedValue(new Error('Connection failed'));
@@ -106,18 +109,23 @@ describe('Provider Service', () => {
       mockConfigProvider.getProvidersConfig.mockResolvedValue({
         mcpServers: [],
         restServers: [
-          { 
-            identifier: "user_api", 
-            name: "User API", 
-            description: "User management",
-            url: "http://localhost:5000/api",
+          {
+            identifier: 'user_api',
+            name: 'User API',
+            description: 'User management',
+            url: 'http://localhost:5000/api',
             endPoints: [
-              { name: "get_user", description: "Get user", path: "/users/{userId}", method: "GET" },
-              { name: "create_user", description: "Create user", path: "/users", method: "POST" },
-              { name: "update_user", description: "Update user", path: "/users/{userId}", method: "PUT" }
-            ]
-          }
-        ]
+              { name: 'get_user', description: 'Get user', path: '/users/{userId}', method: 'GET' },
+              { name: 'create_user', description: 'Create user', path: '/users', method: 'POST' },
+              {
+                name: 'update_user',
+                description: 'Update user',
+                path: '/users/{userId}',
+                method: 'PUT',
+              },
+            ],
+          },
+        ],
       });
 
       const result = await providerService.getAvailableServers();
@@ -130,7 +138,7 @@ describe('Provider Service', () => {
     it('should get tools from MCP server', async () => {
       const mockTools = [
         { name: 'weather_service.get_weather', description: 'Get weather data' },
-        { name: 'weather_service.get_forecast', description: 'Get weather forecast' }
+        { name: 'weather_service.get_forecast', description: 'Get weather forecast' },
       ];
 
       mockMcpToolsProvider.toolsList.mockResolvedValue(mockTools);
@@ -144,7 +152,7 @@ describe('Provider Service', () => {
     it('should get tools from REST server', async () => {
       const mockTools = [
         { name: 'user_api.get_user', description: 'Get user by ID' },
-        { name: 'user_api.create_user', description: 'Create new user' }
+        { name: 'user_api.create_user', description: 'Create new user' },
       ];
 
       mockRestToolsProvider.toolsList.mockResolvedValue(mockTools);
@@ -156,13 +164,17 @@ describe('Provider Service', () => {
     });
 
     it('should throw error for non-existent server', async () => {
-      await expect(providerService.getServerTools('non_existent')).rejects.toThrow('Server not found: non_existent');
+      await expect(providerService.getServerTools('non_existent')).rejects.toThrow(
+        'Server not found: non_existent'
+      );
     });
 
     it('should propagate error from tools provider', async () => {
       mockMcpToolsProvider.toolsList.mockRejectedValue(new Error('MCP server unreachable'));
 
-      await expect(providerService.getServerTools('weather_service')).rejects.toThrow('MCP server unreachable');
+      await expect(providerService.getServerTools('weather_service')).rejects.toThrow(
+        'MCP server unreachable'
+      );
     });
   });
 });

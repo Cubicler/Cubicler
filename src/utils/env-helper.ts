@@ -69,7 +69,9 @@ export function getDefaultCallTimeout(): number {
 export function getConfigurationSource(envVar: string, description: string): string {
   const source = process.env[envVar];
   if (!source || source.trim() === '') {
-    throw new Error(`${envVar} environment variable is not defined. Please set it to a file path or URL for ${description}.`);
+    throw new Error(
+      `${envVar} environment variable is not defined. Please set it to a file path or URL for ${description}.`
+    );
   }
   return source.trim();
 }

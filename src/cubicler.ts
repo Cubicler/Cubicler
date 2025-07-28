@@ -11,7 +11,10 @@ export { ProviderService, default as providerService } from './core/provider-ser
 export { DispatchService } from './core/dispatch-service.js';
 export { default as mcpService } from './core/mcp-service.js';
 export { ProviderMCPService } from './core/provider-mcp-service.js';
-export { ProviderRESTService, default as providerRESTService } from './core/provider-rest-service.js';
+export {
+  ProviderRESTService,
+  default as providerRESTService,
+} from './core/provider-rest-service.js';
 export { default as internalFunctionsService } from './core/internal-tools-service.js';
 
 // Export utilities and protocols

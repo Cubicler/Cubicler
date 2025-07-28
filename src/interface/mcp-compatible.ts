@@ -14,10 +14,10 @@ export interface MCPCompatible extends ToolsListProviding {
   /**
    * Execute a tool/function call
    */
-  toolsCall(toolName: string, parameters: JSONObject): Promise<JSONValue>;
+  toolsCall(_toolName: string, _parameters: JSONObject): Promise<JSONValue>;
 
   /**
    * Check if this service can handle the given request/tool
    */
-  canHandleRequest(toolName: string): Promise<boolean>;
+  canHandleRequest(_toolName: string): Promise<boolean>;
 }

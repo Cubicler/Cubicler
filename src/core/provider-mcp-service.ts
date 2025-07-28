@@ -1,4 +1,4 @@
-import type { MCPRequest, MCPResponse, JSONObject, JSONValue } from '../model/types.js';
+import type { JSONObject, JSONValue, MCPRequest, MCPResponse } from '../model/types.js';
 import type { MCPTool, ToolDefinition } from '../model/tools.js';
 import { fetchWithDefaultTimeout } from '../utils/fetch-helper.js';
 import type { ProvidersConfigProviding } from '../interface/provider-config-providing.js';
@@ -22,7 +22,7 @@ class ProviderMCPService implements MCPCompatible {
    */
   async initialize(): Promise<void> {
     console.log('🔄 [ProviderMCPService] Initializing MCP provider service...');
-    
+
     // Initialize all MCP servers
     const config = await this.providerConfig.getProvidersConfig();
     const mcpServers = config.mcpServers || [];
@@ -30,10 +30,13 @@ class ProviderMCPService implements MCPCompatible {
       try {
         await this.initializeMCPServer(server.identifier);
       } catch (error) {
-        console.warn(`⚠️ [ProviderMCPService] Failed to initialize MCP server ${server.identifier}:`, error);
+        console.warn(
+          `⚠️ [ProviderMCPService] Failed to initialize MCP server ${server.identifier}:`,
+          error
+        );
       }
     }
-    
+
     console.log('✅ [ProviderMCPService] MCP provider service initialized');
   }
 
@@ -50,10 +53,10 @@ class ProviderMCPService implements MCPCompatible {
   async canHandleRequest(toolName: string): Promise<boolean> {
     const parts = toolName.split('.');
     if (parts.length !== 2) return false;
-    
+
     const [serverIdentifier] = parts;
     if (!serverIdentifier) return false;
-    
+
     return await this.isMCPServer(serverIdentifier);
   }
 
@@ -76,18 +79,23 @@ class ProviderMCPService implements MCPCompatible {
       try {
         console.log(`🔧 [ProviderMCPService] Loading MCP tools from ${server.identifier}...`);
         const mcpTools = await this.getMCPTools(server.identifier);
-        
+
         // Convert MCP tools to Cubicler function definitions
-        const tools: ToolDefinition[] = mcpTools.map(tool => ({
+        const tools: ToolDefinition[] = mcpTools.map((tool) => ({
           name: `${server.identifier}.${tool.name}`,
           description: tool.description || `MCP tool: ${tool.name}`,
-          parameters: tool.inputSchema || { type: 'object', properties: {} }
+          parameters: tool.inputSchema || { type: 'object', properties: {} },
         }));
-        
+
         allMCPTools.push(...tools);
-        console.log(`✅ [ProviderMCPService] Loaded ${tools.length} tools from MCP server ${server.identifier}`);
+        console.log(
+          `✅ [ProviderMCPService] Loaded ${tools.length} tools from MCP server ${server.identifier}`
+        );
       } catch (error) {
-        console.warn(`⚠️ [ProviderMCPService] Failed to get MCP tools from ${server.identifier}:`, error);
+        console.warn(
+          `⚠️ [ProviderMCPService] Failed to get MCP tools from ${server.identifier}:`,
+          error
+        );
         // Continue with other servers
       }
     }
@@ -100,10 +108,10 @@ class ProviderMCPService implements MCPCompatible {
    */
   async getToolsFromServer(serverIdentifier: string): Promise<ToolDefinition[]> {
     const mcpTools = await this.getMCPTools(serverIdentifier);
-    return mcpTools.map(tool => ({
+    return mcpTools.map((tool) => ({
       name: `${serverIdentifier}.${tool.name}`,
       description: tool.description || `MCP tool: ${tool.name}`,
-      parameters: tool.inputSchema || { type: 'object', properties: {} }
+      parameters: tool.inputSchema || { type: 'object', properties: {} },
     }));
   }
 
@@ -112,19 +120,23 @@ class ProviderMCPService implements MCPCompatible {
    */
   async executeToolByName(fullFunctionName: string, parameters: JSONObject): Promise<JSONValue> {
     console.log(`⚙️ [ProviderMCPService] Executing MCP tool: ${fullFunctionName}`);
-    
+
     // Parse the function name
     const parts = fullFunctionName.split('.');
     if (parts.length !== 2) {
-      throw new Error(`Invalid function name format: ${fullFunctionName}. Expected format: server.function`);
+      throw new Error(
+        `Invalid function name format: ${fullFunctionName}. Expected format: server.function`
+      );
     }
-    
+
     const [serverIdentifier, functionName] = parts;
-    
+
     if (!serverIdentifier || !functionName) {
-      throw new Error(`Invalid function name format: ${fullFunctionName}. Expected format: server.function`);
+      throw new Error(
+        `Invalid function name format: ${fullFunctionName}. Expected format: server.function`
+      );
     }
-    
+
     // Execute MCP tool
     const result = await this.executeMCPTool(serverIdentifier, functionName, parameters);
     return result as JSONValue;
@@ -134,18 +146,23 @@ class ProviderMCPService implements MCPCompatible {
    * Send an MCP request to a specific server
    */
   async sendMCPRequest(serverIdentifier: string, request: MCPRequest): Promise<MCPResponse> {
-    console.log(`📡 [ProviderMCPService] Sending MCP request to ${serverIdentifier}:`, request.method);
+    console.log(
+      `📡 [ProviderMCPService] Sending MCP request to ${serverIdentifier}:`,
+      request.method
+    );
 
     // Get the MCP server configuration
     const config = await this.providerConfig.getProvidersConfig();
-    const mcpServer = config.mcpServers?.find(s => s.identifier === serverIdentifier);
-    
+    const mcpServer = config.mcpServers?.find((s) => s.identifier === serverIdentifier);
+
     if (!mcpServer) {
       throw new Error(`MCP server not found: ${serverIdentifier}`);
     }
 
     if (mcpServer.transport !== 'http') {
-      throw new Error(`Transport ${mcpServer.transport} not yet supported. Currently only HTTP transport is supported.`);
+      throw new Error(
+        `Transport ${mcpServer.transport} not yet supported. Currently only HTTP transport is supported.`
+      );
     }
 
     try {
@@ -153,24 +170,24 @@ class ProviderMCPService implements MCPCompatible {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...mcpServer.headers
+          ...mcpServer.headers,
         },
-        data: request
+        data: request,
       });
 
       console.log(`✅ [ProviderMCPService] MCP request to ${serverIdentifier} successful`);
       return response.data as MCPResponse;
     } catch (error) {
       console.error(`❌ [ProviderMCPService] MCP request to ${serverIdentifier} failed:`, error);
-      
+
       // Return MCP error response
       return {
         jsonrpc: '2.0',
         id: request.id,
         error: {
           code: -32603, // Internal error
-          message: `MCP request failed: ${error instanceof Error ? error.message : 'Unknown error'}`
-        }
+          message: `MCP request failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        },
       };
     }
   }
@@ -184,11 +201,11 @@ class ProviderMCPService implements MCPCompatible {
       jsonrpc: '2.0',
       id: 'tools-request',
       method: 'tools/list',
-      params: {}
+      params: {},
     };
 
     const response = await this.sendMCPRequest(serverIdentifier, request);
-    
+
     if (response.error) {
       throw new Error(`MCP tools request failed: ${response.error.message}`);
     }
@@ -206,8 +223,8 @@ class ProviderMCPService implements MCPCompatible {
    * Execute an MCP tool/function
    */
   async executeMCPTool(
-    serverIdentifier: string, 
-    toolName: string, 
+    serverIdentifier: string,
+    toolName: string,
     parameters: JSONObject
   ): Promise<JSONValue> {
     const request: MCPRequest = {
@@ -216,12 +233,12 @@ class ProviderMCPService implements MCPCompatible {
       method: 'tools/call',
       params: {
         name: toolName,
-        arguments: parameters
-      }
+        arguments: parameters,
+      },
     };
 
     const response = await this.sendMCPRequest(serverIdentifier, request);
-    
+
     if (response.error) {
       throw new Error(`MCP tool execution failed: ${response.error.message}`);
     }
@@ -242,17 +259,17 @@ class ProviderMCPService implements MCPCompatible {
       params: {
         protocolVersion: '2024-11-05',
         capabilities: {
-          tools: {}
+          tools: {},
         },
         clientInfo: {
           name: 'Cubicler',
-          version: '2.0'
-        }
-      }
+          version: '2.0',
+        },
+      },
     };
 
     const response = await this.sendMCPRequest(serverIdentifier, request);
-    
+
     if (response.error) {
       throw new Error(`MCP server initialization failed: ${response.error.message}`);
     }
@@ -265,7 +282,7 @@ class ProviderMCPService implements MCPCompatible {
    */
   async isMCPServer(serverIdentifier: string): Promise<boolean> {
     const config = await this.providerConfig.getProvidersConfig();
-    const mcpServer = config.mcpServers?.find(s => s.identifier === serverIdentifier);
+    const mcpServer = config.mcpServers?.find((s) => s.identifier === serverIdentifier);
     return mcpServer !== undefined;
   }
 }

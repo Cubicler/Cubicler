@@ -1,5 +1,3 @@
-import { JSONObject } from './types.js';
-
 /**
  * MCP Server configuration from providers.json
  */
@@ -23,12 +21,12 @@ export interface RESTEndpoint {
   headers?: Record<string, string>;
   parameters?: {
     type: 'object';
-    properties: Record<string, any>;
+    properties: Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any -- OpenAI schema supports complex nested structures
     required?: string[];
   };
   payload?: {
     type: 'object';
-    properties: Record<string, any>;
+    properties: Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any -- OpenAI schema supports complex nested structures
     required?: string[];
   };
 }

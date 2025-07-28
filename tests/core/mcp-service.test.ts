@@ -1,5 +1,5 @@
 import { beforeEach, describe, it, expect, vi, type MockedFunction } from 'vitest';
-import type { MCPRequest, MCPResponse, JSONObject } from '../../src/model/types.js';
+import type { MCPRequest } from '../../src/model/types.js';
 import type { ToolDefinition, MCPFormattedTool } from '../../src/model/tools.js';
 import type { MCPCompatible } from '../../src/interface/mcp-compatible.js';
 
@@ -13,9 +13,9 @@ const createMockProvider = (
   initialize: vi.fn().mockResolvedValue(undefined),
   toolsList: vi.fn().mockResolvedValue(tools),
   toolsCall: vi.fn().mockResolvedValue('mock result'),
-  canHandleRequest: vi.fn().mockImplementation((toolName: string) => 
-    Promise.resolve(canHandle.includes(toolName))
-  )
+  canHandleRequest: vi
+    .fn()
+    .mockImplementation((toolName: string) => Promise.resolve(canHandle.includes(toolName))),
 });
 
 describe('MCP Service', () => {
@@ -31,11 +31,11 @@ describe('MCP Service', () => {
       parameters: {
         type: 'object',
         properties: {
-          city: { type: 'string' }
+          city: { type: 'string' },
         },
-        required: ['city']
-      }
-    }
+        required: ['city'],
+      },
+    },
   ];
 
   const sampleTools2: ToolDefinition[] = [
@@ -45,10 +45,10 @@ describe('MCP Service', () => {
       parameters: {
         type: 'object',
         properties: {
-          date: { type: 'string' }
-        }
-      }
-    }
+          date: { type: 'string' },
+        },
+      },
+    },
   ];
 
   const sampleInternalTools: ToolDefinition[] = [
@@ -57,9 +57,9 @@ describe('MCP Service', () => {
       description: 'Get available servers',
       parameters: {
         type: 'object',
-        properties: {}
-      }
-    }
+        properties: {},
+      },
+    },
   ];
 
   beforeEach(async () => {
@@ -67,21 +67,27 @@ describe('MCP Service', () => {
     vi.resetModules();
 
     // Create mock providers
-    mockProvider1 = createMockProvider('weather_service', sampleTools1, ['weather_service.get_weather']);
-    mockProvider2 = createMockProvider('calendar_service', sampleTools2, ['calendar_service.list_events']);
-    mockProvider3 = createMockProvider('cubicler', sampleInternalTools, ['cubicler.available_servers']);
+    mockProvider1 = createMockProvider('weather_service', sampleTools1, [
+      'weather_service.get_weather',
+    ]);
+    mockProvider2 = createMockProvider('calendar_service', sampleTools2, [
+      'calendar_service.list_events',
+    ]);
+    mockProvider3 = createMockProvider('cubicler', sampleInternalTools, [
+      'cubicler.available_servers',
+    ]);
 
     // Mock the providers that are imported in mcp-service.ts
     vi.doMock('../../src/core/provider-mcp-service.js', () => ({
-      default: mockProvider1
+      default: mockProvider1,
     }));
 
     vi.doMock('../../src/core/provider-rest-service.js', () => ({
-      default: mockProvider2
+      default: mockProvider2,
     }));
 
     vi.doMock('../../src/core/internal-tools-service.js', () => ({
-      default: mockProvider3
+      default: mockProvider3,
     }));
 
     // Import MCPService constructor
@@ -109,7 +115,7 @@ describe('MCP Service', () => {
   describe('initialize', () => {
     it('should initialize all providers successfully', async () => {
       const service = new MCPService([mockProvider1, mockProvider2, mockProvider3]);
-      
+
       await service.initialize();
 
       expect(mockProvider1.initialize).toHaveBeenCalledOnce();
@@ -119,7 +125,9 @@ describe('MCP Service', () => {
 
     it('should throw error if provider initialization fails', async () => {
       const failingProvider = createMockProvider('failing_service');
-      (failingProvider.initialize as MockedFunction<any>).mockRejectedValue(new Error('Init failed'));
+      (failingProvider.initialize as MockedFunction<any>).mockRejectedValue(
+        new Error('Init failed')
+      );
 
       const service = new MCPService([mockProvider1, failingProvider]);
 
@@ -130,7 +138,7 @@ describe('MCP Service', () => {
 
     it('should handle empty providers array', async () => {
       const service = new MCPService([]);
-      
+
       await expect(service.initialize()).resolves.not.toThrow();
     });
   });
@@ -148,7 +156,7 @@ describe('MCP Service', () => {
           jsonrpc: '2.0',
           id: 1,
           method: 'initialize',
-          params: {}
+          params: {},
         };
 
         const response = await service.handleMCPRequest(request);
@@ -160,14 +168,14 @@ describe('MCP Service', () => {
             protocolVersion: '2024-11-05',
             capabilities: {
               tools: {
-                listChanged: true
-              }
+                listChanged: true,
+              },
             },
             serverInfo: {
               name: 'Cubicler',
-              version: '2.0'
-            }
-          }
+              version: '2.0',
+            },
+          },
         });
 
         // Should initialize all providers
@@ -182,7 +190,7 @@ describe('MCP Service', () => {
         const request: MCPRequest = {
           jsonrpc: '2.0',
           id: 2,
-          method: 'tools/list'
+          method: 'tools/list',
         };
 
         const response = await service.handleMCPRequest(request);
@@ -200,10 +208,10 @@ describe('MCP Service', () => {
           inputSchema: {
             type: 'object',
             properties: {
-              city: { type: 'string' }
+              city: { type: 'string' },
             },
-            required: ['city']
-          }
+            required: ['city'],
+          },
         });
 
         expect(mockProvider1.toolsList).toHaveBeenCalledOnce();
@@ -212,12 +220,14 @@ describe('MCP Service', () => {
       });
 
       it('should handle provider error gracefully', async () => {
-        (mockProvider1.toolsList as MockedFunction<any>).mockRejectedValue(new Error('Provider error'));
+        (mockProvider1.toolsList as MockedFunction<any>).mockRejectedValue(
+          new Error('Provider error')
+        );
 
         const request: MCPRequest = {
           jsonrpc: '2.0',
           id: 2,
-          method: 'tools/list'
+          method: 'tools/list',
         };
 
         const response = await service.handleMCPRequest(request);
@@ -234,7 +244,7 @@ describe('MCP Service', () => {
         const request: MCPRequest = {
           jsonrpc: '2.0',
           id: 2,
-          method: 'tools/list'
+          method: 'tools/list',
         };
 
         const response = await emptyService.handleMCPRequest(request);
@@ -245,7 +255,10 @@ describe('MCP Service', () => {
 
     describe('tools/call method', () => {
       it('should execute tool via appropriate provider', async () => {
-        (mockProvider1.toolsCall as MockedFunction<any>).mockResolvedValue({ temperature: 25, condition: 'sunny' });
+        (mockProvider1.toolsCall as MockedFunction<any>).mockResolvedValue({
+          temperature: 25,
+          condition: 'sunny',
+        });
 
         const request: MCPRequest = {
           jsonrpc: '2.0',
@@ -253,8 +266,8 @@ describe('MCP Service', () => {
           method: 'tools/call',
           params: {
             name: 'weather_service.get_weather',
-            arguments: { city: 'Jakarta' }
-          }
+            arguments: { city: 'Jakarta' },
+          },
         };
 
         const response = await service.handleMCPRequest(request);
@@ -267,7 +280,9 @@ describe('MCP Service', () => {
         expect(response.result.content[0].text).toContain('temperature');
 
         expect(mockProvider1.canHandleRequest).toHaveBeenCalledWith('weather_service.get_weather');
-        expect(mockProvider1.toolsCall).toHaveBeenCalledWith('weather_service.get_weather', { city: 'Jakarta' });
+        expect(mockProvider1.toolsCall).toHaveBeenCalledWith('weather_service.get_weather', {
+          city: 'Jakarta',
+        });
       });
 
       it('should handle string result from provider', async () => {
@@ -279,8 +294,8 @@ describe('MCP Service', () => {
           method: 'tools/call',
           params: {
             name: 'weather_service.get_weather',
-            arguments: { city: 'Jakarta' }
-          }
+            arguments: { city: 'Jakarta' },
+          },
         };
 
         const response = await service.handleMCPRequest(request);
@@ -294,8 +309,8 @@ describe('MCP Service', () => {
           id: 3,
           method: 'tools/call',
           params: {
-            arguments: { city: 'Jakarta' }
-          }
+            arguments: { city: 'Jakarta' },
+          },
         };
 
         const response = await service.handleMCPRequest(request);
@@ -309,7 +324,7 @@ describe('MCP Service', () => {
         const request: MCPRequest = {
           jsonrpc: '2.0',
           id: 3,
-          method: 'tools/call'
+          method: 'tools/call',
         };
 
         const response = await service.handleMCPRequest(request);
@@ -326,8 +341,8 @@ describe('MCP Service', () => {
           method: 'tools/call',
           params: {
             name: 'unknown.tool',
-            arguments: {}
-          }
+            arguments: {},
+          },
         };
 
         const response = await service.handleMCPRequest(request);
@@ -338,7 +353,9 @@ describe('MCP Service', () => {
       });
 
       it('should handle provider execution error', async () => {
-        (mockProvider1.toolsCall as MockedFunction<any>).mockRejectedValue(new Error('Execution failed'));
+        (mockProvider1.toolsCall as MockedFunction<any>).mockRejectedValue(
+          new Error('Execution failed')
+        );
 
         const request: MCPRequest = {
           jsonrpc: '2.0',
@@ -346,8 +363,8 @@ describe('MCP Service', () => {
           method: 'tools/call',
           params: {
             name: 'weather_service.get_weather',
-            arguments: { city: 'Jakarta' }
-          }
+            arguments: { city: 'Jakarta' },
+          },
         };
 
         const response = await service.handleMCPRequest(request);
@@ -365,8 +382,8 @@ describe('MCP Service', () => {
           id: 3,
           method: 'tools/call',
           params: {
-            name: 'cubicler.available_servers'
-          }
+            name: 'cubicler.available_servers',
+          },
         };
 
         const response = await service.handleMCPRequest(request);
@@ -381,7 +398,7 @@ describe('MCP Service', () => {
         const request: MCPRequest = {
           jsonrpc: '2.0',
           id: 4,
-          method: 'unsupported/method'
+          method: 'unsupported/method',
         };
 
         const response = await service.handleMCPRequest(request);
@@ -391,7 +408,9 @@ describe('MCP Service', () => {
         expect(response.error).toBeDefined();
         expect(response.error.code).toBe(-32601);
         expect(response.error.message).toContain('Method not supported: unsupported/method');
-        expect(response.error.message).toContain('Supported methods: initialize, tools/list, tools/call');
+        expect(response.error.message).toContain(
+          'Supported methods: initialize, tools/list, tools/call'
+        );
       });
     });
 
@@ -405,7 +424,7 @@ describe('MCP Service', () => {
         const request: MCPRequest = {
           jsonrpc: '2.0',
           id: 5,
-          method: 'initialize'
+          method: 'initialize',
         };
 
         const response = await service.handleMCPRequest(request);
@@ -439,19 +458,23 @@ describe('MCP Service', () => {
     });
 
     it('should throw error for non-existent server', async () => {
-      await expect(service.getServerTools('non_existent_service'))
-        .rejects.toThrow('Server not found: non_existent_service');
+      await expect(service.getServerTools('non_existent_service')).rejects.toThrow(
+        'Server not found: non_existent_service'
+      );
     });
 
     it('should handle provider error gracefully and continue searching', async () => {
-      // When a provider matches identifier but fails to get tools, 
+      // When a provider matches identifier but fails to get tools,
       // the service should continue looking through other providers
       // and eventually throw "Server not found" if no provider can handle it
-      (mockProvider1.toolsList as MockedFunction<any>).mockRejectedValue(new Error('Provider error'));
+      (mockProvider1.toolsList as MockedFunction<any>).mockRejectedValue(
+        new Error('Provider error')
+      );
 
-      await expect(service.getServerTools('weather_service'))
-        .rejects.toThrow('Server not found: weather_service');
-      
+      await expect(service.getServerTools('weather_service')).rejects.toThrow(
+        'Server not found: weather_service'
+      );
+
       // Verify that it tried the failing provider
       expect(mockProvider1.toolsList).toHaveBeenCalledOnce();
     });
@@ -468,8 +491,9 @@ describe('MCP Service', () => {
       const emptyProvider = createMockProvider('empty_service', []);
       const serviceWithEmpty = new MCPService([emptyProvider]);
 
-      await expect(serviceWithEmpty.getServerTools('empty_service'))
-        .rejects.toThrow('Server not found: empty_service');
+      await expect(serviceWithEmpty.getServerTools('empty_service')).rejects.toThrow(
+        'Server not found: empty_service'
+      );
     });
   });
 

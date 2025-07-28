@@ -17,7 +17,7 @@ describe('Internal Tools Service', () => {
       const tools = await internalToolsService.toolsList();
 
       expect(tools).toHaveLength(2);
-      
+
       // Check cubicler.available_servers tool
       const availableServersTool = tools.find((t: any) => t.name === 'cubicler.available_servers');
       expect(availableServersTool).toBeDefined();
@@ -40,13 +40,15 @@ describe('Internal Tools Service', () => {
 
   describe('toolsCall', () => {
     it('should throw error for unknown internal tool', async () => {
-      await expect(internalToolsService.toolsCall('cubicler.unknown_tool', {}))
-        .rejects.toThrow('Unknown internal tool: cubicler.unknown_tool');
+      await expect(internalToolsService.toolsCall('cubicler.unknown_tool', {})).rejects.toThrow(
+        'Unknown internal tool: cubicler.unknown_tool'
+      );
     });
 
     it('should throw error for missing serverIdentifier in fetch_server_tools', async () => {
-      await expect(internalToolsService.toolsCall('cubicler.fetch_server_tools', {}))
-        .rejects.toThrow('Missing required parameter: serverIdentifier');
+      await expect(
+        internalToolsService.toolsCall('cubicler.fetch_server_tools', {})
+      ).rejects.toThrow('Missing required parameter: serverIdentifier');
     });
   });
 });

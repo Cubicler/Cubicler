@@ -1,4 +1,4 @@
-import { ToolDefinition } from "../model/tools";
+import { ToolDefinition } from '../model/tools';
 
 /**
  * Interface for services that can provide a list of tools

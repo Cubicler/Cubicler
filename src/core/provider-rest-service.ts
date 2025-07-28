@@ -1,6 +1,6 @@
-import type { JSONValue, JSONObject } from '../model/types.js';
+import type { JSONObject, JSONValue } from '../model/types.js';
 import { fetchWithDefaultTimeout } from '../utils/fetch-helper.js';
-import { replacePathParameters, convertToQueryParams } from '../utils/parameter-helper.js';
+import { convertToQueryParams, replacePathParameters } from '../utils/parameter-helper.js';
 import type { ProvidersConfigProviding } from '../interface/provider-config-providing.js';
 import providersRepository from '../utils/provider-repository.js';
 import { MCPCompatible } from '../interface/mcp-compatible.js';
@@ -41,7 +41,10 @@ class ProviderRESTService implements MCPCompatible {
         const serverTools = await this.getRESTTools(server.identifier);
         allTools.push(...serverTools);
       } catch (error) {
-        console.warn(`⚠️ [RESTService] Failed to get tools from REST server ${server.identifier}:`, error);
+        console.warn(
+          `⚠️ [RESTService] Failed to get tools from REST server ${server.identifier}:`,
+          error
+        );
         // Continue with other servers
       }
     }
@@ -57,12 +60,12 @@ class ProviderRESTService implements MCPCompatible {
     if (parts.length !== 2) {
       throw new Error(`Invalid tool name format: ${toolName}. Expected format: server.tool`);
     }
-    
+
     const [serverIdentifier, functionName] = parts;
     if (!serverIdentifier || !functionName) {
       throw new Error(`Invalid tool name format: ${toolName}. Expected format: server.tool`);
     }
-    
+
     return await this.executeRESTTool(serverIdentifier, functionName, parameters);
   }
 
@@ -72,10 +75,10 @@ class ProviderRESTService implements MCPCompatible {
   async canHandleRequest(toolName: string): Promise<boolean> {
     const parts = toolName.split('.');
     if (parts.length !== 2) return false;
-    
+
     const [serverIdentifier] = parts;
     const config = await this.configProvider.getProvidersConfig();
-    const restServer = config.restServers?.find(s => s.identifier === serverIdentifier);
+    const restServer = config.restServers?.find((s) => s.identifier === serverIdentifier);
     return restServer !== undefined;
   }
 
@@ -84,14 +87,14 @@ class ProviderRESTService implements MCPCompatible {
    */
   private async getRESTTools(serverIdentifier: string): Promise<ToolDefinition[]> {
     const config = await this.configProvider.getProvidersConfig();
-    const restServer = config.restServers?.find(s => s.identifier === serverIdentifier);
-    
+    const restServer = config.restServers?.find((s) => s.identifier === serverIdentifier);
+
     if (!restServer) {
       throw new Error(`REST server not found: ${serverIdentifier}`);
     }
 
     // Convert REST endpoints to tool definitions
-    const tools: ToolDefinition[] = restServer.endPoints.map(endpoint => {
+    const tools: ToolDefinition[] = restServer.endPoints.map((endpoint) => {
       // Build parameters object with path variables as root parameters
       const properties: Record<string, JSONValue> = {};
       const required: string[] = [];
@@ -111,7 +114,7 @@ class ProviderRESTService implements MCPCompatible {
         properties.query = {
           type: 'object',
           properties: endpoint.parameters.properties,
-          required: endpoint.parameters.required || []
+          required: endpoint.parameters.required || [],
         };
       }
 
@@ -120,7 +123,7 @@ class ProviderRESTService implements MCPCompatible {
         properties.payload = {
           type: 'object',
           properties: endpoint.payload.properties,
-          required: endpoint.payload.required || []
+          required: endpoint.payload.required || [],
         };
       }
 
@@ -130,11 +133,11 @@ class ProviderRESTService implements MCPCompatible {
         parameters: {
           type: 'object',
           properties,
-          required
-        }
+          required,
+        },
       };
     });
-    
+
     return tools;
   }
 
@@ -149,14 +152,14 @@ class ProviderRESTService implements MCPCompatible {
     console.log(`🌐 [RESTService] Executing REST tool: ${serverIdentifier}.${functionName}`);
 
     const config = await this.configProvider.getProvidersConfig();
-    const restServer = config.restServers?.find(s => s.identifier === serverIdentifier);
-    
+    const restServer = config.restServers?.find((s) => s.identifier === serverIdentifier);
+
     if (!restServer) {
       throw new Error(`REST server not found: ${serverIdentifier}`);
     }
 
     // Find the endpoint
-    const endpoint = restServer.endPoints.find(ep => ep.name === functionName);
+    const endpoint = restServer.endPoints.find((ep) => ep.name === functionName);
     if (!endpoint) {
       throw new Error(`REST endpoint not found: ${functionName} in server ${serverIdentifier}`);
     }
@@ -176,35 +179,44 @@ class ProviderRESTService implements MCPCompatible {
           }
         }
       }
-      
+
       // Build the full URL with path parameters replaced
       const pathWithParams = replacePathParameters(endpoint.path, pathParams);
       const fullUrl = `${restServer.url}${pathWithParams}`;
-      
+
       // Extract query parameters from the 'query' object
       let queryParams: Record<string, string> = {};
-      if (remainingParams.query && typeof remainingParams.query === 'object' && remainingParams.query !== null) {
+      if (
+        remainingParams.query &&
+        typeof remainingParams.query === 'object' &&
+        remainingParams.query !== null
+      ) {
         queryParams = convertToQueryParams(remainingParams.query as Record<string, JSONValue>);
       }
-      
+
       // Extract payload parameters from the 'payload' object
       let body: Record<string, JSONValue> | null = null;
-      if (endpoint.payload && remainingParams.payload && typeof remainingParams.payload === 'object' && remainingParams.payload !== null) {
+      if (
+        endpoint.payload &&
+        remainingParams.payload &&
+        typeof remainingParams.payload === 'object' &&
+        remainingParams.payload !== null
+      ) {
         body = remainingParams.payload as Record<string, JSONValue>;
       }
-      
+
       // Build query string
       const queryString = Object.entries(queryParams)
         .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
         .join('&');
-      
+
       const finalUrl = queryString ? `${fullUrl}?${queryString}` : fullUrl;
 
       // Prepare headers
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         ...restServer.defaultHeaders,
-        ...endpoint.headers
+        ...endpoint.headers,
       };
 
       // Prepare request options
@@ -214,7 +226,7 @@ class ProviderRESTService implements MCPCompatible {
         data?: Record<string, JSONValue>;
       } = {
         method: endpoint.method,
-        headers
+        headers,
       };
 
       // Add body for any method if payload is provided
@@ -232,10 +244,11 @@ class ProviderRESTService implements MCPCompatible {
 
       console.log(`✅ [RESTService] REST call successful`);
       return response.data;
-
     } catch (error) {
       console.error(`❌ [RESTService] REST call failed:`, error);
-      throw new Error(`REST execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `REST execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 }

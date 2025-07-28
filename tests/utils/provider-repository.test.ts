@@ -7,7 +7,7 @@ import type { ProvidersConfig } from '../../src/model/providers.js';
 vi.mock('../../src/utils/config-helper.js');
 vi.mock('../../src/utils/cache.js');
 vi.mock('dotenv', () => ({
-  config: vi.fn()
+  config: vi.fn(),
 }));
 
 const mockLoadConfigFromSource = vi.mocked(loadConfigFromSource);
@@ -22,7 +22,7 @@ describe('ProviderRepository', () => {
     clear: vi.fn(),
     has: vi.fn(),
     delete: vi.fn(),
-    size: vi.fn()
+    size: vi.fn(),
   };
 
   // We'll import the ProviderRepository dynamically after setting up mocks
@@ -38,16 +38,16 @@ describe('ProviderRepository', () => {
         transport: 'http',
         url: 'http://localhost:4000/mcp',
         headers: {
-          'Authorization': 'Bearer test-token'
-        }
+          Authorization: 'Bearer test-token',
+        },
       },
       {
         identifier: 'file_service',
         name: 'File Service',
         description: 'File management via MCP',
         transport: 'http',
-        url: 'http://localhost:4001/mcp'
-      }
+        url: 'http://localhost:4001/mcp',
+      },
     ],
     restServers: [
       {
@@ -56,7 +56,7 @@ describe('ProviderRepository', () => {
         description: 'Legacy REST API for user management',
         url: 'http://localhost:5000/api',
         defaultHeaders: {
-          'Authorization': 'Bearer api-token'
+          Authorization: 'Bearer api-token',
         },
         endPoints: [
           {
@@ -69,20 +69,20 @@ describe('ProviderRepository', () => {
               properties: {
                 userId: {
                   type: 'string',
-                  description: 'User ID to fetch'
-                }
+                  description: 'User ID to fetch',
+                },
               },
-              required: ['userId']
-            }
-          }
-        ]
-      }
-    ]
+              required: ['userId'],
+            },
+          },
+        ],
+      },
+    ],
   };
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    
+
     // Reset console methods to avoid spam in tests
     vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -90,7 +90,7 @@ describe('ProviderRepository', () => {
 
     // Mock cache creation
     mockCreateEnvCache.mockReturnValue(mockCache as any);
-    
+
     // Clear modules and reimport to get fresh instance
     vi.resetModules();
     const module = await import('../../src/utils/provider-repository.js');
@@ -156,10 +156,10 @@ describe('ProviderRepository', () => {
     it('should handle config with only MCP servers', async () => {
       // Arrange
       const configWithOnlyMcp: ProvidersConfig = {
-        mcpServers: mockProvidersConfig.mcpServers
+        mcpServers: mockProvidersConfig.mcpServers,
       };
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-      
+
       mockCache.get.mockReturnValue(undefined);
       mockLoadConfigFromSource.mockResolvedValue(configWithOnlyMcp);
       mockValidateProvidersConfig.mockImplementation(() => {});
@@ -177,10 +177,10 @@ describe('ProviderRepository', () => {
     it('should handle config with only REST servers', async () => {
       // Arrange
       const configWithOnlyRest: ProvidersConfig = {
-        restServers: mockProvidersConfig.restServers
+        restServers: mockProvidersConfig.restServers,
       };
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-      
+
       mockCache.get.mockReturnValue(undefined);
       mockLoadConfigFromSource.mockResolvedValue(configWithOnlyRest);
       mockValidateProvidersConfig.mockImplementation(() => {});
@@ -199,7 +199,7 @@ describe('ProviderRepository', () => {
       // Arrange
       const emptyConfig: ProvidersConfig = {};
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-      
+
       mockCache.get.mockReturnValue(undefined);
       mockLoadConfigFromSource.mockResolvedValue(emptyConfig);
       mockValidateProvidersConfig.mockImplementation(() => {});
@@ -221,7 +221,9 @@ describe('ProviderRepository', () => {
       mockLoadConfigFromSource.mockRejectedValue(error);
 
       // Act & Assert
-      await expect(ProviderRepository.getProvidersConfig()).rejects.toThrow('Failed to load config');
+      await expect(ProviderRepository.getProvidersConfig()).rejects.toThrow(
+        'Failed to load config'
+      );
       expect(mockValidateProvidersConfig).not.toHaveBeenCalled();
       expect(mockCache.set).not.toHaveBeenCalled();
     });
@@ -236,7 +238,9 @@ describe('ProviderRepository', () => {
       });
 
       // Act & Assert
-      await expect(ProviderRepository.getProvidersConfig()).rejects.toThrow('Invalid configuration');
+      await expect(ProviderRepository.getProvidersConfig()).rejects.toThrow(
+        'Invalid configuration'
+      );
       expect(mockCache.set).not.toHaveBeenCalled();
     });
 
@@ -250,7 +254,9 @@ describe('ProviderRepository', () => {
       });
 
       // Act & Assert
-      await expect(ProviderRepository.getProvidersConfig()).rejects.toThrow('Invalid configuration');
+      await expect(ProviderRepository.getProvidersConfig()).rejects.toThrow(
+        'Invalid configuration'
+      );
       expect(mockCache.set).not.toHaveBeenCalled();
     });
   });
@@ -270,7 +276,7 @@ describe('ProviderRepository', () => {
       // Import again to verify singleton behavior
       const module2 = await import('../../src/utils/provider-repository.js');
       const ProviderRepository2 = module2.default;
-      
+
       expect(ProviderRepository).toBe(ProviderRepository2);
     });
 

@@ -24,7 +24,7 @@ class ProviderRepository implements ProvidersConfigProviding {
     }
 
     const config = await loadConfigFromSource<ProvidersConfig>(
-      'CUBICLER_PROVIDERS_LIST', 
+      'CUBICLER_PROVIDERS_LIST',
       'providers configuration'
     );
 
@@ -33,10 +33,12 @@ class ProviderRepository implements ProvidersConfigProviding {
 
     // Cache the result
     this.providersCache.set('config', config);
-    
+
     const mcpCount = config.mcpServers?.length || 0;
     const restCount = config.restServers?.length || 0;
-    console.log(`✅ [ProvidersRepository] Loaded ${mcpCount} MCP servers and ${restCount} REST servers`);
+    console.log(
+      `✅ [ProvidersRepository] Loaded ${mcpCount} MCP servers and ${restCount} REST servers`
+    );
 
     return config;
   }

@@ -7,7 +7,7 @@ import * as fetchHelper from '../../src/utils/fetch-helper.js';
 
 // Mock fetch helper
 vi.mock('../../src/utils/fetch-helper.js', () => ({
-  fetchWithDefaultTimeout: vi.fn()
+  fetchWithDefaultTimeout: vi.fn(),
 }));
 
 // Helper to create mock AxiosResponse
@@ -16,7 +16,7 @@ const createMockAxiosResponse = <T>(data: T, status = 200): AxiosResponse<T> => 
   status,
   statusText: status === 200 ? 'OK' : 'Error',
   headers: {},
-  config: {} as any
+  config: {} as any,
 });
 
 describe('ProviderRESTService', () => {
@@ -30,7 +30,7 @@ describe('ProviderRESTService', () => {
     description: 'Legacy REST API for user management',
     url: 'http://localhost:5000/api',
     defaultHeaders: {
-      'Authorization': 'Bearer api-token'
+      Authorization: 'Bearer api-token',
     },
     endPoints: [
       {
@@ -41,9 +41,9 @@ describe('ProviderRESTService', () => {
         parameters: {
           type: 'object',
           properties: {
-            include_profile: { type: 'boolean' }
-          }
-        }
+            include_profile: { type: 'boolean' },
+          },
+        },
       },
       {
         name: 'create_user',
@@ -54,10 +54,10 @@ describe('ProviderRESTService', () => {
           type: 'object',
           properties: {
             name: { type: 'string' },
-            email: { type: 'string' }
+            email: { type: 'string' },
           },
-          required: ['name', 'email']
-        }
+          required: ['name', 'email'],
+        },
       },
       {
         name: 'update_user',
@@ -65,36 +65,36 @@ describe('ProviderRESTService', () => {
         path: '/users/{userId}/profile',
         method: 'PUT',
         headers: {
-          'X-Custom-Header': 'custom-value'
+          'X-Custom-Header': 'custom-value',
         },
         parameters: {
           type: 'object',
           properties: {
-            notify: { type: 'boolean' }
-          }
+            notify: { type: 'boolean' },
+          },
         },
         payload: {
           type: 'object',
           properties: {
-            bio: { type: 'string' }
-          }
-        }
-      }
-    ]
+            bio: { type: 'string' },
+          },
+        },
+      },
+    ],
   };
 
   const mockProvidersConfig: ProvidersConfig = {
     mcpServers: [],
-    restServers: [mockRestServer]
+    restServers: [mockRestServer],
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     mockProviderConfig = {
-      getProvidersConfig: vi.fn().mockResolvedValue(mockProvidersConfig)
+      getProvidersConfig: vi.fn().mockResolvedValue(mockProvidersConfig),
     };
-    
+
     providerRESTService = new ProviderRESTService(mockProviderConfig);
     mockFetch = vi.mocked(fetchHelper.fetchWithDefaultTimeout);
   });
@@ -102,12 +102,16 @@ describe('ProviderRESTService', () => {
   describe('initialize', () => {
     it('should initialize successfully', async () => {
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-      
+
       await providerRESTService.initialize();
-      
-      expect(consoleSpy).toHaveBeenCalledWith('🔄 [ProviderRESTService] Initializing REST provider service...');
-      expect(consoleSpy).toHaveBeenCalledWith('✅ [ProviderRESTService] REST provider service initialized');
-      
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        '🔄 [ProviderRESTService] Initializing REST provider service...'
+      );
+      expect(consoleSpy).toHaveBeenCalledWith(
+        '✅ [ProviderRESTService] REST provider service initialized'
+      );
+
       consoleSpy.mockRestore();
     });
   });
@@ -115,7 +119,7 @@ describe('ProviderRESTService', () => {
   describe('toolsList', () => {
     it('should return tools from all REST servers', async () => {
       const tools = await providerRESTService.toolsList();
-      
+
       expect(tools).toHaveLength(3);
       expect(tools[0]).toEqual({
         name: 'user_api.get_user',
@@ -127,15 +131,15 @@ describe('ProviderRESTService', () => {
             query: {
               type: 'object',
               properties: {
-                include_profile: { type: 'boolean' }
+                include_profile: { type: 'boolean' },
               },
-              required: []
-            }
+              required: [],
+            },
           },
-          required: ['userId']
-        }
+          required: ['userId'],
+        },
       });
-      
+
       expect(tools[1]).toEqual({
         name: 'user_api.create_user',
         description: 'Create a new user',
@@ -146,15 +150,15 @@ describe('ProviderRESTService', () => {
               type: 'object',
               properties: {
                 name: { type: 'string' },
-                email: { type: 'string' }
+                email: { type: 'string' },
               },
-              required: ['name', 'email']
-            }
+              required: ['name', 'email'],
+            },
           },
-          required: []
-        }
+          required: [],
+        },
       });
-      
+
       expect(tools[2]).toEqual({
         name: 'user_api.update_user',
         description: 'Update user with path and query parameters',
@@ -165,28 +169,28 @@ describe('ProviderRESTService', () => {
             query: {
               type: 'object',
               properties: {
-                notify: { type: 'boolean' }
+                notify: { type: 'boolean' },
               },
-              required: []
+              required: [],
             },
             payload: {
               type: 'object',
               properties: {
-                bio: { type: 'string' }
+                bio: { type: 'string' },
               },
-              required: []
-            }
+              required: [],
+            },
           },
-          required: ['userId']
-        }
+          required: ['userId'],
+        },
       });
     });
 
     it('should handle empty REST servers', async () => {
       mockProviderConfig.getProvidersConfig = vi.fn().mockResolvedValue({ restServers: [] });
-      
+
       const tools = await providerRESTService.toolsList();
-      
+
       expect(tools).toEqual([]);
     });
 
@@ -195,19 +199,19 @@ describe('ProviderRESTService', () => {
       const failingConfig = {
         restServers: [
           { ...mockRestServer, identifier: 'failing_server', endPoints: undefined as any },
-          mockRestServer
-        ]
+          mockRestServer,
+        ],
       };
       mockProviderConfig.getProvidersConfig = vi.fn().mockResolvedValue(failingConfig);
-      
+
       const tools = await providerRESTService.toolsList();
-      
+
       expect(tools).toHaveLength(3); // Only tools from working server
       expect(consoleWarnSpy).toHaveBeenCalledWith(
         expect.stringContaining('Failed to get tools from REST server failing_server'),
         expect.any(Error)
       );
-      
+
       consoleWarnSpy.mockRestore();
     });
   });
@@ -216,12 +220,12 @@ describe('ProviderRESTService', () => {
     it('should execute GET request with path parameters and query parameters', async () => {
       const mockResponse = { id: '123', name: 'John Doe', email: 'john@example.com' };
       mockFetch.mockResolvedValue(createMockAxiosResponse(mockResponse));
-      
+
       const result = await providerRESTService.toolsCall('user_api.get_user', {
         userId: '123',
-        query: { include_profile: true }
+        query: { include_profile: true },
       });
-      
+
       expect(result).toEqual(mockResponse);
       expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:5000/api/users/123?include_profile=true',
@@ -229,8 +233,8 @@ describe('ProviderRESTService', () => {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': 'Bearer api-token'
-          }
+            Authorization: 'Bearer api-token',
+          },
         }
       );
     });
@@ -238,35 +242,32 @@ describe('ProviderRESTService', () => {
     it('should execute POST request with payload', async () => {
       const mockResponse = { id: '456', name: 'Jane Doe', email: 'jane@example.com' };
       mockFetch.mockResolvedValue(createMockAxiosResponse(mockResponse));
-      
+
       const result = await providerRESTService.toolsCall('user_api.create_user', {
-        payload: { name: 'Jane Doe', email: 'jane@example.com' }
+        payload: { name: 'Jane Doe', email: 'jane@example.com' },
       });
-      
+
       expect(result).toEqual(mockResponse);
-      expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:5000/api/users',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer api-token'
-          },
-          data: { name: 'Jane Doe', email: 'jane@example.com' }
-        }
-      );
+      expect(mockFetch).toHaveBeenCalledWith('http://localhost:5000/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer api-token',
+        },
+        data: { name: 'Jane Doe', email: 'jane@example.com' },
+      });
     });
 
     it('should execute PUT request with path parameters, query parameters, and payload', async () => {
       const mockResponse = { success: true };
       mockFetch.mockResolvedValue(createMockAxiosResponse(mockResponse));
-      
+
       const result = await providerRESTService.toolsCall('user_api.update_user', {
         userId: '789',
         query: { notify: false },
-        payload: { bio: 'Updated bio' }
+        payload: { bio: 'Updated bio' },
       });
-      
+
       expect(result).toEqual(mockResponse);
       expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:5000/api/users/789/profile?notify=false',
@@ -274,10 +275,10 @@ describe('ProviderRESTService', () => {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': 'Bearer api-token',
-            'X-Custom-Header': 'custom-value'
+            Authorization: 'Bearer api-token',
+            'X-Custom-Header': 'custom-value',
           },
-          data: { bio: 'Updated bio' }
+          data: { bio: 'Updated bio' },
         }
       );
     });
@@ -285,35 +286,35 @@ describe('ProviderRESTService', () => {
     it('should handle request without query parameters', async () => {
       const mockResponse = { id: '123', name: 'John Doe' };
       mockFetch.mockResolvedValue(createMockAxiosResponse(mockResponse));
-      
+
       await providerRESTService.toolsCall('user_api.get_user', {
-        userId: '123'
+        userId: '123',
       });
-      
+
       expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:5000/api/users/123',
         expect.objectContaining({
-          method: 'GET'
+          method: 'GET',
         })
       );
     });
 
     it('should throw error for invalid tool name format', async () => {
-      await expect(
-        providerRESTService.toolsCall('invalid_tool_name', {})
-      ).rejects.toThrow('Invalid tool name format: invalid_tool_name. Expected format: server.tool');
+      await expect(providerRESTService.toolsCall('invalid_tool_name', {})).rejects.toThrow(
+        'Invalid tool name format: invalid_tool_name. Expected format: server.tool'
+      );
     });
 
     it('should throw error for empty server identifier', async () => {
-      await expect(
-        providerRESTService.toolsCall('.function_name', {})
-      ).rejects.toThrow('Invalid tool name format: .function_name. Expected format: server.tool');
+      await expect(providerRESTService.toolsCall('.function_name', {})).rejects.toThrow(
+        'Invalid tool name format: .function_name. Expected format: server.tool'
+      );
     });
 
     it('should throw error for non-existent server', async () => {
-      await expect(
-        providerRESTService.toolsCall('non_existent.function', {})
-      ).rejects.toThrow('REST server not found: non_existent');
+      await expect(providerRESTService.toolsCall('non_existent.function', {})).rejects.toThrow(
+        'REST server not found: non_existent'
+      );
     });
 
     it('should throw error for non-existent endpoint', async () => {
@@ -324,7 +325,7 @@ describe('ProviderRESTService', () => {
 
     it('should handle HTTP error responses', async () => {
       mockFetch.mockResolvedValue(createMockAxiosResponse({}, 404));
-      
+
       await expect(
         providerRESTService.toolsCall('user_api.get_user', { userId: '123' })
       ).rejects.toThrow('REST call failed with status 404: Error');
@@ -333,7 +334,7 @@ describe('ProviderRESTService', () => {
     it('should handle fetch rejection', async () => {
       const networkError = new Error('Network error');
       mockFetch.mockRejectedValue(networkError);
-      
+
       await expect(
         providerRESTService.toolsCall('user_api.get_user', { userId: '123' })
       ).rejects.toThrow('REST execution failed: Network error');
@@ -342,13 +343,17 @@ describe('ProviderRESTService', () => {
     it('should log REST call execution', async () => {
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       mockFetch.mockResolvedValue(createMockAxiosResponse({}));
-      
+
       await providerRESTService.toolsCall('user_api.get_user', { userId: '123' });
-      
-      expect(consoleSpy).toHaveBeenCalledWith('🌐 [RESTService] Executing REST tool: user_api.get_user');
-      expect(consoleSpy).toHaveBeenCalledWith('🚀 [RESTService] Calling GET http://localhost:5000/api/users/123');
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        '🌐 [RESTService] Executing REST tool: user_api.get_user'
+      );
+      expect(consoleSpy).toHaveBeenCalledWith(
+        '🚀 [RESTService] Calling GET http://localhost:5000/api/users/123'
+      );
       expect(consoleSpy).toHaveBeenCalledWith('✅ [RESTService] REST call successful');
-      
+
       consoleSpy.mockRestore();
     });
 
@@ -356,13 +361,16 @@ describe('ProviderRESTService', () => {
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const networkError = new Error('Network error');
       mockFetch.mockRejectedValue(networkError);
-      
+
       await expect(
         providerRESTService.toolsCall('user_api.get_user', { userId: '123' })
       ).rejects.toThrow();
-      
-      expect(consoleErrorSpy).toHaveBeenCalledWith('❌ [RESTService] REST call failed:', networkError);
-      
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '❌ [RESTService] REST call failed:',
+        networkError
+      );
+
       consoleErrorSpy.mockRestore();
     });
   });
@@ -385,11 +393,19 @@ describe('ProviderRESTService', () => {
 
     it('should return false for MCP server identifiers', async () => {
       const mcpConfig = {
-        mcpServers: [{ identifier: 'mcp_server', name: 'MCP Server', description: '', transport: 'http' as const, url: '' }],
-        restServers: []
+        mcpServers: [
+          {
+            identifier: 'mcp_server',
+            name: 'MCP Server',
+            description: '',
+            transport: 'http' as const,
+            url: '',
+          },
+        ],
+        restServers: [],
       };
       mockProviderConfig.getProvidersConfig = vi.fn().mockResolvedValue(mcpConfig);
-      
+
       const canHandle = await providerRESTService.canHandleRequest('mcp_server.function');
       expect(canHandle).toBe(false);
     });
@@ -399,11 +415,11 @@ describe('ProviderRESTService', () => {
     it('should execute REST tool directly', async () => {
       const mockResponse = { success: true };
       mockFetch.mockResolvedValue(createMockAxiosResponse(mockResponse));
-      
+
       const result = await providerRESTService.executeRESTTool('user_api', 'get_user', {
-        userId: '123'
+        userId: '123',
       });
-      
+
       expect(result).toEqual(mockResponse);
     });
 
@@ -424,16 +440,16 @@ describe('ProviderRESTService', () => {
     it('should handle endpoints without path parameters', async () => {
       const mockResponse = { users: [] };
       mockFetch.mockResolvedValue(createMockAxiosResponse(mockResponse));
-      
+
       await providerRESTService.toolsCall('user_api.create_user', {
-        payload: { name: 'Test', email: 'test@example.com' }
+        payload: { name: 'Test', email: 'test@example.com' },
       });
-      
+
       expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:5000/api/users',
         expect.objectContaining({
           method: 'POST',
-          data: { name: 'Test', email: 'test@example.com' }
+          data: { name: 'Test', email: 'test@example.com' },
         })
       );
     });
@@ -441,15 +457,15 @@ describe('ProviderRESTService', () => {
     it('should handle endpoints without query parameters', async () => {
       const mockResponse = { id: '123' };
       mockFetch.mockResolvedValue(createMockAxiosResponse(mockResponse));
-      
+
       await providerRESTService.toolsCall('user_api.get_user', {
-        userId: '123'
+        userId: '123',
       });
-      
+
       expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:5000/api/users/123',
         expect.objectContaining({
-          method: 'GET'
+          method: 'GET',
         })
       );
     });
@@ -457,15 +473,15 @@ describe('ProviderRESTService', () => {
     it('should handle endpoints without payload', async () => {
       const mockResponse = { deleted: true };
       mockFetch.mockResolvedValue(createMockAxiosResponse(mockResponse));
-      
+
       await providerRESTService.toolsCall('user_api.get_user', {
-        userId: '123'
+        userId: '123',
       });
-      
+
       expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:5000/api/users/123',
         expect.not.objectContaining({
-          data: expect.anything()
+          data: expect.anything(),
         })
       );
     });

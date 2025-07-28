@@ -25,31 +25,39 @@ class ProviderService implements ServersProviding {
    */
   async getAvailableServers(): Promise<AvailableServersResponse> {
     const config = await this.configProvider.getProvidersConfig();
-    const servers: Array<{ identifier: string; name: string; description: string; toolsCount: number }> = [];
+    const servers: Array<{
+      identifier: string;
+      name: string;
+      description: string;
+      toolsCount: number;
+    }> = [];
 
     // Add MCP servers with actual tool counts
     if (config.mcpServers) {
       for (const server of config.mcpServers) {
         let toolsCount = 0;
-        
+
         // Try to get actual tool count from MCP provider
         try {
-          const provider = this.toolsProviders.find(provider => 
-            provider.identifier === server.identifier
+          const provider = this.toolsProviders.find(
+            (provider) => provider.identifier === server.identifier
           );
 
           const tools = await provider?.toolsList();
           toolsCount = tools ? tools.length : 0;
         } catch (error) {
-          console.warn(`⚠️ [ProviderService] Failed to get tool count for MCP server ${server.identifier}:`, error);
+          console.warn(
+            `⚠️ [ProviderService] Failed to get tool count for MCP server ${server.identifier}:`,
+            error
+          );
           // toolsCount remains 0 if we can't fetch tools
         }
-        
+
         servers.push({
           identifier: server.identifier,
           name: server.name,
           description: server.description,
-          toolsCount
+          toolsCount,
         });
       }
     }
@@ -61,14 +69,14 @@ class ProviderService implements ServersProviding {
           identifier: server.identifier,
           name: server.name,
           description: server.description,
-          toolsCount: server.endPoints.length
+          toolsCount: server.endPoints.length,
         });
       }
     }
 
     return {
       total: servers.length,
-      servers
+      servers,
     };
   }
 
@@ -77,19 +85,18 @@ class ProviderService implements ServersProviding {
    */
   async getServerTools(serverIdentifier: string): Promise<ServerToolsResponse> {
     for (const provider of this.toolsProviders) {
-        if (provider.identifier !== serverIdentifier) continue;
-        try {
-            const tools = await provider.toolsList();
-            return { tools };
-        } catch (error) {
-          console.warn(`⚠️ [ProviderService] Failed to get tools from ${serverIdentifier}:`, error);
-            throw error;
-        }
+      if (provider.identifier !== serverIdentifier) continue;
+      try {
+        const tools = await provider.toolsList();
+        return { tools };
+      } catch (error) {
+        console.warn(`⚠️ [ProviderService] Failed to get tools from ${serverIdentifier}:`, error);
+        throw error;
+      }
     }
     throw new Error(`Server not found: ${serverIdentifier}`);
   }
 }
-
 
 import providerMcpService from './provider-mcp-service.js';
 import providerRestService from './provider-rest-service.js';

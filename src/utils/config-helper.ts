@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { fetchWithDefaultTimeout } from './fetch-helper.js';
-import { getConfigurationSource, isValidUrl, getConfigLoadTimeout } from './env-helper.js';
+import { getConfigLoadTimeout, getConfigurationSource, isValidUrl } from './env-helper.js';
 import type { ProvidersConfig } from '../model/providers.js';
 import type { AgentsConfig } from '../model/agents.js';
 
@@ -24,10 +24,7 @@ export function isRemoteUrl(source: string): boolean {
  * @param description - Description for error messages
  * @returns Promise that resolves to the configuration object
  */
-export async function loadConfigFromSource<T>(
-  envVar: string, 
-  description: string
-): Promise<T> {
+export async function loadConfigFromSource<T>(envVar: string, description: string): Promise<T> {
   const source = getConfigurationSource(envVar, description);
 
   console.log(`📋 [ConfigHelper] Loading ${description} from: ${source}`);
@@ -46,20 +43,20 @@ export async function loadConfigFromSource<T>(
       const response = await fetchWithDefaultTimeout(source, {
         timeout: getConfigLoadTimeout(),
         headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'Cubicler/2.0'
-        }
+          Accept: 'application/json',
+          'User-Agent': 'Cubicler/2.0',
+        },
       });
-      
+
       if (response.status < 200 || response.status >= 300) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
-      
+
       // Validate that we received valid JSON
       if (!response.data || typeof response.data !== 'object') {
         throw new Error('Remote URL returned invalid JSON data');
       }
-      
+
       config = response.data;
       console.log(`✅ [ConfigHelper] Successfully loaded ${description} from remote URL`);
     } catch (error) {
@@ -101,23 +98,25 @@ export function validateProvidersConfig(config: unknown): asserts config is Prov
     if (!Array.isArray(typedConfig.mcpServers)) {
       throw new Error('Invalid providers configuration: mcpServers must be an array');
     }
-    
+
     for (let i = 0; i < typedConfig.mcpServers.length; i++) {
       const server = typedConfig.mcpServers[i];
       if (!server || typeof server !== 'object' || Array.isArray(server)) {
         throw new Error(`Invalid MCP server at index ${i}: must be an object`);
       }
-      
+
       if (!server.identifier || typeof server.identifier !== 'string') {
         throw new Error(`Invalid MCP server at index ${i}: missing or invalid identifier`);
       }
       if (!server.url || typeof server.url !== 'string') {
         throw new Error(`Invalid MCP server at index ${i}: missing or invalid url`);
       }
-      
+
       // Validate identifier format (lowercase, no spaces, only - or _)
       if (!/^[a-z0-9_-]+$/.test(server.identifier)) {
-        throw new Error(`Invalid MCP server at index ${i}: identifier "${server.identifier}" must be lowercase with only letters, numbers, hyphens, or underscores`);
+        throw new Error(
+          `Invalid MCP server at index ${i}: identifier "${server.identifier}" must be lowercase with only letters, numbers, hyphens, or underscores`
+        );
       }
     }
   }
@@ -127,13 +126,13 @@ export function validateProvidersConfig(config: unknown): asserts config is Prov
     if (!Array.isArray(typedConfig.restServers)) {
       throw new Error('Invalid providers configuration: restServers must be an array');
     }
-    
+
     for (let i = 0; i < typedConfig.restServers.length; i++) {
       const server = typedConfig.restServers[i];
       if (!server || typeof server !== 'object' || Array.isArray(server)) {
         throw new Error(`Invalid REST server at index ${i}: must be an object`);
       }
-      
+
       if (!server.identifier || typeof server.identifier !== 'string') {
         throw new Error(`Invalid REST server at index ${i}: missing or invalid identifier`);
       }
@@ -143,15 +142,18 @@ export function validateProvidersConfig(config: unknown): asserts config is Prov
 
       // Validate identifier format (lowercase, no spaces, only - or _)
       if (!/^[a-z0-9_-]+$/.test(server.identifier)) {
-        throw new Error(`Invalid REST server at index ${i}: identifier "${server.identifier}" must be lowercase with only letters, numbers, hyphens, or underscores`);
+        throw new Error(
+          `Invalid REST server at index ${i}: identifier "${server.identifier}" must be lowercase with only letters, numbers, hyphens, or underscores`
+        );
       }
     }
   }
 
   // Ensure at least one server type is provided if arrays exist
   const hasMcpServers = Array.isArray(typedConfig.mcpServers) && typedConfig.mcpServers.length > 0;
-  const hasRestServers = Array.isArray(typedConfig.restServers) && typedConfig.restServers.length > 0;
-  
+  const hasRestServers =
+    Array.isArray(typedConfig.restServers) && typedConfig.restServers.length > 0;
+
   if (!hasMcpServers && !hasRestServers) {
     console.warn('⚠️ [ConfigHelper] No servers configured in providers list');
   }
@@ -180,26 +182,28 @@ export function validateAgentsConfig(config: unknown): asserts config is AgentsC
   // Validate each agent
   for (let i = 0; i < typedConfig.agents.length; i++) {
     const agent = typedConfig.agents[i];
-    
+
     if (!agent || typeof agent !== 'object' || Array.isArray(agent)) {
       throw new Error(`Invalid agent at index ${i}: must be an object`);
     }
-    
+
     if (!agent.identifier || typeof agent.identifier !== 'string') {
       throw new Error(`Invalid agent at index ${i}: missing or invalid identifier`);
     }
-    
+
     if (!agent.url || typeof agent.url !== 'string') {
       throw new Error(`Invalid agent at index ${i}: missing or invalid url`);
     }
-    
+
     if (!agent.name || typeof agent.name !== 'string') {
       throw new Error(`Invalid agent at index ${i}: missing or invalid name`);
     }
 
     // Validate identifier format (lowercase, no spaces, only - or _)
     if (!/^[a-z0-9_-]+$/.test(agent.identifier)) {
-      throw new Error(`Invalid agent at index ${i}: identifier "${agent.identifier}" must be lowercase with only letters, numbers, hyphens, or underscores`);
+      throw new Error(
+        `Invalid agent at index ${i}: identifier "${agent.identifier}" must be lowercase with only letters, numbers, hyphens, or underscores`
+      );
     }
   }
 
@@ -214,7 +218,7 @@ export function validateAgentsConfig(config: unknown): asserts config is AgentsC
   if (typedConfig.basePrompt !== undefined && typeof typedConfig.basePrompt !== 'string') {
     throw new Error('Invalid agents configuration: basePrompt must be a string');
   }
-  
+
   if (typedConfig.defaultPrompt !== undefined && typeof typedConfig.defaultPrompt !== 'string') {
     throw new Error('Invalid agents configuration: defaultPrompt must be a string');
   }

@@ -1,4 +1,4 @@
-import type { JSONValue, JSONObject } from './types.js';
+import type { JSONObject, JSONValue } from './types.js';
 
 /**
  * Tool definition for Cubicler tools

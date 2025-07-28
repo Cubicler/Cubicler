@@ -1,6 +1,6 @@
 import { config } from 'dotenv';
-import type { AgentsConfig, Agent, AgentInfo } from '../model/agents.js';
-import type { AgentsProviding } from "../interface/agents-providing.js";
+import type { Agent, AgentInfo, AgentsConfig } from '../model/agents.js';
+import type { AgentsProviding } from '../interface/agents-providing.js';
 import { Cache, createEnvCache } from '../utils/cache.js';
 import { loadConfigFromSource, validateAgentsConfig } from '../utils/config-helper.js';
 
@@ -17,7 +17,7 @@ class AgentService implements AgentsProviding {
   /**
    * Compose prompt for a specific agent
    * Combines basePrompt + (defaultPrompt | agent-specific prompt)
-   * 
+   *
    * Priority:
    * 1. If agent has specific prompt: basePrompt + agent.prompt
    * 2. If no agent-specific prompt: basePrompt + defaultPrompt
@@ -25,7 +25,7 @@ class AgentService implements AgentsProviding {
    */
   async getAgentPrompt(agentIdentifier?: string): Promise<string> {
     const config = await this.loadAgents();
-    
+
     let agent: Agent;
     if (agentIdentifier) {
       agent = await this.getAgent(agentIdentifier);
@@ -59,12 +59,14 @@ class AgentService implements AgentsProviding {
    * Get agent information for dispatch (without sensitive details)
    */
   async getAgentInfo(agentIdentifier?: string): Promise<AgentInfo> {
-    const agent = agentIdentifier ? await this.getAgent(agentIdentifier) : await this.getDefaultAgent();
-    
+    const agent = agentIdentifier
+      ? await this.getAgent(agentIdentifier)
+      : await this.getDefaultAgent();
+
     return {
       identifier: agent.identifier,
       name: agent.name,
-      description: agent.description
+      description: agent.description,
     };
   }
 
@@ -73,11 +75,11 @@ class AgentService implements AgentsProviding {
    */
   async getAllAgents(): Promise<AgentInfo[]> {
     const config = await this.loadAgents();
-    
-    return config.agents.map(agent => ({
+
+    return config.agents.map((agent) => ({
       identifier: agent.identifier,
       name: agent.name,
-      description: agent.description
+      description: agent.description,
     }));
   }
 
@@ -97,7 +99,9 @@ class AgentService implements AgentsProviding {
    * Get agent URL for communication
    */
   async getAgentUrl(agentIdentifier?: string): Promise<string> {
-    const agent = agentIdentifier ? await this.getAgent(agentIdentifier) : await this.getDefaultAgent();
+    const agent = agentIdentifier
+      ? await this.getAgent(agentIdentifier)
+      : await this.getDefaultAgent();
     return agent.url;
   }
 
@@ -107,7 +111,6 @@ class AgentService implements AgentsProviding {
   clearCache(): void {
     this.agentsCache.clear();
   }
-
 
   /**
    * Load agents configuration from source (file or URL)
@@ -119,7 +122,7 @@ class AgentService implements AgentsProviding {
     }
 
     const config = await loadConfigFromSource<AgentsConfig>(
-      'CUBICLER_AGENTS_LIST', 
+      'CUBICLER_AGENTS_LIST',
       'agents configuration'
     );
 
@@ -128,7 +131,7 @@ class AgentService implements AgentsProviding {
 
     // Cache the result
     this.agentsCache.set('config', config);
-    
+
     console.log(`✅ [AgentService] Loaded ${config.agents.length} agents`);
 
     return config;
@@ -139,8 +142,8 @@ class AgentService implements AgentsProviding {
    */
   private async getAgent(agentIdentifier: string): Promise<Agent> {
     const config = await this.loadAgents();
-    const agent = config.agents.find(a => a.identifier === agentIdentifier);
-    
+    const agent = config.agents.find((a) => a.identifier === agentIdentifier);
+
     if (!agent) {
       throw new Error(`Agent not found: ${agentIdentifier}`);
     }
@@ -153,12 +156,17 @@ class AgentService implements AgentsProviding {
    */
   private async getDefaultAgent(): Promise<Agent> {
     const config = await this.loadAgents();
-    
+
     if (config.agents.length === 0) {
       throw new Error('No agents available');
     }
 
-    return config.agents[0]!;
+    const firstAgent = config.agents[0];
+    if (!firstAgent) {
+      throw new Error('No agents available');
+    }
+
+    return firstAgent;
   }
 }
 

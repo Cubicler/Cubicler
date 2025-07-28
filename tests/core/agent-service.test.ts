@@ -26,20 +26,32 @@ describe('Agent Service', () => {
   describe('getAllAgents', () => {
     it('should return list of available agents', async () => {
       process.env.CUBICLER_AGENTS_LIST = './test-agents.json';
-      mockFs.readFileSync.mockReturnValue(JSON.stringify({
-        basePrompt: "You are a helpful AI assistant.",
-        defaultPrompt: "You have access to tools.",
-        agents: [
-          { identifier: "gpt_4o", name: "GPT-4O", transport: "http", url: "http://localhost:3000" },
-          { identifier: "claude_3_5", name: "Claude", transport: "http", url: "http://localhost:3001" }
-        ]
-      }));
+      mockFs.readFileSync.mockReturnValue(
+        JSON.stringify({
+          basePrompt: 'You are a helpful AI assistant.',
+          defaultPrompt: 'You have access to tools.',
+          agents: [
+            {
+              identifier: 'gpt_4o',
+              name: 'GPT-4O',
+              transport: 'http',
+              url: 'http://localhost:3000',
+            },
+            {
+              identifier: 'claude_3_5',
+              name: 'Claude',
+              transport: 'http',
+              url: 'http://localhost:3001',
+            },
+          ],
+        })
+      );
 
       const { default: agentService } = await import('../../src/core/agent-service.js');
       const result = await agentService.getAllAgents();
 
       expect(result).toHaveLength(2);
-      expect(result.map(a => a.identifier)).toEqual(['gpt_4o', 'claude_3_5']);
+      expect(result.map((a) => a.identifier)).toEqual(['gpt_4o', 'claude_3_5']);
     });
 
     it('should load agents from remote URL', async () => {
@@ -49,9 +61,15 @@ describe('Agent Service', () => {
         statusText: 'OK',
         data: {
           agents: [
-            { identifier: "remote_agent", name: "Remote Agent", transport: "http", url: "http://remote:3000", description: "Remote agent" }
-          ]
-        }
+            {
+              identifier: 'remote_agent',
+              name: 'Remote Agent',
+              transport: 'http',
+              url: 'http://remote:3000',
+              description: 'Remote agent',
+            },
+          ],
+        },
       });
 
       const { default: agentService } = await import('../../src/core/agent-service.js');
@@ -59,9 +77,11 @@ describe('Agent Service', () => {
 
       expect(result).toHaveLength(1);
       expect(result[0].identifier).toBe('remote_agent');
-      expect(mockAxios).toHaveBeenCalledWith(expect.objectContaining({
-        url: 'https://example.com/agents.json'
-      }));
+      expect(mockAxios).toHaveBeenCalledWith(
+        expect.objectContaining({
+          url: 'https://example.com/agents.json',
+        })
+      );
     });
 
     it('should handle empty agents list', async () => {
@@ -69,35 +89,39 @@ describe('Agent Service', () => {
       mockFs.readFileSync.mockReturnValue(JSON.stringify({ agents: [] }));
 
       const { default: agentService } = await import('../../src/core/agent-service.js');
-      
-      await expect(agentService.getAllAgents()).rejects.toThrow('Invalid agents configuration: at least one agent must be configured');
+
+      await expect(agentService.getAllAgents()).rejects.toThrow(
+        'Invalid agents configuration: at least one agent must be configured'
+      );
     });
   });
 
   describe('hasAgent', () => {
     beforeEach(() => {
       process.env.CUBICLER_AGENTS_LIST = './test-agents.json';
-      mockFs.readFileSync.mockReturnValue(JSON.stringify({
-        basePrompt: "You are a helpful AI assistant.",
-        defaultPrompt: "You have access to tools.",
-        agents: [
-          { 
-            identifier: "gpt_4o", 
-            name: "GPT-4O", 
-            transport: "http", 
-            url: "http://localhost:3000",
-            description: "Advanced agent",
-            prompt: "You are specialized."
-          },
-          { 
-            identifier: "claude_3_5", 
-            name: "Claude", 
-            transport: "http", 
-            url: "http://localhost:3001",
-            description: "Creative agent"
-          }
-        ]
-      }));
+      mockFs.readFileSync.mockReturnValue(
+        JSON.stringify({
+          basePrompt: 'You are a helpful AI assistant.',
+          defaultPrompt: 'You have access to tools.',
+          agents: [
+            {
+              identifier: 'gpt_4o',
+              name: 'GPT-4O',
+              transport: 'http',
+              url: 'http://localhost:3000',
+              description: 'Advanced agent',
+              prompt: 'You are specialized.',
+            },
+            {
+              identifier: 'claude_3_5',
+              name: 'Claude',
+              transport: 'http',
+              url: 'http://localhost:3001',
+              description: 'Creative agent',
+            },
+          ],
+        })
+      );
     });
 
     it('should return true for existing agent', async () => {
@@ -110,7 +134,7 @@ describe('Agent Service', () => {
     it('should return false for non-existent agent', async () => {
       const { default: agentService } = await import('../../src/core/agent-service.js');
       const result = await agentService.hasAgent('non_existent');
-      
+
       expect(result).toBe(false);
     });
   });
@@ -118,27 +142,29 @@ describe('Agent Service', () => {
   describe('getAgentInfo', () => {
     beforeEach(() => {
       process.env.CUBICLER_AGENTS_LIST = './test-agents.json';
-      mockFs.readFileSync.mockReturnValue(JSON.stringify({
-        basePrompt: "You are a helpful AI assistant.",
-        defaultPrompt: "You have access to tools.",
-        agents: [
-          { 
-            identifier: "gpt_4o", 
-            name: "GPT-4O", 
-            transport: "http", 
-            url: "http://localhost:3000",
-            description: "Advanced agent",
-            prompt: "You are specialized."
-          },
-          { 
-            identifier: "claude_3_5", 
-            name: "Claude", 
-            transport: "http", 
-            url: "http://localhost:3001",
-            description: "Creative agent"
-          }
-        ]
-      }));
+      mockFs.readFileSync.mockReturnValue(
+        JSON.stringify({
+          basePrompt: 'You are a helpful AI assistant.',
+          defaultPrompt: 'You have access to tools.',
+          agents: [
+            {
+              identifier: 'gpt_4o',
+              name: 'GPT-4O',
+              transport: 'http',
+              url: 'http://localhost:3000',
+              description: 'Advanced agent',
+              prompt: 'You are specialized.',
+            },
+            {
+              identifier: 'claude_3_5',
+              name: 'Claude',
+              transport: 'http',
+              url: 'http://localhost:3001',
+              description: 'Creative agent',
+            },
+          ],
+        })
+      );
     });
 
     it('should return specific agent info by identifier', async () => {
@@ -161,25 +187,27 @@ describe('Agent Service', () => {
   describe('getAgentPrompt', () => {
     beforeEach(() => {
       process.env.CUBICLER_AGENTS_LIST = './test-agents.json';
-      mockFs.readFileSync.mockReturnValue(JSON.stringify({
-        basePrompt: "You are a helpful AI assistant.",
-        defaultPrompt: "You have access to tools.",
-        agents: [
-          { 
-            identifier: "agent_with_prompt", 
-            name: "Agent With Prompt", 
-            transport: "http", 
-            url: "http://localhost:3000",
-            prompt: "You are specialized in analysis."
-          },
-          { 
-            identifier: "agent_without_prompt", 
-            name: "Agent Without Prompt", 
-            transport: "http", 
-            url: "http://localhost:3001"
-          }
-        ]
-      }));
+      mockFs.readFileSync.mockReturnValue(
+        JSON.stringify({
+          basePrompt: 'You are a helpful AI assistant.',
+          defaultPrompt: 'You have access to tools.',
+          agents: [
+            {
+              identifier: 'agent_with_prompt',
+              name: 'Agent With Prompt',
+              transport: 'http',
+              url: 'http://localhost:3000',
+              prompt: 'You are specialized in analysis.',
+            },
+            {
+              identifier: 'agent_without_prompt',
+              name: 'Agent Without Prompt',
+              transport: 'http',
+              url: 'http://localhost:3001',
+            },
+          ],
+        })
+      );
     });
 
     it('should compose prompt with base + agent-specific prompt', async () => {
@@ -200,22 +228,24 @@ describe('Agent Service', () => {
       const { default: agentService } = await import('../../src/core/agent-service.js');
       const result = await agentService.getAgentPrompt();
 
-      expect(result).toBe('You are a helpful AI assistant.\n\nYou are specialized in analysis.');  // First agent has specific prompt
+      expect(result).toBe('You are a helpful AI assistant.\n\nYou are specialized in analysis.'); // First agent has specific prompt
     });
 
     it('should handle missing base prompt', async () => {
-      mockFs.readFileSync.mockReturnValue(JSON.stringify({
-        defaultPrompt: "You have access to tools.",
-        agents: [
-          { 
-            identifier: "test_agent", 
-            name: "Test Agent", 
-            transport: "http", 
-            url: "http://localhost:3000",
-            prompt: "You are specialized."
-          }
-        ]
-      }));
+      mockFs.readFileSync.mockReturnValue(
+        JSON.stringify({
+          defaultPrompt: 'You have access to tools.',
+          agents: [
+            {
+              identifier: 'test_agent',
+              name: 'Test Agent',
+              transport: 'http',
+              url: 'http://localhost:3000',
+              prompt: 'You are specialized.',
+            },
+          ],
+        })
+      );
 
       const { default: agentService } = await import('../../src/core/agent-service.js');
       const result = await agentService.getAgentPrompt('test_agent');
@@ -227,14 +257,21 @@ describe('Agent Service', () => {
   describe('clearCache', () => {
     it('should clear the agents cache', async () => {
       process.env.CUBICLER_AGENTS_LIST = './test-agents.json';
-      mockFs.readFileSync.mockReturnValue(JSON.stringify({
-        agents: [
-          { identifier: "test_agent", name: "Test", transport: "http", url: "http://localhost:3000" }
-        ]
-      }));
+      mockFs.readFileSync.mockReturnValue(
+        JSON.stringify({
+          agents: [
+            {
+              identifier: 'test_agent',
+              name: 'Test',
+              transport: 'http',
+              url: 'http://localhost:3000',
+            },
+          ],
+        })
+      );
 
       const { default: agentService } = await import('../../src/core/agent-service.js');
-      
+
       // Load agents to populate cache
       await agentService.getAllAgents();
       expect(mockFs.readFileSync).toHaveBeenCalledTimes(1);

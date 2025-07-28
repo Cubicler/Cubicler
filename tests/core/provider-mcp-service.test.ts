@@ -8,7 +8,7 @@ import * as fetchHelper from '../../src/utils/fetch-helper.js';
 
 // Mock fetch helper
 vi.mock('../../src/utils/fetch-helper.js', () => ({
-  fetchWithDefaultTimeout: vi.fn()
+  fetchWithDefaultTimeout: vi.fn(),
 }));
 
 // Helper to create mock AxiosResponse
@@ -17,7 +17,7 @@ const createMockAxiosResponse = <T>(data: T): AxiosResponse<T> => ({
   status: 200,
   statusText: 'OK',
   headers: {},
-  config: {} as any
+  config: {} as any,
 });
 
 describe('ProviderMCPService', () => {
@@ -34,16 +34,16 @@ describe('ProviderMCPService', () => {
         transport: 'http',
         url: 'http://localhost:4000/mcp',
         headers: {
-          'Authorization': 'Bearer test-token'
-        }
+          Authorization: 'Bearer test-token',
+        },
       },
       {
         identifier: 'file_service',
         name: 'File Service',
         description: 'File management via MCP',
         transport: 'http',
-        url: 'http://localhost:4001/mcp'
-      }
+        url: 'http://localhost:4001/mcp',
+      },
     ],
     restServers: [
       {
@@ -52,7 +52,7 @@ describe('ProviderMCPService', () => {
         description: 'Legacy REST API for user management',
         url: 'http://localhost:5000/api',
         defaultHeaders: {
-          'Authorization': 'Bearer api-token'
+          Authorization: 'Bearer api-token',
         },
         endPoints: [
           {
@@ -65,15 +65,15 @@ describe('ProviderMCPService', () => {
               properties: {
                 userId: {
                   type: 'string',
-                  description: 'User ID to fetch'
-                }
+                  description: 'User ID to fetch',
+                },
               },
-              required: ['userId']
-            }
-          }
-        ]
-      }
-    ]
+              required: ['userId'],
+            },
+          },
+        ],
+      },
+    ],
   };
 
   beforeEach(() => {
@@ -81,7 +81,7 @@ describe('ProviderMCPService', () => {
 
     // Mock provider config
     mockProviderConfig = {
-      getProvidersConfig: vi.fn().mockResolvedValue(mockProvidersConfig)
+      getProvidersConfig: vi.fn().mockResolvedValue(mockProvidersConfig),
     };
 
     // Mock fetch helper
@@ -98,14 +98,16 @@ describe('ProviderMCPService', () => {
 
     it('should initialize successfully', async () => {
       // Mock successful initialization responses
-      mockFetch.mockResolvedValue(createMockAxiosResponse({
-        jsonrpc: '2.0',
-        id: 'initialize',
-        result: {
-          protocolVersion: '2024-11-05',
-          capabilities: { tools: {} }
-        }
-      }));
+      mockFetch.mockResolvedValue(
+        createMockAxiosResponse({
+          jsonrpc: '2.0',
+          id: 'initialize',
+          result: {
+            protocolVersion: '2024-11-05',
+            capabilities: { tools: {} },
+          },
+        })
+      );
 
       await expect(providerMCPService.initialize()).resolves.toBeUndefined();
 
@@ -115,7 +117,7 @@ describe('ProviderMCPService', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer test-token'
+          Authorization: 'Bearer test-token',
         },
         data: {
           jsonrpc: '2.0',
@@ -124,9 +126,9 @@ describe('ProviderMCPService', () => {
           params: {
             protocolVersion: '2024-11-05',
             capabilities: { tools: {} },
-            clientInfo: { name: 'Cubicler', version: '2.0' }
-          }
-        }
+            clientInfo: { name: 'Cubicler', version: '2.0' },
+          },
+        },
       });
     });
 
@@ -185,64 +187,72 @@ describe('ProviderMCPService', () => {
             type: 'object',
             properties: {
               city: { type: 'string' },
-              country: { type: 'string' }
+              country: { type: 'string' },
             },
-            required: ['city']
-          }
-        }
+            required: ['city'],
+          },
+        },
       ];
 
-      mockFetch.mockResolvedValue(createMockAxiosResponse({
-        jsonrpc: '2.0',
-        id: 'tools-request',
-        result: { tools: mockTools }
-      }));
+      mockFetch.mockResolvedValue(
+        createMockAxiosResponse({
+          jsonrpc: '2.0',
+          id: 'tools-request',
+          result: { tools: mockTools },
+        })
+      );
 
       const tools = await providerMCPService.getMCPTools('weather_service');
-      
+
       expect(tools).toEqual(mockTools);
       expect(mockFetch).toHaveBeenCalledWith('http://localhost:4000/mcp', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer test-token'
+          Authorization: 'Bearer test-token',
         },
         data: {
           jsonrpc: '2.0',
           id: 'tools-request',
           method: 'tools/list',
-          params: {}
-        }
+          params: {},
+        },
       });
     });
 
     it('should handle MCP error responses', async () => {
-      mockFetch.mockResolvedValue(createMockAxiosResponse({
-        jsonrpc: '2.0',
-        id: 'tools-request',
-        error: {
-          code: -32601,
-          message: 'Method not found'
-        }
-      }));
+      mockFetch.mockResolvedValue(
+        createMockAxiosResponse({
+          jsonrpc: '2.0',
+          id: 'tools-request',
+          error: {
+            code: -32601,
+            message: 'Method not found',
+          },
+        })
+      );
 
-      await expect(providerMCPService.getMCPTools('weather_service'))
-        .rejects.toThrow('MCP tools request failed: Method not found');
+      await expect(providerMCPService.getMCPTools('weather_service')).rejects.toThrow(
+        'MCP tools request failed: Method not found'
+      );
     });
 
     it('should handle network errors', async () => {
       mockFetch.mockRejectedValue(new Error('Network error'));
 
-      await expect(providerMCPService.getMCPTools('weather_service'))
-        .rejects.toThrow('Network error');
+      await expect(providerMCPService.getMCPTools('weather_service')).rejects.toThrow(
+        'Network error'
+      );
     });
 
     it('should return empty array when no tools in response', async () => {
-      mockFetch.mockResolvedValue(createMockAxiosResponse({
-        jsonrpc: '2.0',
-        id: 'tools-request',
-        result: {}
-      }));
+      mockFetch.mockResolvedValue(
+        createMockAxiosResponse({
+          jsonrpc: '2.0',
+          id: 'tools-request',
+          result: {},
+        })
+      );
 
       const tools = await providerMCPService.getMCPTools('weather_service');
       expect(tools).toEqual([]);
@@ -259,29 +269,31 @@ describe('ProviderMCPService', () => {
             type: 'object',
             properties: {
               city: { type: 'string' },
-              country: { type: 'string' }
-            }
-          }
+              country: { type: 'string' },
+            },
+          },
         },
         {
           name: 'get_forecast',
           inputSchema: {
             type: 'object',
             properties: {
-              location: { type: 'string' }
-            }
-          }
-        }
+              location: { type: 'string' },
+            },
+          },
+        },
       ];
 
-      mockFetch.mockResolvedValue(createMockAxiosResponse({
-        jsonrpc: '2.0',
-        id: 'tools-request',
-        result: { tools: mockMCPTools }
-      }));
+      mockFetch.mockResolvedValue(
+        createMockAxiosResponse({
+          jsonrpc: '2.0',
+          id: 'tools-request',
+          result: { tools: mockMCPTools },
+        })
+      );
 
       const tools = await providerMCPService.getToolsFromServer('weather_service');
-      
+
       expect(tools).toEqual([
         {
           name: 'weather_service.get_weather',
@@ -290,9 +302,9 @@ describe('ProviderMCPService', () => {
             type: 'object',
             properties: {
               city: { type: 'string' },
-              country: { type: 'string' }
-            }
-          }
+              country: { type: 'string' },
+            },
+          },
         },
         {
           name: 'weather_service.get_forecast',
@@ -300,10 +312,10 @@ describe('ProviderMCPService', () => {
           parameters: {
             type: 'object',
             properties: {
-              location: { type: 'string' }
-            }
-          }
-        }
+              location: { type: 'string' },
+            },
+          },
+        },
       ]);
     });
   });
@@ -311,37 +323,41 @@ describe('ProviderMCPService', () => {
   describe('getAllMCPTools', () => {
     it('should fetch tools from all MCP servers', async () => {
       // Mock tools for weather service
-      mockFetch.mockResolvedValueOnce(createMockAxiosResponse({
-        jsonrpc: '2.0',
-        id: 'tools-request',
-        result: {
-          tools: [
-            {
-              name: 'get_weather',
-              description: 'Get weather',
-              inputSchema: { type: 'object', properties: {} }
-            }
-          ]
-        }
-      }));
+      mockFetch.mockResolvedValueOnce(
+        createMockAxiosResponse({
+          jsonrpc: '2.0',
+          id: 'tools-request',
+          result: {
+            tools: [
+              {
+                name: 'get_weather',
+                description: 'Get weather',
+                inputSchema: { type: 'object', properties: {} },
+              },
+            ],
+          },
+        })
+      );
 
       // Mock tools for file service
-      mockFetch.mockResolvedValueOnce(createMockAxiosResponse({
-        jsonrpc: '2.0',
-        id: 'tools-request',
-        result: {
-          tools: [
-            {
-              name: 'read_file',
-              description: 'Read file',
-              inputSchema: { type: 'object', properties: {} }
-            }
-          ]
-        }
-      }));
+      mockFetch.mockResolvedValueOnce(
+        createMockAxiosResponse({
+          jsonrpc: '2.0',
+          id: 'tools-request',
+          result: {
+            tools: [
+              {
+                name: 'read_file',
+                description: 'Read file',
+                inputSchema: { type: 'object', properties: {} },
+              },
+            ],
+          },
+        })
+      );
 
       const tools = await providerMCPService.getAllMCPTools();
-      
+
       expect(tools).toHaveLength(2);
       expect(tools[0].name).toBe('weather_service.get_weather');
       expect(tools[1].name).toBe('file_service.read_file');
@@ -352,22 +368,24 @@ describe('ProviderMCPService', () => {
       mockFetch.mockRejectedValueOnce(new Error('Server down'));
 
       // Second server succeeds
-      mockFetch.mockResolvedValueOnce(createMockAxiosResponse({
-        jsonrpc: '2.0',
-        id: 'tools-request',
-        result: {
-          tools: [
-            {
-              name: 'read_file',
-              description: 'Read file',
-              inputSchema: { type: 'object', properties: {} }
-            }
-          ]
-        }
-      }));
+      mockFetch.mockResolvedValueOnce(
+        createMockAxiosResponse({
+          jsonrpc: '2.0',
+          id: 'tools-request',
+          result: {
+            tools: [
+              {
+                name: 'read_file',
+                description: 'Read file',
+                inputSchema: { type: 'object', properties: {} },
+              },
+            ],
+          },
+        })
+      );
 
       const tools = await providerMCPService.getAllMCPTools();
-      
+
       expect(tools).toHaveLength(1);
       expect(tools[0].name).toBe('file_service.read_file');
     });
@@ -375,22 +393,24 @@ describe('ProviderMCPService', () => {
 
   describe('toolsList', () => {
     it('should return all MCP tools via toolsList interface', async () => {
-      mockFetch.mockResolvedValue(createMockAxiosResponse({
-        jsonrpc: '2.0',
-        id: 'tools-request',
-        result: {
-          tools: [
-            {
-              name: 'test_tool',
-              description: 'Test tool',
-              inputSchema: { type: 'object', properties: {} }
-            }
-          ]
-        }
-      }));
+      mockFetch.mockResolvedValue(
+        createMockAxiosResponse({
+          jsonrpc: '2.0',
+          id: 'tools-request',
+          result: {
+            tools: [
+              {
+                name: 'test_tool',
+                description: 'Test tool',
+                inputSchema: { type: 'object', properties: {} },
+              },
+            ],
+          },
+        })
+      );
 
       const tools = await providerMCPService.toolsList();
-      
+
       expect(tools).toHaveLength(2); // One tool from each server
       expect(tools[0].name).toBe('weather_service.test_tool');
       expect(tools[1].name).toBe('file_service.test_tool');
@@ -400,25 +420,25 @@ describe('ProviderMCPService', () => {
   describe('executeMCPTool', () => {
     it('should execute MCP tool successfully', async () => {
       const mockResult = { temperature: 25, condition: 'sunny' };
-      
-      mockFetch.mockResolvedValue(createMockAxiosResponse({
-        jsonrpc: '2.0',
-        id: 'execute-get_weather',
-        result: mockResult
-      }));
 
-      const result = await providerMCPService.executeMCPTool(
-        'weather_service',
-        'get_weather',
-        { city: 'Jakarta' }
+      mockFetch.mockResolvedValue(
+        createMockAxiosResponse({
+          jsonrpc: '2.0',
+          id: 'execute-get_weather',
+          result: mockResult,
+        })
       );
-      
+
+      const result = await providerMCPService.executeMCPTool('weather_service', 'get_weather', {
+        city: 'Jakarta',
+      });
+
       expect(result).toEqual(mockResult);
       expect(mockFetch).toHaveBeenCalledWith('http://localhost:4000/mcp', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer test-token'
+          Authorization: 'Bearer test-token',
         },
         data: {
           jsonrpc: '2.0',
@@ -426,75 +446,80 @@ describe('ProviderMCPService', () => {
           method: 'tools/call',
           params: {
             name: 'get_weather',
-            arguments: { city: 'Jakarta' }
-          }
-        }
+            arguments: { city: 'Jakarta' },
+          },
+        },
       });
     });
 
     it('should handle MCP execution errors', async () => {
-      mockFetch.mockResolvedValue(createMockAxiosResponse({
-        jsonrpc: '2.0',
-        id: 'execute-get_weather',
-        error: {
-          code: -32602,
-          message: 'Invalid params'
-        }
-      }));
+      mockFetch.mockResolvedValue(
+        createMockAxiosResponse({
+          jsonrpc: '2.0',
+          id: 'execute-get_weather',
+          error: {
+            code: -32602,
+            message: 'Invalid params',
+          },
+        })
+      );
 
-      await expect(providerMCPService.executeMCPTool(
-        'weather_service',
-        'get_weather',
-        { city: 'Jakarta' }
-      )).rejects.toThrow('MCP tool execution failed: Invalid params');
+      await expect(
+        providerMCPService.executeMCPTool('weather_service', 'get_weather', { city: 'Jakarta' })
+      ).rejects.toThrow('MCP tool execution failed: Invalid params');
     });
   });
 
   describe('executeToolByName', () => {
     it('should parse tool name and execute successfully', async () => {
       const mockResult = { data: 'success' };
-      
-      mockFetch.mockResolvedValue(createMockAxiosResponse({
-        jsonrpc: '2.0',
-        id: 'execute-get_weather',
-        result: mockResult
-      }));
 
-      const result = await providerMCPService.executeToolByName(
-        'weather_service.get_weather',
-        { city: 'Jakarta' }
+      mockFetch.mockResolvedValue(
+        createMockAxiosResponse({
+          jsonrpc: '2.0',
+          id: 'execute-get_weather',
+          result: mockResult,
+        })
       );
-      
+
+      const result = await providerMCPService.executeToolByName('weather_service.get_weather', {
+        city: 'Jakarta',
+      });
+
       expect(result).toEqual(mockResult);
     });
 
     it('should reject invalid tool name formats', async () => {
-      await expect(providerMCPService.executeToolByName('invalid', {}))
-        .rejects.toThrow('Invalid function name format: invalid. Expected format: server.function');
+      await expect(providerMCPService.executeToolByName('invalid', {})).rejects.toThrow(
+        'Invalid function name format: invalid. Expected format: server.function'
+      );
 
-      await expect(providerMCPService.executeToolByName('too.many.parts', {}))
-        .rejects.toThrow('Invalid function name format: too.many.parts. Expected format: server.function');
+      await expect(providerMCPService.executeToolByName('too.many.parts', {})).rejects.toThrow(
+        'Invalid function name format: too.many.parts. Expected format: server.function'
+      );
 
-      await expect(providerMCPService.executeToolByName('server.', {}))
-        .rejects.toThrow('Invalid function name format: server.. Expected format: server.function');
+      await expect(providerMCPService.executeToolByName('server.', {})).rejects.toThrow(
+        'Invalid function name format: server.. Expected format: server.function'
+      );
     });
   });
 
   describe('toolsCall', () => {
     it('should execute tool via toolsCall interface', async () => {
       const mockResult = { success: true };
-      
-      mockFetch.mockResolvedValue(createMockAxiosResponse({
-        jsonrpc: '2.0',
-        id: 'execute-get_weather',
-        result: mockResult
-      }));
 
-      const result = await providerMCPService.toolsCall(
-        'weather_service.get_weather',
-        { city: 'Jakarta' }
+      mockFetch.mockResolvedValue(
+        createMockAxiosResponse({
+          jsonrpc: '2.0',
+          id: 'execute-get_weather',
+          result: mockResult,
+        })
       );
-      
+
+      const result = await providerMCPService.toolsCall('weather_service.get_weather', {
+        city: 'Jakarta',
+      });
+
       expect(result).toEqual(mockResult);
     });
   });
@@ -505,13 +530,13 @@ describe('ProviderMCPService', () => {
         jsonrpc: '2.0',
         id: 'test',
         method: 'test/method',
-        params: {}
+        params: {},
       };
 
       const mockResponse: MCPResponse = {
         jsonrpc: '2.0',
         id: 'test',
-        result: { success: true }
+        result: { success: true },
       };
 
       mockFetch.mockResolvedValue(createMockAxiosResponse(mockResponse));
@@ -523,9 +548,9 @@ describe('ProviderMCPService', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer test-token'
+          Authorization: 'Bearer test-token',
         },
-        data: request
+        data: request,
       });
     });
 
@@ -534,11 +559,12 @@ describe('ProviderMCPService', () => {
         jsonrpc: '2.0',
         id: 'test',
         method: 'test/method',
-        params: {}
+        params: {},
       };
 
-      await expect(providerMCPService.sendMCPRequest('unknown_server', request))
-        .rejects.toThrow('MCP server not found: unknown_server');
+      await expect(providerMCPService.sendMCPRequest('unknown_server', request)).rejects.toThrow(
+        'MCP server not found: unknown_server'
+      );
     });
 
     it('should handle unsupported transport types', async () => {
@@ -551,9 +577,9 @@ describe('ProviderMCPService', () => {
             name: 'STDIO Server',
             description: 'Server with stdio transport',
             transport: 'stdio' as const,
-            url: 'stdio://test'
-          }
-        ]
+            url: 'stdio://test',
+          },
+        ],
       };
 
       mockProviderConfig.getProvidersConfig = vi.fn().mockResolvedValue(configWithStdio);
@@ -562,11 +588,12 @@ describe('ProviderMCPService', () => {
         jsonrpc: '2.0',
         id: 'test',
         method: 'test/method',
-        params: {}
+        params: {},
       };
 
-      await expect(providerMCPService.sendMCPRequest('stdio_server', request))
-        .rejects.toThrow('Transport stdio not yet supported. Currently only HTTP transport is supported.');
+      await expect(providerMCPService.sendMCPRequest('stdio_server', request)).rejects.toThrow(
+        'Transport stdio not yet supported. Currently only HTTP transport is supported.'
+      );
     });
 
     it('should return error response on network failure', async () => {
@@ -574,7 +601,7 @@ describe('ProviderMCPService', () => {
         jsonrpc: '2.0',
         id: 'test',
         method: 'test/method',
-        params: {}
+        params: {},
       };
 
       mockFetch.mockRejectedValue(new Error('Network failure'));
@@ -586,8 +613,8 @@ describe('ProviderMCPService', () => {
         id: 'test',
         error: {
           code: -32603,
-          message: 'MCP request failed: Network failure'
-        }
+          message: 'MCP request failed: Network failure',
+        },
       });
     });
   });
@@ -596,7 +623,7 @@ describe('ProviderMCPService', () => {
     it('should handle empty MCP servers list', async () => {
       mockProviderConfig.getProvidersConfig = vi.fn().mockResolvedValue({
         mcpServers: [],
-        restServers: []
+        restServers: [],
       });
 
       const tools = await providerMCPService.getAllMCPTools();
@@ -605,7 +632,7 @@ describe('ProviderMCPService', () => {
 
     it('should handle missing MCP servers in config', async () => {
       mockProviderConfig.getProvidersConfig = vi.fn().mockResolvedValue({
-        restServers: []
+        restServers: [],
       });
 
       const tools = await providerMCPService.getAllMCPTools();
@@ -613,25 +640,27 @@ describe('ProviderMCPService', () => {
     });
 
     it('should use default empty schema when tool has no inputSchema', async () => {
-      mockFetch.mockResolvedValue(createMockAxiosResponse({
-        jsonrpc: '2.0',
-        id: 'tools-request',
-        result: {
-          tools: [
-            {
-              name: 'simple_tool'
-              // No description or inputSchema
-            }
-          ]
-        }
-      }));
+      mockFetch.mockResolvedValue(
+        createMockAxiosResponse({
+          jsonrpc: '2.0',
+          id: 'tools-request',
+          result: {
+            tools: [
+              {
+                name: 'simple_tool',
+                // No description or inputSchema
+              },
+            ],
+          },
+        })
+      );
 
       const tools = await providerMCPService.getToolsFromServer('weather_service');
-      
+
       expect(tools[0]).toEqual({
         name: 'weather_service.simple_tool',
         description: 'MCP tool: simple_tool',
-        parameters: { type: 'object', properties: {} }
+        parameters: { type: 'object', properties: {} },
       });
     });
   });

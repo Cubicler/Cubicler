@@ -31,7 +31,7 @@ export interface AgentTool {
   description: string;
   parameters: {
     type: 'object';
-    properties: Record<string, any>; // OpenAI schema can have complex nested structures
+    properties: Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any -- OpenAI schema can have complex nested structures
     required?: string[];
   };
 }
@@ -63,10 +63,10 @@ export interface AgentResponse {
   type: 'text' | 'null';
   content: string | null;
   metadata: {
-    usedToken?: number;  // Optional since some agents might not track tokens
-    usedTools?: number;  // Optional since some agents might not track tools
+    usedToken?: number; // Optional since some agents might not track tokens
+    usedTools?: number; // Optional since some agents might not track tools
   };
-}/**
+} /**
  * Response format for dispatch endpoints
  */
 export interface DispatchResponse {
@@ -75,7 +75,7 @@ export interface DispatchResponse {
   type: 'text' | 'null'; // null when agent provides no response
   content: string | null; // null when agent provides no response
   metadata: {
-    usedToken?: number;  // Optional since some agents might not track tokens
-    usedTools?: number;  // Optional since some agents might not track tools
+    usedToken?: number; // Optional since some agents might not track tokens
+    usedTools?: number; // Optional since some agents might not track tools
   };
 }

@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { 
-  parseFunctionName, 
-  extractPathParameters, 
+import {
+  parseFunctionName,
+  extractPathParameters,
   replacePathParameters,
   convertToQueryParams,
-  buildUrl 
+  buildUrl,
 } from '../../src/utils/parameter-helper.js';
 
 describe('Parameter Helper', () => {
@@ -17,8 +17,12 @@ describe('Parameter Helper', () => {
     });
 
     it('should throw error for invalid format', () => {
-      expect(() => parseFunctionName('invalid_function_name')).toThrow('Invalid function name format');
-      expect(() => parseFunctionName('too.many.parts.here')).toThrow('Invalid function name format');
+      expect(() => parseFunctionName('invalid_function_name')).toThrow(
+        'Invalid function name format'
+      );
+      expect(() => parseFunctionName('too.many.parts.here')).toThrow(
+        'Invalid function name format'
+      );
     });
   });
 
@@ -29,18 +33,18 @@ describe('Parameter Helper', () => {
         userId: '123',
         postId: '456',
         includeComments: true,
-        limit: 10
+        limit: 10,
       };
 
       const result = extractPathParameters(path, parameters);
 
       expect(result.pathParams).toEqual({
         userId: '123',
-        postId: '456'
+        postId: '456',
       });
       expect(result.remainingParams).toEqual({
         includeComments: true,
-        limit: 10
+        limit: 10,
       });
     });
 
@@ -99,7 +103,7 @@ describe('Parameter Helper', () => {
       const parameters = {
         includeComments: true,
         limit: 10,
-        name: 'test'
+        name: 'test',
       };
 
       const result = convertToQueryParams(parameters);
@@ -107,35 +111,35 @@ describe('Parameter Helper', () => {
       expect(result).toEqual({
         includeComments: 'true',
         limit: '10',
-        name: 'test'
+        name: 'test',
       });
     });
 
     it('should convert arrays to comma-separated strings', () => {
       const parameters = {
         tags: ['javascript', 'typescript'],
-        ids: [1, 2, 3]
+        ids: [1, 2, 3],
       };
 
       const result = convertToQueryParams(parameters);
 
       expect(result).toEqual({
         tags: 'javascript,typescript',
-        ids: '1,2,3'
+        ids: '1,2,3',
       });
     });
 
     it('should JSON stringify complex objects', () => {
       const parameters = {
         filter: { status: 'active' },
-        users: [{ name: 'John' }]
+        users: [{ name: 'John' }],
       };
 
       const result = convertToQueryParams(parameters);
 
       expect(result).toEqual({
         filter: JSON.stringify({ status: 'active' }),
-        users: JSON.stringify([{ name: 'John' }])
+        users: JSON.stringify([{ name: 'John' }]),
       });
     });
   });

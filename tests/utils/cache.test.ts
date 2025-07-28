@@ -18,7 +18,7 @@ describe('Cache Utility', () => {
       const cache = new Cache<string>(300); // 5 minutes TTL
 
       cache.set('key1', 'value1');
-      
+
       expect(cache.get('key1')).toBe('value1');
     });
 
@@ -35,7 +35,7 @@ describe('Cache Utility', () => {
       expect(cache.get('key1')).toBe('value1');
 
       // Wait for expiration
-      await new Promise(resolve => setTimeout(resolve, 150)); // 150ms > 100ms TTL
+      await new Promise((resolve) => setTimeout(resolve, 150)); // 150ms > 100ms TTL
 
       expect(cache.get('key1')).toBeUndefined();
     });
@@ -45,7 +45,7 @@ describe('Cache Utility', () => {
 
       cache.set('key1', 'value1');
       cache.set('key2', 'value2');
-      
+
       expect(cache.get('key1')).toBe('value1');
       expect(cache.get('key2')).toBe('value2');
 
@@ -56,11 +56,11 @@ describe('Cache Utility', () => {
     });
 
     it('should handle complex objects', () => {
-      const cache = new Cache<{name: string, value: number}>(300);
-      
+      const cache = new Cache<{ name: string; value: number }>(300);
+
       const testObject = { name: 'test', value: 42 };
       cache.set('object', testObject);
-      
+
       const retrieved = cache.get('object');
       expect(retrieved).toEqual(testObject);
       expect(retrieved?.name).toBe('test');
@@ -84,7 +84,7 @@ describe('Cache Utility', () => {
       delete process.env.TEST_CACHE_ENABLED;
 
       const cache = createEnvCache<string>('TEST', 600);
-      
+
       // Should work normally with default TTL
       cache.set('key1', 'value1');
       expect(cache.get('key1')).toBe('value1');
@@ -95,7 +95,7 @@ describe('Cache Utility', () => {
       process.env.TEST_CACHE_ENABLED = 'true';
 
       const cache = createEnvCache<string>('TEST', 600);
-      
+
       // Should work with custom TTL (can't easily test TTL value directly)
       cache.set('key1', 'value1');
       expect(cache.get('key1')).toBe('value1');
@@ -105,7 +105,7 @@ describe('Cache Utility', () => {
       process.env.TEST_CACHE_ENABLED = 'false';
 
       const cache = createEnvCache<string>('TEST', 600);
-      
+
       // Should not cache when disabled
       cache.set('key1', 'value1');
       expect(cache.get('key1')).toBeUndefined();
@@ -115,7 +115,7 @@ describe('Cache Utility', () => {
       process.env.TEST_CACHE_ENABLED = '0';
 
       const cache = createEnvCache<string>('TEST', 600);
-      
+
       cache.set('key1', 'value1');
       expect(cache.get('key1')).toBeUndefined();
     });
@@ -124,7 +124,7 @@ describe('Cache Utility', () => {
       process.env.TEST_CACHE_ENABLED = '1';
 
       const cache = createEnvCache<string>('TEST', 600);
-      
+
       cache.set('key1', 'value1');
       expect(cache.get('key1')).toBe('value1');
     });
@@ -134,7 +134,7 @@ describe('Cache Utility', () => {
       process.env.TEST_CACHE_ENABLED = 'true';
 
       const cache = createEnvCache<string>('TEST', 600);
-      
+
       // Should fall back to default TTL
       cache.set('key1', 'value1');
       expect(cache.get('key1')).toBe('value1');
@@ -144,10 +144,10 @@ describe('Cache Utility', () => {
       process.env.TEST_CACHE_ENABLED = 'true';
 
       const cache = createEnvCache<string>('TEST', 600);
-      
+
       cache.set('key1', 'value1');
       cache.set('key2', 'value2');
-      
+
       expect(cache.get('key1')).toBe('value1');
       expect(cache.get('key2')).toBe('value2');
 

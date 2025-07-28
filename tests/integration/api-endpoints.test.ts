@@ -9,7 +9,7 @@ describe('Integration Tests', () => {
   beforeEach(async () => {
     vi.resetModules();
     process.env = { ...originalEnv };
-    
+
     // Set up test environment
     process.env.CUBICLER_AGENTS_LIST = './tests/mocks/test-agents.json';
     process.env.CUBICLER_PROVIDERS_LIST = './tests/mocks/test-providers.json';
@@ -28,9 +28,7 @@ describe('Integration Tests', () => {
 
   describe('GET /health', () => {
     it('should return health check', async () => {
-      const response = await request(app)
-        .get('/health')
-        .expect(200);
+      const response = await request(app).get('/health').expect(200);
 
       expect(response.body.status).toBe('healthy');
       expect(response.body.timestamp).toBeDefined();
@@ -40,14 +38,12 @@ describe('Integration Tests', () => {
 
   describe('GET /agents', () => {
     it('should return list of available agents', async () => {
-      const response = await request(app)
-        .get('/agents')
-        .expect(200);
+      const response = await request(app).get('/agents').expect(200);
 
       expect(response.body).toHaveProperty('total');
       expect(response.body).toHaveProperty('agents');
       expect(Array.isArray(response.body.agents)).toBe(true);
-      
+
       if (response.body.agents.length > 0) {
         const agent = response.body.agents[0];
         expect(agent).toHaveProperty('identifier');
@@ -59,19 +55,13 @@ describe('Integration Tests', () => {
 
   describe('POST /dispatch', () => {
     it('should validate request body', async () => {
-      const response = await request(app)
-        .post('/dispatch')
-        .send({})
-        .expect(400);
+      const response = await request(app).post('/dispatch').send({}).expect(400);
 
       expect(response.body.error).toContain('Messages array is required');
     });
 
     it('should validate messages array', async () => {
-      const response = await request(app)
-        .post('/dispatch')
-        .send({ messages: [] })
-        .expect(400);
+      const response = await request(app).post('/dispatch').send({ messages: [] }).expect(400);
 
       expect(response.body.error).toContain('must not be empty');
     });
@@ -81,8 +71,8 @@ describe('Integration Tests', () => {
         .post('/dispatch')
         .send({
           messages: [
-            { content: 'Missing sender' } // Invalid message format
-          ]
+            { content: 'Missing sender' }, // Invalid message format
+          ],
         })
         .expect(400);
 
@@ -102,9 +92,9 @@ describe('Integration Tests', () => {
             {
               sender: { id: 'test_user' },
               type: 'text',
-              content: 'Hello'
-            }
-          ]
+              content: 'Hello',
+            },
+          ],
         });
 
       // May fail with agent connection error, but should not be a routing error
@@ -118,12 +108,10 @@ describe('Integration Tests', () => {
         jsonrpc: '2.0',
         id: 1,
         method: 'tools/list',
-        params: {}
+        params: {},
       };
 
-      const response = await request(app)
-        .post('/mcp')
-        .send(mcpRequest);
+      const response = await request(app).post('/mcp').send(mcpRequest);
 
       // Should handle MCP request (may return error due to missing real MCP servers)
       expect(response.status).not.toBe(404);
@@ -134,13 +122,10 @@ describe('Integration Tests', () => {
       const invalidMcpRequest = {
         // Missing required jsonrpc field
         id: 1,
-        method: 'tools/list'
+        method: 'tools/list',
       };
 
-      const response = await request(app)
-        .post('/mcp')
-        .send(invalidMcpRequest)
-        .expect(400);
+      const response = await request(app).post('/mcp').send(invalidMcpRequest).expect(400);
 
       expect(response.body.error).toHaveProperty('message');
     });
@@ -148,18 +133,13 @@ describe('Integration Tests', () => {
 
   describe('Error Handling', () => {
     it('should handle 404 for unknown endpoints', async () => {
-      const response = await request(app)
-        .get('/unknown-endpoint')
-        .expect(404);
+      const response = await request(app).get('/unknown-endpoint').expect(404);
 
       expect(response.body.error).toBe('Endpoint not found');
     });
 
     it('should handle invalid JSON in request body', async () => {
-      const response = await request(app)
-        .post('/dispatch')
-        .send('invalid json')
-        .expect(400);
+      const response = await request(app).post('/dispatch').send('invalid json').expect(400);
 
       expect(response.body).toHaveProperty('error');
     });
@@ -167,9 +147,7 @@ describe('Integration Tests', () => {
 
   describe('CORS Headers', () => {
     it('should not include CORS headers when CORS is disabled (default)', async () => {
-      const response = await request(app)
-        .get('/health')
-        .expect(200);
+      const response = await request(app).get('/health').expect(200);
 
       expect(response.headers['access-control-allow-origin']).toBeUndefined();
       expect(response.headers['access-control-allow-methods']).toBeUndefined();
@@ -178,14 +156,12 @@ describe('Integration Tests', () => {
     it('should include CORS headers when CORS is enabled', async () => {
       // Set CORS enabled for this test
       process.env.ENABLE_CORS = 'true';
-      
+
       // Re-import the app to apply the new environment variable
       vi.resetModules();
       const { app: corsEnabledApp } = await import('../../src/cubicler.js');
-      
-      const response = await request(corsEnabledApp)
-        .get('/health')
-        .expect(200);
+
+      const response = await request(corsEnabledApp).get('/health').expect(200);
 
       expect(response.headers['access-control-allow-origin']).toBe('*');
       expect(response.headers['access-control-allow-methods']).toContain('GET');
@@ -195,14 +171,12 @@ describe('Integration Tests', () => {
     it('should handle preflight OPTIONS requests when CORS is enabled', async () => {
       // Set CORS enabled for this test
       process.env.ENABLE_CORS = 'true';
-      
+
       // Re-import the app to apply the new environment variable
       vi.resetModules();
       const { app: corsEnabledApp } = await import('../../src/cubicler.js');
-      
-      const response = await request(corsEnabledApp)
-        .options('/dispatch')
-        .expect(200);
+
+      const response = await request(corsEnabledApp).options('/dispatch').expect(200);
 
       expect(response.headers['access-control-allow-origin']).toBe('*');
       expect(response.headers['access-control-allow-methods']).toContain('POST');
@@ -210,9 +184,7 @@ describe('Integration Tests', () => {
 
     it('should not handle preflight OPTIONS requests when CORS is disabled', async () => {
       // CORS is disabled by default in our beforeEach setup
-      const response = await request(app)
-        .options('/dispatch')
-        .expect(404); // Should return 404 since OPTIONS handler is not registered
+      const response = await request(app).options('/dispatch').expect(404); // Should return 404 since OPTIONS handler is not registered
 
       expect(response.headers['access-control-allow-origin']).toBeUndefined();
     });
