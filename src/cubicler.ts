@@ -6,7 +6,7 @@ export * from './model/dispatch.js';
 export * from './model/tools.js';
 
 // Export all services (both classes and default instances)
-export { default as agentService } from './core/agent-service.js';
+export { AgentService, default as agentService } from './core/agent-service.js';
 export { ProviderService, default as providerService } from './core/provider-service.js';
 export { DispatchService } from './core/dispatch-service.js';
 export { default as mcpService } from './core/mcp-service.js';

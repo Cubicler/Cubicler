@@ -1,6 +1,6 @@
 {
-  "basePrompt": "You are an AI assistant powered by Cubicler. You have access to various tools and services through Cubicler's orchestration layer.",
-  "defaultPrompt": "You are helpful, informative, and focused on providing accurate responses. When you need to use tools, explain what you're doing and why.",
+  "basePrompt": "https://raw.githubusercontent.com/your-org/prompts/main/base-prompt.md",
+  "defaultPrompt": "./prompts/default-agent.md",
   "agents": [
     {
       "identifier": "gpt-4o",
@@ -15,7 +15,7 @@
       "transport": "http", 
       "url": "http://localhost:3001/agent",
       "description": "Anthropic Claude 3.5 Sonnet with excellent coding and analysis skills",
-      "prompt": "You are Claude 3.5 Sonnet. You excel at coding, analysis, and thoughtful reasoning. You're direct but friendly, and you always explain your reasoning process."
+      "prompt": "https://raw.githubusercontent.com/your-org/prompts/main/claude-specialist.md"
     },
     {
       "identifier": "custom-specialist",
@@ -23,7 +23,15 @@
       "transport": "http",
       "url": "http://localhost:3002/agent", 
       "description": "Specialized agent for domain-specific tasks",
-      "prompt": "You are a domain specialist with deep expertise in specific areas. You provide detailed, technical responses and always cite your reasoning."
+      "prompt": "You are a domain specialist with deep expertise in specific areas. You provide detailed, technical responses and always cite your reasoning. For more information, visit https://example.com/docs."
+    },
+    {
+      "identifier": "file-based-agent",
+      "name": "File-based Agent",
+      "transport": "http",
+      "url": "http://localhost:3003/agent",
+      "description": "Agent with prompt loaded from local file",
+      "prompt": "./prompts/specialist-agent.md"
     }
   ]
 }

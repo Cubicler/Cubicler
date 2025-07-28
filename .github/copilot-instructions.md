@@ -1,10 +1,6 @@
-# ⚙️ Cubicler Instructions
+# Cubicler AI Development Instructions
 
-You're assisting in improving **Cubicler**, a modular AI orchestration framework designed to run AI agents connected to MCP (Model Context Protocol) servers and REST APIs.
-
-You're here to help improve and expand Cubicler — a proper desk for AI Agents: it gets prompts, connects to MCP servers and REST endpoints, provides Cubicler-specific internal functions, and orchestrates communication between agents and services — all defined externally in JSON configuration. Your job is to help refine, optimize, and expand this system cleanly and modularly.
-
----
+Cubicler is a **modular AI orchestration framework** that connects applications to AI agents and external services through the Model Context Protocol (MCP) and REST APIs.
 
 ## 🧱 System Overview
 
@@ -29,9 +25,32 @@ While the term **CubicProvider** refers to external services (MCP servers or RES
 - `cubicler.available_servers` - get information about available servers
 - `cubicler.fetch_server_tools` - get tools from specific MCP server
 
----
+## 🏗️ Core Architecture Principles
 
-## 📦 Configuration
+### Service-Oriented Design with Dependency Injection
+Cubicler uses a clean service architecture with dependency injection. Each service implements specific interfaces:
+
+- **`MCPCompatible`** - Services that can handle MCP protocol requests (`initialize`, `toolsList`, `toolsCall`, `canHandleRequest`)
+- **`AgentsProviding`** - Services that manage AI agents and prompt composition  
+- **`ServersProviding`** - Services that provide server listing and tools discovery
+- **`ToolsListProviding`** - Services that can provide tool definitions
+
+Key services are instantiated with dependencies injected:
+```typescript
+// Export class for DI and default instance for backward compatibility
+export { ProviderService };
+export default new ProviderService(configProvider, [providerMcpService, providerRestService]);
+```
+
+### Multi-Provider Tool Aggregation
+The `MCPService` aggregates tools from multiple `MCPCompatible` providers:
+- `InternalToolsService` - Provides `cubicler.*` internal functions
+- `ProviderMCPService` - Handles MCP server communication
+- `ProviderRESTService` - Handles REST API endpoints
+
+Tool names follow the pattern: `{server_identifier}.{function_name}`
+
+## � Configuration
 
 Environment variables:
 
@@ -46,9 +65,7 @@ CUBICLER_AGENTS_LIST=https://your-cloud.com/agents.json
 CUBICLER_PORT=1503
 ```
 
----
-
-## 📑 JSON Providers Configuration Format
+### JSON Providers Configuration Format
 
 ```json
 { 
@@ -104,9 +121,7 @@ CUBICLER_PORT=1503
 }
 ```
 
----
-
-## 📑 JSON Agents Configuration Format
+### JSON Agents Configuration Format
 
 ```json
 { 
@@ -130,9 +145,7 @@ CUBICLER_PORT=1503
 }
 ```
 
----
-
-## 📑 Parameter Handling & Function Naming
+## � Parameter Handling & Message Formats
 
 ### REST Server Parameter Processing
 - **Path Variables**: Parameters matching `{variableName}` in the path are extracted and used for path replacement
@@ -145,16 +158,13 @@ CUBICLER_PORT=1503
 ### Function Naming Convention
 - **MCP Servers**: `{server_identifier}.{function_name}` (e.g., `weather_service.get_current_weather`)
 - **REST Servers**: `{server_identifier}.{endpoint_name}` (e.g., `legacy_api.get_user_info`)
+- **Internal tools**: `cubicler.available_servers`, `cubicler.fetch_server_tools`
 
 ### Transport Support
 - **Current Phase**: HTTP transport only for both MCP servers and agents
 - **Future Phases**: SSE, WebSocket, and stdio transports will be added later
 
----
-
-## 📑 Message Format
-
-### Dispatch Request (`POST /dispatch[/:agentId]`)
+### Dispatch Request Format (`POST /dispatch[/:agentId]`)
 
 ```json
 { 
@@ -170,43 +180,22 @@ CUBICLER_PORT=1503
 }
 ```
 
-### Dispatch Response
-
-```json
-{ 
-    "sender": { 
-        "id": "gpt_4o",
-        "name": "GPT-4O"
-    },
-    "timestamp": "2025-07-28T17:45:30+07:00",
-    "type": "text",
-    "content": "The current weather in Jakarta is 28°C with partly cloudy conditions.",
-    "metadata": { 
-        "usedToken": 150,
-        "usedTools": 2
-    }
-}
-```
-
-What being dispatched to the agent:
+### Agent Request Payload (what agents receive)
 
 ```json
 { 
   "agent": { 
-    "identifier": "gpt_4o", // lowercase, no spaces, only - or _
+    "identifier": "gpt_4o",
     "name": "My GPT-4O Agent",
     "description": "Advanced GPT-4O agent for complex tasks",
-    "prompt": "You specialize in complex reasoning and analysis." // the complete prompt
+    "prompt": "You specialize in complex reasoning and analysis."
   },
   "tools": [
     {
       "name": "cubicler.available_servers",
       "description": "Get information for available servers managed by Cubicler",
-      "parameters": {
-        "type": "object",
-        "properties": {}
-      }
-    },
+      "parameters": { "type": "object", "properties": {} }
+    }
     // ... all available cubicler internal tools
   ],
   "servers": [
@@ -214,27 +203,14 @@ What being dispatched to the agent:
       "identifier": "weather_service",
       "name": "Weather Service", 
       "description": "Provides weather information via MCP"
-    },
-    {
-      "identifier": "legacy_api",
-      "name": "Legacy API",
-      "description": "Legacy REST API without MCP"
     }
     // ... all available servers
   ],
-  "messages": [{
-    "sender": { 
-        "id": "user_123",
-        "name": "John Doe" // optional
-    },
-    "timestamp": "2025-07-28T17:45:00+07:00", // ISO 8601, optional
-    "type": "text", // text (image/video support planned)
-    "content": "What's the weather like in Jakarta?"
-  }]
+  "messages": [/* original messages array */]
 }
 ```
 
-and what agent need to return:
+### Agent Response Format (what agents must return)
 
 ```json
 {
@@ -248,9 +224,7 @@ and what agent need to return:
 }
 ```
 
----
-
-## 📑 Cubicler Internal Functions
+## � Cubicler Internal Functions
 
 ### `cubicler.available_servers`
 
@@ -310,7 +284,6 @@ Get tools from a specific MCP server managed by Cubicler.
         "name": "weather_service.get_current_weather",
         "description": "Get current weather for a location",
         "parameters": { 
-            // OpenAI function schema format
             "type": "object",
             "properties": {
                 "city": {"type": "string"},
@@ -321,49 +294,98 @@ Get tools from a specific MCP server managed by Cubicler.
 }
 ```
 
----
+## 🔧 Development Workflows
 
-## High-Level Architecture Flow
+### Running Tests
+```bash
+npm test              # Run tests in watch mode
+npm run test:run      # Run tests once
+npm run test:ui       # Run tests with UI
+```
 
-1. **Agent Configuration**: Agents are loaded from `agents.json` with support for:
-   - Base prompts (shared across all agents)
-   - Default prompts (fallback for agents without specific prompts)
-   - Agent-specific prompts
-   - Transport configuration (HTTP/stdio)
+### Development Server
+```bash
+npm run dev           # Start with ts-node
+npm run dev:watch     # Start with watch mode
+```
 
-2. **Provider Management**: Providers are loaded from `providers.json` supporting:
-   - **MCP Servers**: Native MCP protocol communication
-   - **REST Servers**: Traditional REST endpoints with OpenAI schema conversion
+### Build Process
+- **TypeScript**: Compiles to ES modules with strict settings (`target: ES2020`, `module: ESNext`)
+- **Build tool**: Uses `tsup` for fast bundling
+- **Type definitions**: Generates `.d.ts` files automatically
 
-3. **Message Dispatch** (`POST /dispatch[/:agentId]`):
-   - Enhanced message format with sender metadata and timestamps
-   - Agent selection (specific agent or default)
-   - Prompt composition (basePrompt + defaultPrompt/agentPrompt)
+### Docker Development
+```bash
+npm run docker:dev    # Development with docker-compose
+npm run docker:prod   # Production build
+```
 
-4. **MCP Communication** (`POST /mcp`):
-   - Direct MCP protocol endpoint
-   - Handles MCP specification requests/responses
+## 🔗 Architecture Flow & Service Separation
 
-5. **Internal Functions**: Cubicler provides built-in functions:
-   - Server discovery and tool introspection
-   - Namespaced as `cubicler.*` functions
+### High-Level Data Flow
+1. **Agent Configuration**: Agents loaded from `agents.json` with prompt composition (basePrompt + defaultPrompt/agentPrompt)
+2. **Provider Management**: Providers loaded from `providers.json` (MCP servers + REST endpoints)
+3. **Message Dispatch**: Enhanced message format → agent selection → prompt composition → response
+4. **MCP Communication**: Direct MCP protocol endpoint for tool discovery and execution
+5. **Internal Functions**: Built-in `cubicler.*` functions for server discovery and tool introspection
 
----
-
-## Service Architecture
-
-The system should maintain modular service separation:
+### Service Architecture
+The system maintains modular service separation:
 
 - **Agent Service**: Handles agent configuration, selection, and communication
 - **Provider Service**: Manages MCP servers and REST endpoints  
 - **MCP Service**: Handles MCP protocol communication
 - **Dispatch Service**: Orchestrates message routing and response handling
-- **Internal Function Service**: Provides Cubicler-specific tools
+- **Internal Tools Service**: Provides Cubicler-specific tools
 
-Each service should be transport-agnostic and reusable across different communication methods.
+Each service is transport-agnostic and reusable across different communication methods.
 
+## � Code Conventions
 
----
+### Error Handling Pattern
+Services use consistent error logging with emojis:
+```typescript
+console.log(`✅ [ServiceName] Success message`);
+console.warn(`⚠️ [ServiceName] Warning message`);
+console.error(`❌ [ServiceName] Error message`); 
+```
+
+### Function Naming & Tool Resolution
+- **Internal tools**: `cubicler.available_servers`, `cubicler.fetch_server_tools`
+- **MCP tools**: `{server_identifier}.{mcp_function_name}`
+- **REST tools**: `{server_identifier}.{endpoint_name}`
+
+The system routes tool calls by parsing the prefix and delegating to the appropriate service.
+
+### TypeScript Patterns
+- **Strict null checks** enabled - always handle undefined/null cases
+- **ES modules** with `.js` extensions in imports (required for Node.js ES modules)
+- **Interface segregation** - small, focused interfaces over large ones
+- **Dependency injection** pattern for testability and modularity
+
+### Testing Approach
+- **Vitest** for testing framework with Node.js environment
+- **Mock dependencies** using `vi.fn()` and interface implementations
+- **Integration tests** in `tests/integration/` for API endpoints  
+- **Unit tests** mirror the `src/` structure
+
+## �🚀 Adding New Features
+
+### Adding a New Provider Type
+1. Create service implementing `MCPCompatible` interface
+2. Add to `MCPService` providers array in dependency injection
+3. Implement tool name parsing logic in `canHandleRequest`
+4. Add configuration schema to `model/providers.ts`
+
+### Adding Internal Functions
+1. Add tool definition to `InternalToolsService.getToolsDefinitions()`
+2. Implement handler in `toolsCall` method
+3. Use `cubicler.*` namespace for consistency
+
+### Extending Agent Communication
+- Agent requests follow strict schema in `model/dispatch.ts`
+- Always include technical section about available servers in prompts
+- Maintain backward compatibility in API responses
 
 ## ✅ Your Role
 
@@ -385,4 +407,4 @@ When I ask you for code, your job is to:
  • Do not sacrifice type safety for convenience
  • Do not make the system too rigid - ensure extensibility for future features
 
-You're here to help implement Cubicler — a proper TypeScript desk for AI Agents with MCP support.
+When working on Cubicler, focus on maintaining the modular architecture, consistent error handling, and type safety throughout the system.

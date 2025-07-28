@@ -376,10 +376,4 @@ Cubicler is designed for future expansion:
 
 ---
 
-**Ready to get started?**
-
-1. Try the [Quick Start](#-quick-start) with Docker
-2. Check out the [Integration Guides](#-integration-guides)
-3. Join our community for support
-
 **Cubicler: Where AI agents go to work** 🏢

@@ -1,19 +1,28 @@
 # 🔌 Provider Integration Guide
 
-> *How to create external service providers for Cubicler*
+> *The complete guide for integrating external services with Cubicler*
 
-This guide shows you how to build provider services that integrate with Cubicler, enabling AI agents to interact with your APIs, databases, and external services.
+This guide shows you how to create external services that integrate with Cubicler, enabling AI agents to interact with your APIs, databases, and services through two supported protocols: **MCP (Model Context Protocol)** and **REST APIs**.
 
 ---
 
 ## 🎯 What is a CubicProvider?
 
-A **CubicProvider** is an external service that:
+A **CubicProvider** is an external service that AI agents can use through Cubicler. There are two types:
 
-1. **Exposes REST APIs** that perform specific business functions
-2. **Provides a YAML spec** describing available functions and their parameters  
-3. **Provides context documentation** explaining how to use these functions
-4. **Handles authentication, validation, and business logic** independently
+### 1. **MCP Servers** (Recommended)
+
+- **Native MCP protocol** for standardized AI tool integration
+- **Built-in discovery** - tools are automatically available to agents
+- **Structured communication** following MCP specifications
+- **Better error handling** and tool introspection
+
+### 2. **REST Servers** (Legacy Support)
+
+- **Traditional REST APIs** that don't implement MCP
+- **Manual configuration** - endpoints must be defined in `providers.json`
+- **HTTP-based** with OpenAI function schema format
+- **Simpler to implement** for existing APIs
 
 **CubicProviders enable:** Weather services, user management, email sending, database queries, file processing, payment processing, and more.
 
@@ -22,29 +31,180 @@ A **CubicProvider** is an external service that:
 ## 🏗️ Provider Architecture
 
 ```text
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Cubicler      │    │Your CubicProvider│    │  External APIs  │
-│  (Orchestrator) │◄──►│    Service       │◄──►│  / Databases    │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-        ▲                        │
-        │                        ▼
-        │               ┌──────────────────┐
-        │               │  Provider Files  │
-        └───────────────┤ • spec.yaml      │
-                        │ • context.md     │
-                        └──────────────────┘
+┌─────────────────┐   1. Register in        ┌──────────────────┐
+│   Cubicler      │   providers.json        │ Your MCP Server  │
+│  (Orchestrator) │◄────────────────────────┤ (Recommended)    │
+└─────────────────┘                         └──────────────────┘
+        ▲                                            │
+        │ 2. MCP Protocol                            │
+        │ Communication                              ▼
+        │                                  ┌──────────────────┐
+        │                                  │  External APIs   │
+        │                                  │  / Databases     │
+        │                                  └──────────────────┘
+        │
+        │                                  ┌──────────────────┐
+        │   Alternative:                   │ Your REST API    │
+        │   REST API                       │ (Legacy)         │
+        └─────────────────────────────────►└──────────────────┘
 ```
 
 ---
 
 ## 🚀 Quick Start
 
-### 1. Create a Basic CubicProvider Service
+### Option 1: Create an MCP Server (Recommended)
 
-Let's build a simple user management provider:
+Let's build a simple user management MCP server:
 
 ```javascript
-// user-provider.js
+// user-mcp-server.js
+const express = require('express');
+const app = express();
+
+app.use(express.json());
+
+// Mock user database
+const users = {
+  '1': { id: '1', name: 'John Doe', email: 'john@example.com', role: 'admin' },
+  '2': { id: '2', name: 'Jane Smith', email: 'jane@example.com', role: 'user' }
+};
+
+// MCP tools/list endpoint - lists available tools
+app.post('/mcp', (req, res) => {
+  const { method } = req.body;
+
+  if (method === 'tools/list') {
+    res.json({
+      jsonrpc: '2.0',
+      id: req.body.id,
+      result: {
+        tools: [
+          {
+            name: 'get_user',
+            description: 'Get user information by ID',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                id: { type: 'string', description: 'User ID to retrieve' }
+              },
+              required: ['id']
+            }
+          },
+          {
+            name: 'list_users',
+            description: 'List all users, optionally filtered by role',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                role: { type: 'string', description: 'Filter by role (optional)' }
+              }
+            }
+          },
+          {
+            name: 'create_user',
+            description: 'Create a new user',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                name: { type: 'string', description: 'User full name' },
+                email: { type: 'string', description: 'User email address' },
+                role: { type: 'string', description: 'User role (admin, user)' }
+              },
+              required: ['name', 'email']
+            }
+          }
+        ]
+      }
+    });
+    return;
+  }
+
+  if (method === 'tools/call') {
+    const { name, arguments: args } = req.body.params;
+
+    try {
+      let result;
+      
+      switch (name) {
+        case 'get_user':
+          const user = users[args.id];
+          if (!user) {
+            throw new Error('User not found');
+          }
+          result = user;
+          break;
+
+        case 'list_users':
+          let userList = Object.values(users);
+          if (args.role) {
+            userList = userList.filter(user => user.role === args.role);
+          }
+          result = { users: userList };
+          break;
+
+        case 'create_user':
+          const id = String(Object.keys(users).length + 1);
+          const newUser = { 
+            id, 
+            name: args.name, 
+            email: args.email, 
+            role: args.role || 'user' 
+          };
+          users[id] = newUser;
+          result = newUser;
+          break;
+
+        default:
+          throw new Error(`Unknown tool: ${name}`);
+      }
+
+      res.json({
+        jsonrpc: '2.0',
+        id: req.body.id,
+        result: {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(result)
+            }
+          ]
+        }
+      });
+    } catch (error) {
+      res.json({
+        jsonrpc: '2.0',
+        id: req.body.id,
+        error: {
+          code: -1,
+          message: error.message
+        }
+      });
+    }
+    return;
+  }
+
+  // Handle other MCP methods if needed
+  res.status(400).json({
+    jsonrpc: '2.0',
+    id: req.body.id,
+    error: { code: -32601, message: 'Method not found' }
+  });
+});
+
+const PORT = process.env.PORT || 4000;
+app.listen(PORT, () => {
+  console.log(`User MCP Server running on port ${PORT}`);
+  console.log(`MCP endpoint: http://localhost:${PORT}/mcp`);
+});
+```
+
+### Option 2: Create a REST Server (Legacy)
+
+For existing REST APIs that can't implement MCP:
+
+```javascript
+// user-rest-server.js  
 const express = require('express');
 const app = express();
 
@@ -95,297 +255,624 @@ app.post('/api/users', (req, res) => {
   res.status(201).json(newUser);
 });
 
-// Serve spec file
-app.get('/spec/user_service.yaml', (req, res) => {
-  res.sendFile(__dirname + '/user_service.yaml');
-});
-
-// Serve context file
-app.get('/context/user_service.md', (req, res) => {
-  res.sendFile(__dirname + '/user_service.md');
-});
-
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`User Provider running on port ${PORT}`);
-  console.log(`Spec: http://localhost:${PORT}/spec/user_service.yaml`);
-  console.log(`Context: http://localhost:${PORT}/context/user_service.md`);
+  console.log(`User REST Server running on port ${PORT}`);
 });
-```
-
-### 2. Create the Provider Spec File
-
-Create `user_service.yaml`:
-
-```yaml
-version: 2
-kind: specs
-services:
-  user_service:
-    base_url: http://localhost:4000
-    default_headers:
-      Content-Type: "application/json"
-      Authorization: "Bearer {{env.API_KEY}}"
-    endpoints:
-      get_user:
-        method: GET
-        path: /api/users/{id}
-        parameters:
-          id:
-            type: string
-            description: User ID to retrieve
-        response:
-          type: object
-          properties:
-            id:
-              type: string
-            name:
-              type: string
-            email:
-              type: string
-            role:
-              type: string
-      
-      list_users:
-        method: GET
-        path: /api/users
-        parameters:
-          role:
-            type: string
-            description: Filter users by role (optional)
-        response:
-          type: object
-          properties:
-            users:
-              type: array
-              items:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  name:
-                    type: string
-                  email:
-                    type: string
-                  role:
-                    type: string
-      
-      create_user:
-        method: POST
-        path: /api/users
-        payload:
-          type: object
-          properties:
-            name:
-              type: string
-              description: User's full name
-            email:
-              type: string
-              description: User's email address
-            role:
-              type: string
-              description: User role (admin, user)
-        response:
-          type: object
-          properties:
-            id:
-              type: string
-            name:
-              type: string
-            email:
-              type: string
-            role:
-              type: string
-
-functions:
-  getUserById:
-    service: user_service
-    endpoint: get_user
-    description: Retrieve a user by their ID
-  
-  listUsers:
-    service: user_service
-    endpoint: list_users
-    description: Get list of all users, optionally filtered by role
-  
-  createUser:
-    service: user_service
-    endpoint: create_user
-    description: Create a new user account
-    override_payload:
-      role: "user"  # Default role for new users
-```
-
-### 3. Create the Context Documentation
-
-Create `user_service.md`:
-
-```markdown
-# User Service Provider
-
-This provider manages user accounts and profiles in the system.
-
-## Available Functions
-
-### getUserById
-Retrieves detailed information about a specific user.
-
-**When to use:** When you need to look up a specific user's details, profile information, or verify a user exists.
-
-**Parameters:**
-- `id` (required): The unique identifier of the user to retrieve
-
-**Example usage:**
-- "Get user information for ID 123"
-- "Show me the profile for user 456"
-- "Look up details for user with ID abc123"
-
-### listUsers  
-Retrieves a list of all users in the system, with optional filtering.
-
-**When to use:** When you need to show multiple users, search for users, or get an overview of user accounts.
-
-**Parameters:**
-- `role` (optional): Filter users by their role ("admin", "user", etc.)
-
-**Example usage:**
-- "Show me all users"
-- "List all admin users"
-- "Get all users with role 'user'"
-
-### createUser
-Creates a new user account in the system.
-
-**When to use:** When registering new users or adding accounts to the system.
-
-**Parameters:**
-- `name` (required): The user's full name
-- `email` (required): The user's email address  
-- `role` (optional): The user's role, defaults to "user"
-
-**Example usage:**
-- "Create a user named John Doe with email john@example.com"
-- "Register a new admin user"
-- "Add user Jane Smith as an administrator"
-
-## Response Format
-
-All functions return user objects with the following structure:
-- `id`: Unique user identifier
-- `name`: User's full name
-- `email`: User's email address
-- `role`: User's role in the system
-
-## Error Handling
-
-- Returns 404 if user is not found
-- Returns 400 for invalid input data
-- Returns appropriate error messages in JSON format
 ```
 
 ---
 
-## 📋 CubicProvider Registration
+## 📋 Provider Registration
 
-### 1. Add to Providers List
+### Add to providers.json
 
-Update your `providers.yaml` file:
+Update your `providers.json` configuration file to register your service:
 
-```yaml
-version: 1
-kind: providers
-providers:
-  - name: "user_service"
-    description: "User management and profile service"
-    spec_source: "http://localhost:4000/spec/user_service.yaml"
-    context_source: "http://localhost:4000/context/user_service.md"
+#### For MCP Server
+
+```json
+{
+  "mcpServers": [
+    {
+      "identifier": "user_service",
+      "name": "User Service", 
+      "description": "User management and profile service",
+      "transport": "http",
+      "url": "http://localhost:4000/mcp",
+      "headers": {
+        "Authorization": "Bearer your-api-key"
+      }
+    }
+  ]
+}
 ```
 
-### 2. Test Your CubicProvider
+#### For REST Server
+
+```json
+{
+  "restServers": [
+    {
+      "identifier": "user_api",
+      "name": "User API",
+      "description": "User management REST API",
+      "url": "http://localhost:5000/api",
+      "defaultHeaders": {
+        "Authorization": "Bearer your-api-key"
+      },
+      "endPoints": [
+        {
+          "name": "get_user_info",
+          "description": "Get user information by user ID",
+          "path": "/users/{userId}",
+          "method": "GET",
+          "userId": {
+            "type": "string"
+          },
+          "query": {
+            "type": "object",
+            "properties": {
+              "include_profile": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        {
+          "name": "list_users",
+          "description": "List all users with optional role filter",
+          "path": "/users",
+          "method": "GET",
+          "query": {
+            "type": "object",
+            "properties": {
+              "role": {
+                "type": "string",
+                "description": "Filter by role"
+              }
+            }
+          }
+        },
+        {
+          "name": "create_user",
+          "description": "Create a new user",
+          "path": "/users",
+          "method": "POST",
+          "payload": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "User's full name"
+              },
+              "email": {
+                "type": "string", 
+                "description": "User's email address"
+              },
+              "role": {
+                "type": "string",
+                "description": "User role (admin, user)"
+              }
+            },
+            "required": ["name", "email"]
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Test Your Provider
 
 ```bash
-# Start your provider service
-node user-provider.js
+# Start your MCP server
+node user-mcp-server.js
 
-# Test the spec endpoint
-curl http://localhost:4000/spec/user_service.yaml
+# Test MCP tools/list
+curl -X POST http://localhost:4000/mcp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/list"
+  }'
 
-# Test the context endpoint  
-curl http://localhost:4000/context/user_service.md
+# Test MCP tool call
+curl -X POST http://localhost:4000/mcp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0", 
+    "id": 1,
+    "method": "tools/call",
+    "params": {
+      "name": "get_user",
+      "arguments": {"id": "1"}
+    }
+  }'
 
-# Test an API endpoint
-curl http://localhost:4000/api/users/1
+# Or test REST endpoints
+curl http://localhost:5000/api/users/1
+```
+
+### Configuration Environment Variables
+
+Set environment variables for your providers configuration:
+
+```env
+# Point to your providers.json file
+CUBICLER_PROVIDERS_LIST=./providers.json
+
+# Or use a remote URL
+CUBICLER_PROVIDERS_LIST=https://your-server.com/providers.json
 ```
 
 ---
 
-## 📝 Spec File Reference
+## 📝 Configuration Reference
 
-### Complete Spec Schema
+### MCP Server Configuration
 
-```yaml
-version: 2
-kind: specs
-
-# Service definitions
-services:
-  service_name:
-    base_url: https://api.example.com
-    default_headers:
-      Authorization: "Bearer {{env.TOKEN}}"
-      Content-Type: "application/json"
-    endpoints:
-      endpoint_name:
-        method: GET|POST|PUT|DELETE|PATCH
-        path: /api/path/{param}
-        headers:          # Optional: endpoint-specific headers
-          X-Custom: "value"
-        parameters:       # URL parameters (path + query)
-          param_name:
-            type: string|number|boolean|array|object
-            description: "Parameter description"
-        payload:          # Request body (for POST/PUT/PATCH)
-          type: object
-          properties:
-            field_name:
-              type: string
-              description: "Field description"
-        response:         # Response schema
-          type: object
-          properties:
-            field_name:
-              type: string
-
-# Function definitions (what AI agents see)
-functions:
-  functionName:
-    service: service_name
-    endpoint: endpoint_name
-    description: "Function description"
-    override_parameters:    # Hidden from AI, always included
-      secret_key: "{{env.SECRET}}"
-    override_payload:       # Hidden from AI, always included
-      source: "cubicler"
+```json
+{
+  "mcpServers": [
+    {
+      "identifier": "service_name",      // lowercase, no spaces, only - or _
+      "name": "Display Name",
+      "description": "Service description",
+      "transport": "http",               // Currently only "http" supported
+      "url": "http://localhost:4000/mcp", // MCP endpoint URL
+      "headers": {                       // Optional: custom headers
+        "Authorization": "Bearer token",
+        "X-Custom": "value"
+      }
+    }
+  ]
+}
 ```
 
-### Parameter Types
+### REST Server Configuration
 
-| Type | Description | Example |
-|------|-------------|---------|
-| `string` | Text values | `"hello"` |
-| `number` | Numeric values | `42`, `3.14` |
-| `boolean` | True/false | `true`, `false` |
-| `array` | List of values | `["a", "b", "c"]` |
-| `object` | Key-value pairs | `{"key": "value"}` |
+```json
+{
+  "restServers": [
+    {
+      "identifier": "api_name",          // lowercase, no spaces, only - or _
+      "name": "API Display Name",
+      "description": "API description",
+      "url": "http://localhost:5000/api", // Base URL
+      "defaultHeaders": {                // Optional: default headers for all endpoints
+        "Authorization": "Bearer token",
+        "Content-Type": "application/json"
+      },
+      "endPoints": [
+        {
+          "name": "endpoint_name",       // lowercase, no spaces, only - or _
+          "description": "What this endpoint does",
+          "path": "/resource/{id}",      // Path with {variable} placeholders
+          "method": "GET",               // HTTP method
+          "headers": {                   // Optional: endpoint-specific headers
+            "X-Custom": "value"
+          },
+          "parameters": {                // URL parameters (path + query)
+            "type": "object",
+            "properties": {
+              "id": {                    // Path variable {id}
+                "type": "string",
+                "description": "Resource ID"
+              },
+              "filter": {                // Query parameter
+                "type": "string",
+                "description": "Optional filter"
+              }
+            },
+            "required": ["id"]
+          },
+          "payload": {                   // Request body for POST/PUT/PATCH
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Resource name"
+              }
+            },
+            "required": ["name"]
+          }
+        }
+      ]
+    }
+  ]
+}
+```
 
-### Environment Variables
+### Parameter Processing for REST APIs
 
-Use `{{env.VARIABLE_NAME}}` syntax:
+- **Path Variables**: Parameters matching `{variableName}` in the path are extracted and replaced
+- **Query Parameters**: Remaining parameters become URL query parameters
+- **Query Parameter Conversion**:
+  - Objects: JSON stringified
+  - Arrays of primitives: Comma-separated values
+  - Arrays of objects: JSON stringified
 
-```yaml
-default_headers:
-  Authorization: "Bearer {{env.API_TOKEN}}"
-  X-Client-ID: "{{env.CLIENT_ID}}"
+### Function Naming Convention
+
+When AI agents call your functions, they use these naming patterns:
+
+- **MCP Servers**: `{server_identifier}.{tool_name}` (e.g., `user_service.get_user`)
+- **REST Servers**: `{server_identifier}.{endpoint_name}` (e.g., `user_api.get_user_info`)
+
+---
+
+## 💡 Implementation Examples
+
+### Complete MCP Server Example (TypeScript)
+
+```typescript
+import express, { Request, Response } from 'express';
+
+interface User {
+  id: string;
+  name: string; 
+  email: string;
+  role: string;
+}
+
+interface MCPRequest {
+  jsonrpc: '2.0';
+  id: number;
+  method: string;
+  params?: any;
+}
+
+interface MCPResponse {
+  jsonrpc: '2.0';
+  id: number;
+  result?: any;
+  error?: {
+    code: number;
+    message: string;
+  };
+}
+
+const app = express();
+app.use(express.json());
+
+const users: Record<string, User> = {
+  '1': { id: '1', name: 'John Doe', email: 'john@example.com', role: 'admin' },
+  '2': { id: '2', name: 'Jane Smith', email: 'jane@example.com', role: 'user' }
+};
+
+app.post('/mcp', (req: Request, res: Response) => {
+  const request: MCPRequest = req.body;
+
+  if (request.method === 'tools/list') {
+    const response: MCPResponse = {
+      jsonrpc: '2.0',
+      id: request.id,
+      result: {
+        tools: [
+          {
+            name: 'get_user',
+            description: 'Get user by ID',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                id: { type: 'string', description: 'User ID' }
+              },
+              required: ['id']
+            }
+          },
+          {
+            name: 'create_user',
+            description: 'Create a new user',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                name: { type: 'string', description: 'Full name' },
+                email: { type: 'string', description: 'Email address' },
+                role: { type: 'string', description: 'User role' }
+              },
+              required: ['name', 'email']
+            }
+          }
+        ]
+      }
+    };
+    res.json(response);
+    return;
+  }
+
+  if (request.method === 'tools/call') {
+    const { name, arguments: args } = request.params;
+
+    try {
+      let result: any;
+
+      switch (name) {
+        case 'get_user':
+          result = users[args.id];
+          if (!result) throw new Error('User not found');
+          break;
+
+        case 'create_user':
+          const id = String(Object.keys(users).length + 1);
+          result = {
+            id,
+            name: args.name,
+            email: args.email,
+            role: args.role || 'user'
+          };
+          users[id] = result;
+          break;
+
+        default:
+          throw new Error(`Unknown tool: ${name}`);
+      }
+
+      res.json({
+        jsonrpc: '2.0',
+        id: request.id,
+        result: {
+          content: [{
+            type: 'text',
+            text: JSON.stringify(result)
+          }]
+        }
+      });
+    } catch (error: any) {
+      res.json({
+        jsonrpc: '2.0',
+        id: request.id,
+        error: {
+          code: -1,
+          message: error.message
+        }
+      });
+    }
+    return;
+  }
+
+  res.status(400).json({
+    jsonrpc: '2.0',
+    id: request.id,
+    error: { code: -32601, message: 'Method not found' }
+  });
+});
+
+app.listen(4000, () => {
+  console.log('MCP Server running on port 4000');
+});
+```
+
+### REST Server with Express Validation
+
+```javascript
+const express = require('express');
+const { body, param, validationResult } = require('express-validator');
+
+const app = express();
+app.use(express.json());
+
+const users = {};
+
+// Validation middleware
+const validate = (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+  next();
+};
+
+// Get user endpoint with validation
+app.get('/api/users/:id', 
+  param('id').isLength({ min: 1 }).withMessage('ID is required'),
+  validate,
+  (req, res) => {
+    const user = users[req.params.id];
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json(user);
+  }
+);
+
+// Create user endpoint with validation
+app.post('/api/users',
+  body('name').notEmpty().withMessage('Name is required'),
+  body('email').isEmail().withMessage('Valid email is required'),
+  body('role').optional().isIn(['admin', 'user']).withMessage('Role must be admin or user'),
+  validate,
+  (req, res) => {
+    const { name, email, role = 'user' } = req.body;
+    const id = String(Object.keys(users).length + 1);
+    const newUser = { id, name, email, role };
+    users[id] = newUser;
+    res.status(201).json(newUser);
+  }
+);
+
+app.listen(5000, () => {
+  console.log('REST Server running on port 5000');
+});
+```
+
+---
+
+## 🔍 Testing Your Provider
+
+### Testing MCP Server
+
+```bash
+# Test tools/list
+curl -X POST http://localhost:4000/mcp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/list"
+  }'
+
+# Test tools/call
+curl -X POST http://localhost:4000/mcp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/call",
+    "params": {
+      "name": "get_user",
+      "arguments": {"id": "1"}
+    }
+  }'
+```
+
+### Testing REST Server
+
+```bash
+# Test GET endpoint
+curl http://localhost:5000/api/users/1
+
+# Test POST endpoint
+curl -X POST http://localhost:5000/api/users \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Alice Johnson",
+    "email": "alice@example.com",
+    "role": "admin"
+  }'
+```
+
+### Integration Testing with Cubicler
+
+1. **Start your provider service** (MCP or REST)
+2. **Update providers.json** with your service configuration
+3. **Start Cubicler** with your configuration
+4. **Test through Cubicler**:
+
+```bash
+# Test via Cubicler dispatch
+curl -X POST http://localhost:1503/dispatch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "messages": [{
+      "sender": {"id": "test_user"},
+      "type": "text",
+      "content": "Get user information for ID 1"
+    }]
+  }'
+```
+
+---
+
+## 🚀 Advanced Features
+
+### Authentication and Security
+
+#### For MCP Servers
+
+```json
+{
+  "mcpServers": [
+    {
+      "identifier": "secure_service",
+      "name": "Secure Service",
+      "description": "Service with authentication",
+      "transport": "http",
+      "url": "http://localhost:4000/mcp",
+      "headers": {
+        "Authorization": "Bearer your-secret-token",
+        "X-API-Key": "your-api-key"
+      }
+    }
+  ]
+}
+```
+
+#### For REST Servers
+
+```json
+{
+  "restServers": [
+    {
+      "identifier": "secure_api",
+      "name": "Secure API",
+      "description": "API with authentication",
+      "url": "http://localhost:5000/api",
+      "defaultHeaders": {
+        "Authorization": "Bearer global-token"
+      },
+      "endPoints": [
+        {
+          "name": "protected_endpoint",
+          "description": "Endpoint with specific auth",
+          "path": "/protected",
+          "method": "GET",
+          "headers": {
+            "X-Special-Auth": "endpoint-specific-token"
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Error Handling Best Practices
+
+#### MCP Server Error Responses
+
+```javascript
+// Standard MCP error response
+res.json({
+  jsonrpc: '2.0',
+  id: request.id,
+  error: {
+    code: -1,                    // Custom error code
+    message: 'User not found',   // Human-readable message
+    data: {                      // Optional additional data
+      userId: args.id,
+      timestamp: new Date().toISOString()
+    }
+  }
+});
+```
+
+#### REST Server Error Responses
+
+```javascript
+// Consistent error format
+res.status(404).json({
+  error: 'Not Found',
+  message: 'User with ID 123 does not exist',
+  code: 'USER_NOT_FOUND',
+  timestamp: new Date().toISOString()
+});
+```
+
+### Environment Configuration
+
+Use environment variables for configuration:
+
+```javascript
+// In your provider service
+const PORT = process.env.PORT || 4000;
+const API_KEY = process.env.API_KEY || 'default-key';
+const DATABASE_URL = process.env.DATABASE_URL || 'sqlite:memory';
+
+// In providers.json
+{
+  "mcpServers": [
+    {
+      "identifier": "dynamic_service",
+      "url": "http://localhost:4000/mcp",
+      "headers": {
+        "Authorization": "Bearer dynamic-token"
+      }
+    }
+  ]
+}
 ```
 
 ---
