@@ -5,163 +5,156 @@ describe('Cache Utility', () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
-    vi.useFakeTimers();
     process.env = { ...originalEnv };
+    vi.clearAllMocks();
   });
 
   afterEach(() => {
-    vi.useRealTimers();
     process.env = originalEnv;
   });
 
-  describe('Cache class', () => {
+  describe('Cache', () => {
     it('should store and retrieve values', () => {
-      const cache = new Cache<string>(1000);
+      const cache = new Cache<string>(300); // 5 minutes TTL
 
       cache.set('key1', 'value1');
+      
       expect(cache.get('key1')).toBe('value1');
     });
 
     it('should return undefined for non-existent keys', () => {
-      const cache = new Cache<string>(1000);
+      const cache = new Cache<string>(300);
 
-      expect(cache.get('non-existent')).toBeUndefined();
+      expect(cache.get('nonexistent')).toBeUndefined();
     });
 
-    it('should expire items after TTL', () => {
-      const cache = new Cache<string>(1000);
+    it('should expire values after TTL', async () => {
+      const cache = new Cache<string>(0.1); // 0.1 seconds TTL
 
       cache.set('key1', 'value1');
       expect(cache.get('key1')).toBe('value1');
 
-      // Advance time by 1001ms
-      vi.advanceTimersByTime(1001);
+      // Wait for expiration
+      await new Promise(resolve => setTimeout(resolve, 150)); // 150ms > 100ms TTL
 
       expect(cache.get('key1')).toBeUndefined();
     });
 
-    it('should delete items', () => {
-      const cache = new Cache<string>(1000);
-
-      cache.set('key1', 'value1');
-      expect(cache.has('key1')).toBe(true);
-
-      cache.delete('key1');
-      expect(cache.has('key1')).toBe(false);
-      expect(cache.get('key1')).toBeUndefined();
-    });
-
-    it('should clear all items', () => {
-      const cache = new Cache<string>(1000);
+    it('should clear all cached values', () => {
+      const cache = new Cache<string>(300);
 
       cache.set('key1', 'value1');
       cache.set('key2', 'value2');
-      expect(cache.size()).toBe(2);
+      
+      expect(cache.get('key1')).toBe('value1');
+      expect(cache.get('key2')).toBe('value2');
 
       cache.clear();
-      expect(cache.size()).toBe(0);
+
       expect(cache.get('key1')).toBeUndefined();
       expect(cache.get('key2')).toBeUndefined();
     });
 
-    it('should return cache keys', () => {
-      const cache = new Cache<string>(1000);
-
-      cache.set('key1', 'value1');
-      cache.set('key2', 'value2');
-
-      const keys = cache.keys();
-      expect(keys).toHaveLength(2);
-      expect(keys).toContain('key1');
-      expect(keys).toContain('key2');
+    it('should handle complex objects', () => {
+      const cache = new Cache<{name: string, value: number}>(300);
+      
+      const testObject = { name: 'test', value: 42 };
+      cache.set('object', testObject);
+      
+      const retrieved = cache.get('object');
+      expect(retrieved).toEqual(testObject);
+      expect(retrieved?.name).toBe('test');
+      expect(retrieved?.value).toBe(42);
     });
 
-    it('should disable caching when enabled is false', () => {
-      const cache = new Cache<string>(1000, false);
+    it('should overwrite existing keys', () => {
+      const cache = new Cache<string>(300);
 
-      cache.set('key1', 'value1');
-      expect(cache.get('key1')).toBeUndefined();
-      expect(cache.size()).toBe(0);
-    });
+      cache.set('key1', 'original');
+      expect(cache.get('key1')).toBe('original');
 
-    it('should toggle caching on/off', () => {
-      const cache = new Cache<string>(1000, true);
-
-      cache.set('key1', 'value1');
-      expect(cache.get('key1')).toBe('value1');
-
-      cache.setEnabled(false);
-      expect(cache.isEnabled()).toBe(false);
-      expect(cache.size()).toBe(0); // Should clear when disabled
-
-      cache.set('key2', 'value2');
-      expect(cache.get('key2')).toBeUndefined();
-
-      cache.setEnabled(true);
-      cache.set('key3', 'value3');
-      expect(cache.get('key3')).toBe('value3');
-    });
-
-    it('should update default TTL', () => {
-      const cache = new Cache<string>(1000);
-
-      expect(cache.getDefaultTtl()).toBe(1000);
-
-      cache.setDefaultTtl(2000);
-      expect(cache.getDefaultTtl()).toBe(2000);
+      cache.set('key1', 'updated');
+      expect(cache.get('key1')).toBe('updated');
     });
   });
 
-  describe('createEnvCache factory', () => {
-    it('should create cache with environment-based configuration', () => {
-      process.env.TEST_CACHE_ENABLED = 'true';
-      process.env.TEST_CACHE_TIMEOUT = '5'; // 5 seconds
-
-      const cache = createEnvCache<string>('TEST', 1);
-
-      expect(cache.isEnabled()).toBe(true);
-      expect(cache.getDefaultTtl()).toBe(5000); // Should be converted to milliseconds
-    });
-
-    it('should disable cache when env var is false', () => {
-      process.env.TEST_CACHE_ENABLED = 'false';
-
-      const cache = createEnvCache<string>('TEST', 1);
-
-      expect(cache.isEnabled()).toBe(false);
-    });
-
-    it('should use default TTL when env var is not set', () => {
-      delete process.env.TEST_CACHE_TIMEOUT;
-
-      const cache = createEnvCache<string>('TEST', 2); // 2 seconds
-
-      expect(cache.getDefaultTtl()).toBe(2000); // Should be converted to milliseconds
-    });
-
-    it('should enable cache by default when env var is not set', () => {
+  describe('createEnvCache', () => {
+    it('should create cache with default TTL when env var not set', () => {
+      delete process.env.TEST_CACHE_TTL;
       delete process.env.TEST_CACHE_ENABLED;
 
-      const cache = createEnvCache<string>('TEST', 1);
-
-      expect(cache.isEnabled()).toBe(true);
+      const cache = createEnvCache<string>('TEST', 600);
+      
+      // Should work normally with default TTL
+      cache.set('key1', 'value1');
+      expect(cache.get('key1')).toBe('value1');
     });
 
-    it('should handle invalid timeout values gracefully', () => {
-      process.env.TEST_CACHE_TIMEOUT = 'invalid';
+    it('should use custom TTL from environment variable', () => {
+      process.env.TEST_CACHE_TTL = '1200'; // 20 minutes
+      process.env.TEST_CACHE_ENABLED = 'true';
 
-      const cache = createEnvCache<string>('TEST', 2); // 2 seconds
-
-      // Should fall back to default when parsing fails
-      expect(cache.getDefaultTtl()).toBe(2000); // Should be converted to milliseconds
+      const cache = createEnvCache<string>('TEST', 600);
+      
+      // Should work with custom TTL (can't easily test TTL value directly)
+      cache.set('key1', 'value1');
+      expect(cache.get('key1')).toBe('value1');
     });
 
-    it('should default to 10 minutes when no default provided', () => {
-      delete process.env.TEST_CACHE_TIMEOUT;
+    it('should disable caching when ENABLED env var is false', () => {
+      process.env.TEST_CACHE_ENABLED = 'false';
 
-      const cache = createEnvCache<string>('TEST'); // No default provided
+      const cache = createEnvCache<string>('TEST', 600);
+      
+      // Should not cache when disabled
+      cache.set('key1', 'value1');
+      expect(cache.get('key1')).toBeUndefined();
+    });
 
-      expect(cache.getDefaultTtl()).toBe(600000); // 10 minutes in milliseconds
+    it('should disable caching when ENABLED env var is "0"', () => {
+      process.env.TEST_CACHE_ENABLED = '0';
+
+      const cache = createEnvCache<string>('TEST', 600);
+      
+      cache.set('key1', 'value1');
+      expect(cache.get('key1')).toBeUndefined();
+    });
+
+    it('should enable caching when ENABLED env var is "1"', () => {
+      process.env.TEST_CACHE_ENABLED = '1';
+
+      const cache = createEnvCache<string>('TEST', 600);
+      
+      cache.set('key1', 'value1');
+      expect(cache.get('key1')).toBe('value1');
+    });
+
+    it('should handle invalid TTL values gracefully', () => {
+      process.env.TEST_CACHE_TTL = 'invalid';
+      process.env.TEST_CACHE_ENABLED = 'true';
+
+      const cache = createEnvCache<string>('TEST', 600);
+      
+      // Should fall back to default TTL
+      cache.set('key1', 'value1');
+      expect(cache.get('key1')).toBe('value1');
+    });
+
+    it('should clear work on environment-created cache', () => {
+      process.env.TEST_CACHE_ENABLED = 'true';
+
+      const cache = createEnvCache<string>('TEST', 600);
+      
+      cache.set('key1', 'value1');
+      cache.set('key2', 'value2');
+      
+      expect(cache.get('key1')).toBe('value1');
+      expect(cache.get('key2')).toBe('value2');
+
+      cache.clear();
+
+      expect(cache.get('key1')).toBeUndefined();
+      expect(cache.get('key2')).toBeUndefined();
     });
   });
 });

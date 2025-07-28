@@ -1,20 +1,13 @@
 import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
+import fs from 'fs';
+import axios from 'axios';
 
 // Mock fs and axios modules
-const mockReadFileSync = vi.fn();
-const mockIsAxiosError = vi.fn().mockReturnValue(true);
-const mockAxios = Object.assign(vi.fn(), {
-  isAxiosError: mockIsAxiosError,
-});
+vi.mock('fs');
+vi.mock('axios');
 
-vi.mock('fs', () => ({
-  readFileSync: mockReadFileSync,
-}));
-
-vi.mock('axios', () => ({
-  default: mockAxios,
-  isAxiosError: mockIsAxiosError,
-}));
+const mockFs = vi.mocked(fs);
+const mockAxios = vi.mocked(axios, { partial: true });
 
 describe('Agent Service', () => {
   const originalEnv = process.env;
@@ -24,101 +17,236 @@ describe('Agent Service', () => {
     process.env = { ...originalEnv };
     process.env.AGENTS_LIST_CACHE_ENABLED = 'false'; // Disable cache for tests
     vi.clearAllMocks();
-
-    // Clear the agent service cache
-    const { default: agentService } = await import('../../src/core/agent-service.js');
-    agentService.clearCache();
   });
 
   afterEach(() => {
     process.env = originalEnv;
   });
 
-  describe('getAvailableAgents', () => {
-    it('should return list of agent names', async () => {
-      process.env.CUBICLER_AGENTS_LIST = './test-agents.yaml';
-      mockReadFileSync.mockReturnValue(
-        'version: 1\nkind: agents\nagents:\n  - name: gpt-4o\n    endpoints: localhost:3000/call\n  - name: claude-3.5\n    endpoints: localhost:3001/call'
-      );
+  describe('getAllAgents', () => {
+    it('should return list of available agents', async () => {
+      process.env.CUBICLER_AGENTS_LIST = './test-agents.json';
+      mockFs.readFileSync.mockReturnValue(JSON.stringify({
+        basePrompt: "You are a helpful AI assistant.",
+        defaultPrompt: "You have access to tools.",
+        agents: [
+          { identifier: "gpt_4o", name: "GPT-4O", transport: "http", url: "http://localhost:3000" },
+          { identifier: "claude_3_5", name: "Claude", transport: "http", url: "http://localhost:3001" }
+        ]
+      }));
 
       const { default: agentService } = await import('../../src/core/agent-service.js');
-      const result = await agentService.getAvailableAgents();
+      const result = await agentService.getAllAgents();
 
-      expect(result).toEqual(['gpt-4o', 'claude-3.5']);
-      expect(mockReadFileSync).toHaveBeenCalledWith('./test-agents.yaml', 'utf-8');
+      expect(result).toHaveLength(2);
+      expect(result.map(a => a.identifier)).toEqual(['gpt_4o', 'claude_3_5']);
     });
 
-    it('should fetch agents list from HTTP URL', async () => {
-      process.env.CUBICLER_AGENTS_LIST = 'https://example.com/agents.yaml';
+    it('should load agents from remote URL', async () => {
+      process.env.CUBICLER_AGENTS_LIST = 'https://example.com/agents.json';
       mockAxios.mockResolvedValue({
         status: 200,
         statusText: 'OK',
-        data: 'version: 1\nkind: agents\nagents:\n  - name: gemini-1.5\n    endpoints: localhost:3002/call',
+        data: {
+          agents: [
+            { identifier: "remote_agent", name: "Remote Agent", transport: "http", url: "http://remote:3000", description: "Remote agent" }
+          ]
+        }
       });
 
       const { default: agentService } = await import('../../src/core/agent-service.js');
-      const result = await agentService.getAvailableAgents();
+      const result = await agentService.getAllAgents();
 
-      expect(result).toEqual(['gemini-1.5']);
-      expect(mockAxios).toHaveBeenCalledWith(
-        expect.objectContaining({
-          url: 'https://example.com/agents.yaml',
-          timeout: expect.any(Number),
-        })
-      );
+      expect(result).toHaveLength(1);
+      expect(result[0].identifier).toBe('remote_agent');
+      expect(mockAxios).toHaveBeenCalledWith(expect.objectContaining({
+        url: 'https://example.com/agents.json'
+      }));
     });
 
-    it('should throw error when no agents are available', async () => {
-      process.env.CUBICLER_AGENTS_LIST = './empty-agents.yaml';
-      mockReadFileSync.mockReturnValue('version: 1\nkind: agents\nagents: []');
+    it('should handle empty agents list', async () => {
+      process.env.CUBICLER_AGENTS_LIST = './empty-agents.json';
+      mockFs.readFileSync.mockReturnValue(JSON.stringify({ agents: [] }));
 
       const { default: agentService } = await import('../../src/core/agent-service.js');
-      await expect(agentService.getAvailableAgents()).rejects.toThrow(
-        'No agents available in the agents list'
-      );
+      
+      await expect(agentService.getAllAgents()).rejects.toThrow('Invalid agents configuration: at least one agent must be configured');
+    });
+  });
+
+  describe('hasAgent', () => {
+    beforeEach(() => {
+      process.env.CUBICLER_AGENTS_LIST = './test-agents.json';
+      mockFs.readFileSync.mockReturnValue(JSON.stringify({
+        basePrompt: "You are a helpful AI assistant.",
+        defaultPrompt: "You have access to tools.",
+        agents: [
+          { 
+            identifier: "gpt_4o", 
+            name: "GPT-4O", 
+            transport: "http", 
+            url: "http://localhost:3000",
+            description: "Advanced agent",
+            prompt: "You are specialized."
+          },
+          { 
+            identifier: "claude_3_5", 
+            name: "Claude", 
+            transport: "http", 
+            url: "http://localhost:3001",
+            description: "Creative agent"
+          }
+        ]
+      }));
     });
 
-    it('should throw error when CUBICLER_AGENTS_LIST is not defined', async () => {
-      delete process.env.CUBICLER_AGENTS_LIST;
-
+    it('should return true for existing agent', async () => {
       const { default: agentService } = await import('../../src/core/agent-service.js');
-      await expect(agentService.getAvailableAgents()).rejects.toThrow(
-        'CUBICLER_AGENTS_LIST is not defined in environment variables'
-      );
+      const result = await agentService.hasAgent('gpt_4o');
+
+      expect(result).toBe(true);
     });
 
-    it('should throw error when agents YAML has wrong kind', async () => {
-      process.env.CUBICLER_AGENTS_LIST = './wrong-kind.yaml';
-      mockReadFileSync.mockReturnValue('version: 1\nkind: providers\nagents: []');
-
+    it('should return false for non-existent agent', async () => {
       const { default: agentService } = await import('../../src/core/agent-service.js');
-      await expect(agentService.getAvailableAgents()).rejects.toThrow(
-        'Invalid agents YAML: kind must be "agents"'
-      );
+      const result = await agentService.hasAgent('non_existent');
+      
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('getAgentInfo', () => {
+    beforeEach(() => {
+      process.env.CUBICLER_AGENTS_LIST = './test-agents.json';
+      mockFs.readFileSync.mockReturnValue(JSON.stringify({
+        basePrompt: "You are a helpful AI assistant.",
+        defaultPrompt: "You have access to tools.",
+        agents: [
+          { 
+            identifier: "gpt_4o", 
+            name: "GPT-4O", 
+            transport: "http", 
+            url: "http://localhost:3000",
+            description: "Advanced agent",
+            prompt: "You are specialized."
+          },
+          { 
+            identifier: "claude_3_5", 
+            name: "Claude", 
+            transport: "http", 
+            url: "http://localhost:3001",
+            description: "Creative agent"
+          }
+        ]
+      }));
     });
 
-    it('should throw error when HTTP fetch fails', async () => {
-      process.env.CUBICLER_AGENTS_LIST = 'https://example.com/agents.yaml';
-      const error = {
-        isAxiosError: true,
-        response: {
-          status: 404,
-          statusText: 'Not Found',
-        },
-      };
-      mockAxios.mockRejectedValue(error);
+    it('should return specific agent info by identifier', async () => {
+      const { default: agentService } = await import('../../src/core/agent-service.js');
+      const result = await agentService.getAgentInfo('gpt_4o');
+
+      expect(result.identifier).toBe('gpt_4o');
+      expect(result.name).toBe('GPT-4O');
+      expect(result.description).toBe('Advanced agent');
+    });
+
+    it('should return default agent info when no identifier provided', async () => {
+      const { default: agentService } = await import('../../src/core/agent-service.js');
+      const result = await agentService.getAgentInfo();
+
+      expect(result.identifier).toBe('gpt_4o'); // First agent is default
+    });
+  });
+
+  describe('getAgentPrompt', () => {
+    beforeEach(() => {
+      process.env.CUBICLER_AGENTS_LIST = './test-agents.json';
+      mockFs.readFileSync.mockReturnValue(JSON.stringify({
+        basePrompt: "You are a helpful AI assistant.",
+        defaultPrompt: "You have access to tools.",
+        agents: [
+          { 
+            identifier: "agent_with_prompt", 
+            name: "Agent With Prompt", 
+            transport: "http", 
+            url: "http://localhost:3000",
+            prompt: "You are specialized in analysis."
+          },
+          { 
+            identifier: "agent_without_prompt", 
+            name: "Agent Without Prompt", 
+            transport: "http", 
+            url: "http://localhost:3001"
+          }
+        ]
+      }));
+    });
+
+    it('should compose prompt with base + agent-specific prompt', async () => {
+      const { default: agentService } = await import('../../src/core/agent-service.js');
+      const result = await agentService.getAgentPrompt('agent_with_prompt');
+
+      expect(result).toBe('You are a helpful AI assistant.\n\nYou are specialized in analysis.');
+    });
+
+    it('should compose prompt with base + default prompt when agent has no specific prompt', async () => {
+      const { default: agentService } = await import('../../src/core/agent-service.js');
+      const result = await agentService.getAgentPrompt('agent_without_prompt');
+
+      expect(result).toBe('You are a helpful AI assistant.\n\nYou have access to tools.');
+    });
+
+    it('should use default agent when no agent identifier provided', async () => {
+      const { default: agentService } = await import('../../src/core/agent-service.js');
+      const result = await agentService.getAgentPrompt();
+
+      expect(result).toBe('You are a helpful AI assistant.\n\nYou are specialized in analysis.');  // First agent has specific prompt
+    });
+
+    it('should handle missing base prompt', async () => {
+      mockFs.readFileSync.mockReturnValue(JSON.stringify({
+        defaultPrompt: "You have access to tools.",
+        agents: [
+          { 
+            identifier: "test_agent", 
+            name: "Test Agent", 
+            transport: "http", 
+            url: "http://localhost:3000",
+            prompt: "You are specialized."
+          }
+        ]
+      }));
 
       const { default: agentService } = await import('../../src/core/agent-service.js');
-      await expect(agentService.getAvailableAgents()).rejects.toThrow(
-        'Failed to fetch agents list: Not Found'
-      );
+      const result = await agentService.getAgentPrompt('test_agent');
+
+      expect(result).toBe('You are specialized.');
     });
   });
 
   describe('clearCache', () => {
-    it('should clear the cache without throwing', async () => {
+    it('should clear the agents cache', async () => {
+      process.env.CUBICLER_AGENTS_LIST = './test-agents.json';
+      mockFs.readFileSync.mockReturnValue(JSON.stringify({
+        agents: [
+          { identifier: "test_agent", name: "Test", transport: "http", url: "http://localhost:3000" }
+        ]
+      }));
+
       const { default: agentService } = await import('../../src/core/agent-service.js');
-      expect(() => agentService.clearCache()).not.toThrow();
+      
+      // Load agents to populate cache
+      await agentService.getAllAgents();
+      expect(mockFs.readFileSync).toHaveBeenCalledTimes(1);
+
+      // Load again, should use cache (no additional fs call)
+      await agentService.getAllAgents();
+      expect(mockFs.readFileSync).toHaveBeenCalledTimes(1);
+
+      // Clear cache and load again
+      agentService.clearCache();
+      await agentService.getAllAgents();
+      expect(mockFs.readFileSync).toHaveBeenCalledTimes(2);
     });
   });
 });

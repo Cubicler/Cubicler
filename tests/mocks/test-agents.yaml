@@ -1,9 +1,0 @@
-version: 1
-kind: agents
-agents:
-  - name: "gpt-4o"
-    endpoints: "localhost:3000/call"
-  - name: "claude-3.5"
-    endpoints: "localhost:3001/call"
-  - name: "gemini-1.5"
-    endpoints: "localhost:3002/call"

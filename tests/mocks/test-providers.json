@@ -1,0 +1,58 @@
+{
+  "mcpServers": [
+    {
+      "identifier": "weather_service",
+      "name": "Weather Service",
+      "description": "Provides weather information via MCP",
+      "transport": "http",
+      "url": "http://localhost:4000/mcp",
+      "headers": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "identifier": "file_service",
+      "name": "File Service",
+      "description": "File management via MCP",
+      "transport": "http",
+      "url": "http://localhost:4001/mcp"
+    }
+  ],
+  "restServers": [
+    {
+      "identifier": "user_api",
+      "name": "User API",
+      "description": "Legacy REST API for user management",
+      "url": "http://localhost:5000/api",
+      "defaultHeaders": {
+        "Authorization": "Bearer api-token"
+      },
+      "endPoints": [
+        {
+          "name": "get_user",
+          "description": "Get user information by ID",
+          "path": "/users/{userId}",
+          "method": "GET",
+          "userId": {
+            "type": "string",
+            "description": "User ID to fetch"
+          }
+        },
+        {
+          "name": "create_user",
+          "description": "Create a new user",
+          "path": "/users",
+          "method": "POST",
+          "payload": {
+            "type": "object",
+            "properties": {
+              "name": {"type": "string"},
+              "email": {"type": "string"}
+            },
+            "required": ["name", "email"]
+          }
+        }
+      ]
+    }
+  ]
+}

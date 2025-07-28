@@ -73,7 +73,8 @@ export async function axiosWithTimeout(
     const response = await axios(mergedOptions);
     return response;
   } catch (error) {
-    if (axios.isAxiosError(error)) {
+    // Check if axios.isAxiosError exists and the error is an axios error
+    if (axios.isAxiosError && axios.isAxiosError(error)) {
       if (error.code === 'ECONNABORTED') {
         throw new Error(`Request timeout after ${timeoutMs}ms`);
       }

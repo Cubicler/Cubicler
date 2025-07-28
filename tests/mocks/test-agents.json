@@ -1,0 +1,21 @@
+{
+  "basePrompt": "You are a helpful AI assistant powered by Cubicler.",
+  "defaultPrompt": "You have access to various tools and services through Cubicler.",
+  "agents": [
+    {
+      "identifier": "gpt_4o",
+      "name": "GPT-4O Agent",
+      "transport": "http",
+      "url": "http://localhost:3000/agent",
+      "description": "Advanced GPT-4O agent for complex tasks",
+      "prompt": "You specialize in complex reasoning and analysis."
+    },
+    {
+      "identifier": "claude_3_5",
+      "name": "Claude 3.5 Agent",
+      "transport": "http",
+      "url": "http://localhost:3001/agent",
+      "description": "Claude 3.5 Sonnet for creative and analytical tasks"
+    }
+  ]
+}

@@ -1,140 +1,166 @@
-import { readFileSync } from 'fs';
-import { load } from 'js-yaml';
 import { config } from 'dotenv';
-import axios from 'axios';
+import type { AgentsConfig, Agent, AgentInfo } from '../model/agents.js';
+import type { AgentsProviding } from "../interface/agents-providing.js";
 import { Cache, createEnvCache } from '../utils/cache.js';
-import { fetchWithDefaultTimeout } from '../utils/fetch-helper.js';
-import type { AgentsList } from '../model/types.js';
+import { loadConfigFromSource, validateAgentsConfig } from '../utils/config-helper.js';
 
 config();
 
-const agentsCache: Cache<AgentsList> = createEnvCache('AGENTS_LIST', 600); // 10 minutes default
-
 /**
- * Get list of available agents
- * @returns Array of agent names
- * @throws Error if no agents are available
+ * Agent Service for Cubicler
+ * Handles agent configuration with base/default/agent-specific prompt composition
  */
-async function getAvailableAgents(): Promise<string[]> {
-  console.log(`🤖 [AgentService] Getting available agents list`);
-  
-  const agents = await retrieveAgentsList();
+class AgentService implements AgentsProviding {
+  // Cache for agents configuration
+  private agentsCache: Cache<AgentsConfig> = createEnvCache('AGENTS', 600); // 10 minutes default
 
-  if (!agents.agents || agents.agents.length === 0) {
-    console.error(`❌ [AgentService] No agents available in the agents list`);
-    throw new Error('No agents available in the agents list');
-  }
-
-  const agentNames = agents.agents.map((agent) => agent.name);
-  console.log(`✅ [AgentService] Found ${agentNames.length} agents: ${agentNames.join(', ')}`);
-  
-  return agentNames;
-}
-
-/**
- * Fetch and parse agents list from configured source (no caching)
- * @returns Complete AgentsList object
- * @throws Error if fetch fails or format is invalid
- */
-async function fetchAgentsList(): Promise<AgentsList> {
-  const agentsSource = process.env.CUBICLER_AGENTS_LIST;
-  if (!agentsSource) {
-    console.error('❌ [AgentService] CUBICLER_AGENTS_LIST environment variable not defined');
-    throw new Error('CUBICLER_AGENTS_LIST is not defined in environment variables');
-  }
-
-  console.log(`🔄 [AgentService] Fetching agents list from: ${agentsSource}`);
-
-  let yamlText: string;
-
-  if (agentsSource.startsWith('http')) {
-    console.log(`🌐 [AgentService] Fetching agents from URL: ${agentsSource}`);
-    try {
-      const response = await fetchWithDefaultTimeout(agentsSource);
-      if (response.status < 200 || response.status >= 300) {
-        console.error(`❌ [AgentService] HTTP error: ${response.status} ${response.statusText}`);
-        throw new Error(`Failed to fetch agents list: ${response.statusText}`);
-      }
-      console.log(`✅ [AgentService] Successfully fetched agents from URL`);
-      yamlText = response.data;
-    } catch (error) {
-      console.error(`❌ [AgentService] Failed to fetch agents from URL:`, error instanceof Error ? error.message : 'Unknown error');
-      if (axios.isAxiosError(error)) {
-        const statusText = error.response?.statusText || 'Unknown error';
-        throw new Error(`Failed to fetch agents list: ${statusText}`);
-      }
-      throw error;
+  /**
+   * Compose prompt for a specific agent
+   * Combines basePrompt + (defaultPrompt | agent-specific prompt)
+   * 
+   * Priority:
+   * 1. If agent has specific prompt: basePrompt + agent.prompt
+   * 2. If no agent-specific prompt: basePrompt + defaultPrompt
+   * 3. If no basePrompt: use defaultPrompt or agent.prompt alone
+   */
+  async getAgentPrompt(agentIdentifier?: string): Promise<string> {
+    const config = await this.loadAgents();
+    
+    let agent: Agent;
+    if (agentIdentifier) {
+      agent = await this.getAgent(agentIdentifier);
+    } else {
+      agent = await this.getDefaultAgent();
     }
-  } else {
-    console.log(`📁 [AgentService] Reading agents from local file: ${agentsSource}`);
-    yamlText = readFileSync(agentsSource, 'utf-8');
-    console.log(`✅ [AgentService] Successfully read agents file`);
+
+    const promptParts: string[] = [];
+
+    // Add base prompt if available
+    if (config.basePrompt) {
+      promptParts.push(config.basePrompt.trim());
+    }
+
+    // Add agent-specific prompt or default prompt
+    if (agent.prompt) {
+      promptParts.push(agent.prompt.trim());
+    } else if (config.defaultPrompt) {
+      promptParts.push(config.defaultPrompt.trim());
+    }
+
+    // If no prompts are configured, return a minimal default
+    if (promptParts.length === 0) {
+      return 'You are a helpful AI assistant powered by Cubicler.';
+    }
+
+    return promptParts.join('\n\n');
   }
 
-  const agents = load(yamlText) as AgentsList;
-  if (!agents || typeof agents !== 'object') {
-    console.error(`❌ [AgentService] Invalid agents YAML format`);
-    throw new Error('Invalid agents YAML format');
+  /**
+   * Get agent information for dispatch (without sensitive details)
+   */
+  async getAgentInfo(agentIdentifier?: string): Promise<AgentInfo> {
+    const agent = agentIdentifier ? await this.getAgent(agentIdentifier) : await this.getDefaultAgent();
+    
+    return {
+      identifier: agent.identifier,
+      name: agent.name,
+      description: agent.description
+    };
   }
 
-  if (agents.kind !== 'agents') {
-    console.error(`❌ [AgentService] Invalid agents YAML: kind is "${agents.kind}", expected "agents"`);
-    throw new Error('Invalid agents YAML: kind must be "agents"');
+  /**
+   * Get all agents with basic information
+   */
+  async getAllAgents(): Promise<AgentInfo[]> {
+    const config = await this.loadAgents();
+    
+    return config.agents.map(agent => ({
+      identifier: agent.identifier,
+      name: agent.name,
+      description: agent.description
+    }));
   }
 
-  console.log(`✅ [AgentService] Successfully parsed agents YAML with ${agents.agents?.length || 0} agents`);
-  return agents;
-}
-
-/**
- * Fetch agents list from configured source (no caching)
- * @returns Array of agent names
- * @throws Error if fetch fails or no agents are available
- */
-async function fetchAvailableAgents(): Promise<string[]> {
-  const agents = await fetchAgentsList();
-
-  if (!agents.agents || agents.agents.length === 0) {
-    throw new Error('No agents defined in configuration');
+  /**
+   * Check if an agent exists
+   */
+  async hasAgent(agentIdentifier: string): Promise<boolean> {
+    try {
+      await this.getAgent(agentIdentifier);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
-  return agents.agents.map((agent) => agent.name);
-}
-
-/**
- * Load agents list from configured source with caching
- */
-async function retrieveAgentsList(): Promise<AgentsList> {
-  const cached = agentsCache.get('agents_list');
-  if (cached) {
-    return cached;
+  /**
+   * Get agent URL for communication
+   */
+  async getAgentUrl(agentIdentifier?: string): Promise<string> {
+    const agent = agentIdentifier ? await this.getAgent(agentIdentifier) : await this.getDefaultAgent();
+    return agent.url;
   }
 
-  const agents = await fetchAgentsList();
+  /**
+   * Clear the agents cache
+   */
+  clearCache(): void {
+    this.agentsCache.clear();
+  }
 
-  // Cache the result
-  agentsCache.set('agents_list', agents);
 
-  return agents;
+  /**
+   * Load agents configuration from source (file or URL)
+   */
+  private async loadAgents(): Promise<AgentsConfig> {
+    const cached = this.agentsCache.get('config');
+    if (cached) {
+      return cached;
+    }
+
+    const config = await loadConfigFromSource<AgentsConfig>(
+      'CUBICLER_AGENTS_LIST', 
+      'agents configuration'
+    );
+
+    // Validate configuration structure
+    validateAgentsConfig(config);
+
+    // Cache the result
+    this.agentsCache.set('config', config);
+    
+    console.log(`✅ [AgentService] Loaded ${config.agents.length} agents`);
+
+    return config;
+  }
+
+  /**
+   * Get a specific agent by identifier
+   */
+  private async getAgent(agentIdentifier: string): Promise<Agent> {
+    const config = await this.loadAgents();
+    const agent = config.agents.find(a => a.identifier === agentIdentifier);
+    
+    if (!agent) {
+      throw new Error(`Agent not found: ${agentIdentifier}`);
+    }
+
+    return agent;
+  }
+
+  /**
+   * Get the first available agent (default agent)
+   */
+  private async getDefaultAgent(): Promise<Agent> {
+    const config = await this.loadAgents();
+    
+    if (config.agents.length === 0) {
+      throw new Error('No agents available');
+    }
+
+    return config.agents[0]!;
+  }
 }
 
-/**
- * Clear agents cache
- */
-function clearCache(): void {
-  agentsCache.clear();
-}
-
-/**
- * Get full agents list (for internal use)
- */
-async function getAgents(): Promise<AgentsList> {
-  return await retrieveAgentsList();
-}
-
-export default {
-  getAvailableAgents,
-  getAgents,
-  fetchAvailableAgents,
-  clearCache,
-};
+// Export singleton instance
+export default new AgentService();

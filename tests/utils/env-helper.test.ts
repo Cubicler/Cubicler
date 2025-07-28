@@ -1,210 +1,114 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import {
-  substituteEnvVars,
-  substituteEnvVarsInObject,
-  getEnvBoolean,
-  isStrictParamsEnabled,
+import { beforeEach, afterEach, describe, it, expect } from 'vitest';
+import { 
+  substituteEnvVars, 
+  getEnvTimeout 
 } from '../../src/utils/env-helper.js';
 
-describe('envHelper', () => {
+describe('Environment Helper', () => {
+  const originalEnv = process.env;
+
   beforeEach(() => {
-    // Clear any existing environment variables that might interfere
-    delete process.env.TEST_VAR;
-    delete process.env.API_KEY;
-    delete process.env.MISSING_VAR;
+    process.env = { ...originalEnv };
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
   });
 
   describe('substituteEnvVars', () => {
     it('should substitute environment variables in strings', () => {
-      process.env.TEST_VAR = 'test-value';
-
-      const result = substituteEnvVars('Hello {{env.TEST_VAR}} world');
-      expect(result).toBe('Hello test-value world');
+      process.env.TEST_VAR = 'test_value';
+      process.env.ANOTHER_VAR = 'another_value';
+      
+      const result = substituteEnvVars('Hello {{env.TEST_VAR}} and {{env.ANOTHER_VAR}}');
+      
+      expect(result).toBe('Hello test_value and another_value');
     });
 
-    it('should handle multiple environment variables in one string', () => {
-      process.env.API_KEY = 'secret-key';
-      process.env.BASE_URL = 'https://api.example.com';
-
-      const result = substituteEnvVars('{{env.BASE_URL}}/auth?key={{env.API_KEY}}');
-      expect(result).toBe('https://api.example.com/auth?key=secret-key');
+    it('should leave placeholder when env var not found', () => {
+      delete process.env.MISSING_VAR;
+      
+      const result = substituteEnvVars('Hello {{env.MISSING_VAR}}');
+      
+      expect(result).toBe('Hello {{env.MISSING_VAR}}');
     });
 
-    it('should leave placeholder unchanged if environment variable is not found', () => {
-      const result = substituteEnvVars('Hello {{env.MISSING_VAR}} world');
-      expect(result).toBe('Hello {{env.MISSING_VAR}} world');
+    it('should handle multiple occurrences of same variable', () => {
+      process.env.REPEAT_VAR = 'repeated';
+      
+      const result = substituteEnvVars('{{env.REPEAT_VAR}} and {{env.REPEAT_VAR}} again');
+      
+      expect(result).toBe('repeated and repeated again');
     });
 
-    it('should return non-string values unchanged', () => {
+    it('should handle non-string values unchanged', () => {
       expect(substituteEnvVars(123)).toBe(123);
+      expect(substituteEnvVars(true)).toBe(true);
       expect(substituteEnvVars(null)).toBe(null);
       expect(substituteEnvVars(undefined)).toBe(undefined);
-      expect(substituteEnvVars(true)).toBe(true);
-      expect(substituteEnvVars({})).toEqual({});
+      expect(substituteEnvVars({ key: 'value' })).toEqual({ key: 'value' });
     });
 
-    it('should handle strings without environment variables', () => {
-      const result = substituteEnvVars('Just a regular string');
-      expect(result).toBe('Just a regular string');
+    it('should handle strings without placeholders', () => {
+      const result = substituteEnvVars('No placeholders here');
+      
+      expect(result).toBe('No placeholders here');
     });
 
     it('should handle empty strings', () => {
       const result = substituteEnvVars('');
+      
       expect(result).toBe('');
     });
   });
 
-  describe('substituteEnvVarsInObject', () => {
-    it('should substitute environment variables in object values', () => {
-      process.env.API_KEY = 'secret-key';
-      process.env.BASE_URL = 'https://api.example.com';
-
-      const input = {
-        authorization: 'Bearer {{env.API_KEY}}',
-        baseUrl: '{{env.BASE_URL}}',
-        version: 'v1',
-      };
-
-      const result = substituteEnvVarsInObject(input);
-      expect(result).toEqual({
-        authorization: 'Bearer secret-key',
-        baseUrl: 'https://api.example.com',
-        version: 'v1',
-      });
+  describe('getEnvTimeout', () => {
+    it('should return parsed timeout value', () => {
+      process.env.TEST_TIMEOUT = '5000';
+      
+      const result = getEnvTimeout('TEST_TIMEOUT', 1000);
+      
+      expect(result).toBe(5000);
     });
 
-    it('should handle objects with missing environment variables', () => {
-      const input = {
-        authorization: 'Bearer {{env.MISSING_KEY}}',
-        baseUrl: 'https://api.example.com',
-      };
-
-      const result = substituteEnvVarsInObject(input);
-      expect(result).toEqual({
-        authorization: 'Bearer {{env.MISSING_KEY}}',
-        baseUrl: 'https://api.example.com',
-      });
+    it('should return default value when env var not set', () => {
+      delete process.env.TEST_TIMEOUT;
+      
+      const result = getEnvTimeout('TEST_TIMEOUT', 3000);
+      
+      expect(result).toBe(3000);
     });
 
-    it('should return undefined for undefined input', () => {
-      const result = substituteEnvVarsInObject(undefined);
-      expect(result).toBeUndefined();
+    it('should return default for invalid number', () => {
+      process.env.TEST_TIMEOUT = 'not_a_number';
+      
+      const result = getEnvTimeout('TEST_TIMEOUT', 2000);
+      
+      expect(result).toBe(2000);
     });
 
-    it('should handle empty objects', () => {
-      const result = substituteEnvVarsInObject({});
-      expect(result).toEqual({});
+    it('should return default for negative numbers', () => {
+      process.env.TEST_TIMEOUT = '-500';
+      
+      const result = getEnvTimeout('TEST_TIMEOUT', 1500);
+      
+      expect(result).toBe(1500);
     });
 
-    it('should handle objects with non-string values', () => {
-      process.env.TEST_VAR = 'test-value';
-
-      const input = {
-        stringValue: 'Hello {{env.TEST_VAR}}',
-        numberValue: 123,
-        booleanValue: true,
-        nullValue: null,
-        objectValue: { nested: 'value' },
-      };
-
-      const result = substituteEnvVarsInObject(input);
-      expect(result).toEqual({
-        stringValue: 'Hello test-value',
-        numberValue: 123,
-        booleanValue: true,
-        nullValue: null,
-        objectValue: { nested: 'value' },
-      });
+    it('should return default for zero', () => {
+      process.env.TEST_TIMEOUT = '0';
+      
+      const result = getEnvTimeout('TEST_TIMEOUT', 1200);
+      
+      expect(result).toBe(1200);
     });
 
-    it('should handle nested placeholder patterns', () => {
-      process.env.DOMAIN = 'example.com';
-      process.env.PROTOCOL = 'https';
-
-      const input = {
-        url: '{{env.PROTOCOL}}://{{env.DOMAIN}}/api',
-      };
-
-      const result = substituteEnvVarsInObject(input);
-      expect(result).toEqual({
-        url: 'https://example.com/api',
-      });
-    });
-  });
-
-  describe('getEnvBoolean', () => {
-    const originalValue = process.env.TEST_BOOLEAN;
-
-    afterEach(() => {
-      // Restore original env value
-      if (originalValue !== undefined) {
-        process.env.TEST_BOOLEAN = originalValue;
-      } else {
-        delete process.env.TEST_BOOLEAN;
-      }
-    });
-
-    it('should return true for "true" string', () => {
-      process.env.TEST_BOOLEAN = 'true';
-      expect(getEnvBoolean('TEST_BOOLEAN')).toBe(true);
-    });
-
-    it('should return true for "1" string', () => {
-      process.env.TEST_BOOLEAN = '1';
-      expect(getEnvBoolean('TEST_BOOLEAN')).toBe(true);
-    });
-
-    it('should return false for "false" string', () => {
-      process.env.TEST_BOOLEAN = 'false';
-      expect(getEnvBoolean('TEST_BOOLEAN')).toBe(false);
-    });
-
-    it('should return false for "0" string', () => {
-      process.env.TEST_BOOLEAN = '0';
-      expect(getEnvBoolean('TEST_BOOLEAN')).toBe(false);
-    });
-
-    it('should return default value when env var is not set', () => {
-      delete process.env.TEST_BOOLEAN;
-      expect(getEnvBoolean('TEST_BOOLEAN', true)).toBe(true);
-      expect(getEnvBoolean('TEST_BOOLEAN', false)).toBe(false);
-      expect(getEnvBoolean('TEST_BOOLEAN')).toBe(false); // default should be false
-    });
-
-    it('should be case insensitive', () => {
-      process.env.TEST_BOOLEAN = 'TRUE';
-      expect(getEnvBoolean('TEST_BOOLEAN')).toBe(true);
-
-      process.env.TEST_BOOLEAN = 'FALSE';
-      expect(getEnvBoolean('TEST_BOOLEAN')).toBe(false);
-    });
-  });
-
-  describe('isStrictParamsEnabled', () => {
-    const originalValue = process.env.CUBICLER_STRICT_PARAMS;
-
-    afterEach(() => {
-      // Restore original env value
-      if (originalValue !== undefined) {
-        process.env.CUBICLER_STRICT_PARAMS = originalValue;
-      } else {
-        delete process.env.CUBICLER_STRICT_PARAMS;
-      }
-    });
-
-    it('should return true when CUBICLER_STRICT_PARAMS is "true"', () => {
-      process.env.CUBICLER_STRICT_PARAMS = 'true';
-      expect(isStrictParamsEnabled()).toBe(true);
-    });
-
-    it('should return false when CUBICLER_STRICT_PARAMS is "false"', () => {
-      process.env.CUBICLER_STRICT_PARAMS = 'false';
-      expect(isStrictParamsEnabled()).toBe(false);
-    });
-
-    it('should return false when CUBICLER_STRICT_PARAMS is not set', () => {
-      delete process.env.CUBICLER_STRICT_PARAMS;
-      expect(isStrictParamsEnabled()).toBe(false);
+    it('should handle decimal numbers by parsing as integer', () => {
+      process.env.TEST_TIMEOUT = '1500.75';
+      
+      const result = getEnvTimeout('TEST_TIMEOUT', 1000);
+      
+      expect(result).toBe(1500); // parseInt truncates decimals
     });
   });
 });

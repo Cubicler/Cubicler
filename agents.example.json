@@ -1,0 +1,29 @@
+{
+  "basePrompt": "You are an AI assistant powered by Cubicler. You have access to various tools and services through Cubicler's orchestration layer.",
+  "defaultPrompt": "You are helpful, informative, and focused on providing accurate responses. When you need to use tools, explain what you're doing and why.",
+  "agents": [
+    {
+      "identifier": "gpt-4o",
+      "name": "GPT-4o Assistant",
+      "transport": "http",
+      "url": "http://localhost:3000/agent",
+      "description": "OpenAI GPT-4o powered agent with advanced reasoning capabilities"
+    },
+    {
+      "identifier": "claude-3-5-sonnet",
+      "name": "Claude 3.5 Sonnet",
+      "transport": "http", 
+      "url": "http://localhost:3001/agent",
+      "description": "Anthropic Claude 3.5 Sonnet with excellent coding and analysis skills",
+      "prompt": "You are Claude 3.5 Sonnet. You excel at coding, analysis, and thoughtful reasoning. You're direct but friendly, and you always explain your reasoning process."
+    },
+    {
+      "identifier": "custom-specialist",
+      "name": "Domain Specialist",
+      "transport": "http",
+      "url": "http://localhost:3002/agent", 
+      "description": "Specialized agent for domain-specific tasks",
+      "prompt": "You are a domain specialist with deep expertise in specific areas. You provide detailed, technical responses and always cite your reasoning."
+    }
+  ]
+}

@@ -1,0 +1,245 @@
+import type { JSONValue, JSONObject } from '../model/types.js';
+import { fetchWithDefaultTimeout } from '../utils/fetch-helper.js';
+import { replacePathParameters, convertToQueryParams } from '../utils/parameter-helper.js';
+import type { ProvidersConfigProviding } from '../interface/provider-config-providing.js';
+import providersRepository from '../utils/provider-repository.js';
+import { MCPCompatible } from '../interface/mcp-compatible.js';
+import { ToolDefinition } from '../model/tools.js';
+
+/**
+ * REST Provider Service for Cubicler
+ * Handles REST server communication and tool execution
+ */
+class ProviderRESTService implements MCPCompatible {
+  readonly identifier = 'provider-rest';
+  private readonly configProvider: ProvidersConfigProviding;
+
+  constructor(configProvider: ProvidersConfigProviding) {
+    this.configProvider = configProvider;
+  }
+
+  /**
+   * Initialize the REST provider service
+   */
+  async initialize(): Promise<void> {
+    console.log('🔄 [ProviderRESTService] Initializing REST provider service...');
+    // REST servers typically don't need initialization
+    console.log('✅ [ProviderRESTService] REST provider service initialized');
+  }
+
+  /**
+   * Get list of tools this service provides (MCPCompatible)
+   */
+  async toolsList(): Promise<ToolDefinition[]> {
+    // Return all tools from all REST servers
+    const config = await this.configProvider.getProvidersConfig();
+    const restServers = config.restServers || [];
+    const allTools: ToolDefinition[] = [];
+
+    for (const server of restServers) {
+      try {
+        const serverTools = await this.getRESTTools(server.identifier);
+        allTools.push(...serverTools);
+      } catch (error) {
+        console.warn(`⚠️ [RESTService] Failed to get tools from REST server ${server.identifier}:`, error);
+        // Continue with other servers
+      }
+    }
+
+    return allTools;
+  }
+
+  /**
+   * Execute a tool call (MCPCompatible)
+   */
+  async toolsCall(toolName: string, parameters: JSONObject): Promise<JSONValue> {
+    const parts = toolName.split('.');
+    if (parts.length !== 2) {
+      throw new Error(`Invalid tool name format: ${toolName}. Expected format: server.tool`);
+    }
+    
+    const [serverIdentifier, functionName] = parts;
+    if (!serverIdentifier || !functionName) {
+      throw new Error(`Invalid tool name format: ${toolName}. Expected format: server.tool`);
+    }
+    
+    return await this.executeRESTTool(serverIdentifier, functionName, parameters);
+  }
+
+  /**
+   * Check if this service can handle the given tool name
+   */
+  async canHandleRequest(toolName: string): Promise<boolean> {
+    const parts = toolName.split('.');
+    if (parts.length !== 2) return false;
+    
+    const [serverIdentifier] = parts;
+    const config = await this.configProvider.getProvidersConfig();
+    const restServer = config.restServers?.find(s => s.identifier === serverIdentifier);
+    return restServer !== undefined;
+  }
+
+  /**
+   * Get tools from a specific REST server
+   */
+  private async getRESTTools(serverIdentifier: string): Promise<ToolDefinition[]> {
+    const config = await this.configProvider.getProvidersConfig();
+    const restServer = config.restServers?.find(s => s.identifier === serverIdentifier);
+    
+    if (!restServer) {
+      throw new Error(`REST server not found: ${serverIdentifier}`);
+    }
+
+    // Convert REST endpoints to tool definitions
+    const tools: ToolDefinition[] = restServer.endPoints.map(endpoint => {
+      // Build parameters object with path variables as root parameters
+      const properties: Record<string, JSONValue> = {};
+      const required: string[] = [];
+
+      // Extract path parameters from the path template
+      const pathParamMatches = endpoint.path.match(/\{(\w+)\}/g);
+      if (pathParamMatches) {
+        for (const match of pathParamMatches) {
+          const paramName = match.slice(1, -1); // Remove { and }
+          properties[paramName] = { type: 'string' };
+          required.push(paramName);
+        }
+      }
+
+      // Add query parameters as an object if endpoint has parameters
+      if (endpoint.parameters?.properties) {
+        properties.query = {
+          type: 'object',
+          properties: endpoint.parameters.properties,
+          required: endpoint.parameters.required || []
+        };
+      }
+
+      // Add payload parameters as an object if endpoint has payload
+      if (endpoint.payload?.properties) {
+        properties.payload = {
+          type: 'object',
+          properties: endpoint.payload.properties,
+          required: endpoint.payload.required || []
+        };
+      }
+
+      return {
+        name: `${serverIdentifier}.${endpoint.name}`,
+        description: endpoint.description,
+        parameters: {
+          type: 'object',
+          properties,
+          required
+        }
+      };
+    });
+    
+    return tools;
+  }
+
+  /**
+   * Execute a REST tool/function
+   */
+  async executeRESTTool(
+    serverIdentifier: string,
+    functionName: string,
+    parameters: Record<string, JSONValue>
+  ): Promise<JSONValue> {
+    console.log(`🌐 [RESTService] Executing REST tool: ${serverIdentifier}.${functionName}`);
+
+    const config = await this.configProvider.getProvidersConfig();
+    const restServer = config.restServers?.find(s => s.identifier === serverIdentifier);
+    
+    if (!restServer) {
+      throw new Error(`REST server not found: ${serverIdentifier}`);
+    }
+
+    // Find the endpoint
+    const endpoint = restServer.endPoints.find(ep => ep.name === functionName);
+    if (!endpoint) {
+      throw new Error(`REST endpoint not found: ${functionName} in server ${serverIdentifier}`);
+    }
+
+    try {
+      // Extract path parameters (root level parameters that match {variable} in path)
+      const pathParamMatches = endpoint.path.match(/\{(\w+)\}/g);
+      const pathParams: Record<string, string> = {};
+      const remainingParams: Record<string, JSONValue> = { ...parameters };
+
+      if (pathParamMatches) {
+        for (const match of pathParamMatches) {
+          const paramName = match.slice(1, -1); // Remove { and }
+          if (paramName in parameters) {
+            pathParams[paramName] = String(parameters[paramName]);
+            delete remainingParams[paramName];
+          }
+        }
+      }
+      
+      // Build the full URL with path parameters replaced
+      const pathWithParams = replacePathParameters(endpoint.path, pathParams);
+      const fullUrl = `${restServer.url}${pathWithParams}`;
+      
+      // Extract query parameters from the 'query' object
+      let queryParams: Record<string, string> = {};
+      if (remainingParams.query && typeof remainingParams.query === 'object' && remainingParams.query !== null) {
+        queryParams = convertToQueryParams(remainingParams.query as Record<string, JSONValue>);
+      }
+      
+      // Extract payload parameters from the 'payload' object
+      let body: Record<string, JSONValue> | null = null;
+      if (endpoint.payload && remainingParams.payload && typeof remainingParams.payload === 'object' && remainingParams.payload !== null) {
+        body = remainingParams.payload as Record<string, JSONValue>;
+      }
+      
+      // Build query string
+      const queryString = Object.entries(queryParams)
+        .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+        .join('&');
+      
+      const finalUrl = queryString ? `${fullUrl}?${queryString}` : fullUrl;
+
+      // Prepare headers
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...restServer.defaultHeaders,
+        ...endpoint.headers
+      };
+
+      // Prepare request options
+      const requestOptions: {
+        method: string;
+        headers: Record<string, string>;
+        data?: Record<string, JSONValue>;
+      } = {
+        method: endpoint.method,
+        headers
+      };
+
+      // Add body for any method if payload is provided
+      if (body) {
+        requestOptions.data = body;
+      }
+
+      console.log(`🚀 [RESTService] Calling ${endpoint.method} ${finalUrl}`);
+
+      const response = await fetchWithDefaultTimeout(finalUrl, requestOptions);
+
+      if (response.status < 200 || response.status >= 300) {
+        throw new Error(`REST call failed with status ${response.status}: ${response.statusText}`);
+      }
+
+      console.log(`✅ [RESTService] REST call successful`);
+      return response.data;
+
+    } catch (error) {
+      console.error(`❌ [RESTService] REST call failed:`, error);
+      throw new Error(`REST execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+}
+
+// Export the class for dependency injection and a default instance for backward compatibility
+export { ProviderRESTService };
+export default new ProviderRESTService(providersRepository);

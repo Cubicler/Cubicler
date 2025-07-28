@@ -1,348 +1,177 @@
-import { describe, it, expect, afterEach, vi } from 'vitest';
-import {
-  validateAndConvertParameter,
-  validateAndConvertParameters,
-  validateAndConvertPayload,
-  convertParametersForQuery,
+import { describe, it, expect } from 'vitest';
+import { 
+  parseFunctionName, 
+  extractPathParameters, 
+  replacePathParameters,
+  convertToQueryParams,
+  buildUrl 
 } from '../../src/utils/parameter-helper.js';
-import type { ParameterDefinition } from '../../src/model/definitions.js';
 
-describe('parameterHelper', () => {
-  describe('validateAndConvertParameter', () => {
-    it('should convert string values correctly', () => {
-      const result = validateAndConvertParameter(123, { type: 'string' }, 'testParam');
-      expect(result).toBe('123');
+describe('Parameter Helper', () => {
+  describe('parseFunctionName', () => {
+    it('should parse valid function name', () => {
+      const result = parseFunctionName('weather_service.get_current_weather');
+
+      expect(result.serverIdentifier).toBe('weather_service');
+      expect(result.functionName).toBe('get_current_weather');
     });
 
-    it('should convert number values correctly', () => {
-      const result = validateAndConvertParameter('123.45', { type: 'number' }, 'testParam');
-      expect(result).toBe(123.45);
-    });
-
-    it('should throw error for invalid number', () => {
-      expect(() => {
-        validateAndConvertParameter('not-a-number', { type: 'number' }, 'testParam');
-      }).toThrow("Parameter 'testParam' must be a valid number, got 'not-a-number'");
-    });
-
-    it('should convert boolean values correctly', () => {
-      expect(validateAndConvertParameter('true', { type: 'boolean' }, 'testParam')).toBe(true);
-      expect(validateAndConvertParameter('false', { type: 'boolean' }, 'testParam')).toBe(false);
-      expect(validateAndConvertParameter('1', { type: 'boolean' }, 'testParam')).toBe(true);
-      expect(validateAndConvertParameter('0', { type: 'boolean' }, 'testParam')).toBe(false);
-      expect(validateAndConvertParameter(1, { type: 'boolean' }, 'testParam')).toBe(true);
-      expect(validateAndConvertParameter(0, { type: 'boolean' }, 'testParam')).toBe(false);
-      expect(validateAndConvertParameter(true, { type: 'boolean' }, 'testParam')).toBe(true);
-      expect(validateAndConvertParameter(false, { type: 'boolean' }, 'testParam')).toBe(false);
-    });
-
-    it('should throw error for invalid boolean', () => {
-      expect(() => {
-        validateAndConvertParameter('maybe', { type: 'boolean' }, 'testParam');
-      }).toThrow("Parameter 'testParam' must be a valid boolean, got 'maybe'");
-    });
-
-    it('should validate array type correctly', () => {
-      const array = [1, 2, 3];
-      const result = validateAndConvertParameter(array, { type: 'array' }, 'testParam');
-      expect(result).toEqual(array);
-    });
-
-    it('should throw error for invalid array', () => {
-      expect(() => {
-        validateAndConvertParameter('not-an-array', { type: 'array' }, 'testParam');
-      }).toThrow("Parameter 'testParam' must be an array, got 'string'");
-    });
-
-    it('should validate object type correctly', () => {
-      const obj = { key: 'value' };
-      const result = validateAndConvertParameter(obj, { type: 'object' }, 'testParam');
-      expect(result).toEqual(obj);
-    });
-
-    it('should throw error for invalid object (array)', () => {
-      expect(() => {
-        validateAndConvertParameter([1, 2, 3], { type: 'object' }, 'testParam');
-      }).toThrow("Parameter 'testParam' must be an object, got 'object'");
-    });
-
-    it('should handle null values for non-required parameters', () => {
-      const result = validateAndConvertParameter(null, { type: 'object' }, 'testParam');
-      expect(result).toBe(null);
-    });
-
-    it('should throw error for null values when required', () => {
-      expect(() => {
-        validateAndConvertParameter(null, { type: 'object', required: true }, 'testParam');
-      }).toThrow("Required parameter 'testParam' is missing");
-    });
-
-    it('should throw error for unsupported types', () => {
-      expect(() => {
-        validateAndConvertParameter(123, { type: 'unknown' as any }, 'testParam');
-      }).toThrow("Unsupported parameter type 'unknown' for parameter 'testParam'");
-    });
-
-    it('should handle null/undefined values', () => {
-      expect(validateAndConvertParameter(null, { type: 'string' }, 'testParam')).toBe(null);
-      expect(validateAndConvertParameter(undefined, { type: 'string' }, 'testParam')).toBe(
-        undefined
-      );
-    });
-
-    it('should throw error for missing required parameters', () => {
-      expect(() => {
-        validateAndConvertParameter(undefined, { type: 'string', required: true }, 'testParam');
-      }).toThrow("Required parameter 'testParam' is missing");
+    it('should throw error for invalid format', () => {
+      expect(() => parseFunctionName('invalid_function_name')).toThrow('Invalid function name format');
+      expect(() => parseFunctionName('too.many.parts.here')).toThrow('Invalid function name format');
     });
   });
 
-  describe('validateAndConvertParameters', () => {
-    const parameterDefinitions: Record<string, ParameterDefinition> = {
-      id: { type: 'string', required: true },
-      count: { type: 'number' },
-      active: { type: 'boolean' },
-      tags: { type: 'array' },
-      metadata: { type: 'object' },
-    };
-
-    it('should validate and convert multiple parameters', () => {
+  describe('extractPathParameters', () => {
+    it('should extract path parameters and leave remaining parameters', () => {
+      const path = '/users/{userId}/posts/{postId}';
       const parameters = {
-        id: 123,
-        count: '45.5',
-        active: 'true',
-        tags: ['tag1', 'tag2'],
-        metadata: { key: 'value' },
+        userId: '123',
+        postId: '456',
+        includeComments: true,
+        limit: 10
       };
 
-      const result = validateAndConvertParameters(parameters, parameterDefinitions);
+      const result = extractPathParameters(path, parameters);
 
-      expect(result).toEqual({
-        id: '123',
-        count: 45.5,
-        active: true,
-        tags: ['tag1', 'tag2'],
-        metadata: { key: 'value' },
+      expect(result.pathParams).toEqual({
+        userId: '123',
+        postId: '456'
+      });
+      expect(result.remainingParams).toEqual({
+        includeComments: true,
+        limit: 10
       });
     });
 
-    it('should handle missing optional parameters', () => {
-      const parameters = { id: 'test-id' };
-      const result = validateAndConvertParameters(parameters, parameterDefinitions);
-      expect(result).toEqual({ id: 'test-id' });
+    it('should handle path with no parameters', () => {
+      const path = '/users';
+      const parameters = { limit: 5 };
+
+      const result = extractPathParameters(path, parameters);
+
+      expect(result.pathParams).toEqual({});
+      expect(result.remainingParams).toEqual({ limit: 5 });
     });
 
-    it('should throw error for missing required parameters', () => {
-      const parameters = { count: 10 }; // missing required 'id'
+    it('should handle missing path parameters', () => {
+      const path = '/users/{userId}';
+      const parameters = { limit: 5 };
 
-      expect(() => {
-        validateAndConvertParameters(parameters, parameterDefinitions);
-      }).toThrow("Required parameter 'id' is missing");
-    });
+      const result = extractPathParameters(path, parameters);
 
-    it('should warn about undefined parameters', () => {
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      const parameters = {
-        id: 'test-id',
-        unknownParam: 'value',
-      };
-
-      const result = validateAndConvertParameters(parameters, parameterDefinitions);
-
-      expect(result).toEqual({
-        id: 'test-id',
-        unknownParam: 'value',
-      });
-      expect(consoleSpy).toHaveBeenCalledWith(
-        "Parameter 'unknownParam' is not defined in the spec"
-      );
-
-      consoleSpy.mockRestore();
-    });
-
-    it('should handle empty parameters object', () => {
-      const result = validateAndConvertParameters({}, {});
-      expect(result).toEqual({});
-    });
-
-    it('should handle null/undefined parameters', () => {
-      expect(validateAndConvertParameters(null as any, parameterDefinitions)).toEqual({});
-      expect(validateAndConvertParameters(undefined as any, parameterDefinitions)).toEqual({});
-    });
-
-    it('should handle missing parameter definitions', () => {
-      const parameters = { id: 'test', value: 123 };
-      const result = validateAndConvertParameters(parameters, undefined);
-      expect(result).toEqual(parameters);
+      expect(result.pathParams).toEqual({});
+      expect(result.remainingParams).toEqual({ limit: 5 });
     });
   });
 
-  describe('validateAndConvertPayload', () => {
-    it('should validate object payload', () => {
-      const payload = { key: 'value', count: 42 };
-      const payloadDef = { type: 'object' as const };
+  describe('replacePathParameters', () => {
+    it('should replace path parameters', () => {
+      const pathTemplate = '/users/{userId}/posts/{postId}';
+      const pathParams = { userId: '123', postId: '456' };
 
-      const result = validateAndConvertPayload(payload, payloadDef);
-      expect(result).toEqual(payload);
+      const result = replacePathParameters(pathTemplate, pathParams);
+
+      expect(result).toBe('/users/123/posts/456');
     });
 
-    it('should validate array payload', () => {
-      const payload = ['item1', 'item2'];
-      const payloadDef = { type: 'array' as const };
+    it('should handle path with no parameters', () => {
+      const pathTemplate = '/users';
+      const pathParams = {};
 
-      const result = validateAndConvertPayload(payload, payloadDef);
-      expect(result).toEqual(payload);
+      const result = replacePathParameters(pathTemplate, pathParams);
+
+      expect(result).toBe('/users');
     });
 
-    it('should handle undefined payload definition', () => {
-      const payload = { key: 'value' };
-      const result = validateAndConvertPayload(payload, undefined);
-      expect(result).toEqual(payload);
-    });
+    it('should leave unreplaced parameters as-is', () => {
+      const pathTemplate = '/users/{userId}/posts/{postId}';
+      const pathParams = { userId: '123' }; // Missing postId
 
-    it('should handle null payload when not required', () => {
-      const result = validateAndConvertPayload(null, { type: 'object' });
-      expect(result).toBe(null);
-    });
+      const result = replacePathParameters(pathTemplate, pathParams);
 
-    it('should throw error for missing required payload', () => {
-      expect(() => {
-        validateAndConvertPayload(undefined, { type: 'object', required: true });
-      }).toThrow('Required payload is missing');
+      expect(result).toBe('/users/123/posts/{postId}');
     });
   });
 
-  describe('convertParametersForQuery', () => {
-    it('should convert various types for query string', () => {
+  describe('convertToQueryParams', () => {
+    it('should convert simple parameters to query strings', () => {
       const parameters = {
-        stringValue: 'hello',
-        numberValue: 123,
-        booleanValue: true,
-        arrayValue: ['a', 'b', 'c'],
-        objectValue: { key: 'value' },
-        nullValue: null,
-        undefinedValue: undefined,
+        includeComments: true,
+        limit: 10,
+        name: 'test'
       };
 
-      const result = convertParametersForQuery(parameters);
+      const result = convertToQueryParams(parameters);
 
       expect(result).toEqual({
-        stringValue: 'hello',
-        numberValue: '123',
-        booleanValue: 'true',
-        arrayValue: '["a","b","c"]', // Minified JSON
-        objectValue: '{"key":"value"}', // Minified JSON
-        // nullValue and undefinedValue should be excluded
+        includeComments: 'true',
+        limit: '10',
+        name: 'test'
       });
     });
 
-    it('should handle empty parameters', () => {
-      const result = convertParametersForQuery({});
-      expect(result).toEqual({});
-    });
-
-    it('should skip null and undefined values', () => {
+    it('should convert arrays to comma-separated strings', () => {
       const parameters = {
-        keepThis: 'value',
-        skipNull: null,
-        skipUndefined: undefined,
-        keepFalse: false,
-        keepZero: 0,
+        tags: ['javascript', 'typescript'],
+        ids: [1, 2, 3]
       };
 
-      const result = convertParametersForQuery(parameters);
+      const result = convertToQueryParams(parameters);
 
       expect(result).toEqual({
-        keepThis: 'value',
-        keepFalse: 'false',
-        keepZero: '0',
+        tags: 'javascript,typescript',
+        ids: '1,2,3'
       });
     });
 
-    it('should properly minify complex objects and arrays', () => {
+    it('should JSON stringify complex objects', () => {
       const parameters = {
-        complexObject: {
-          nested: { array: [1, 2, 3] },
-          boolean: true,
-        },
-        complexArray: [
-          { id: 1, name: 'first' },
-          { id: 2, name: 'second' },
-        ],
+        filter: { status: 'active' },
+        users: [{ name: 'John' }]
       };
 
-      const result = convertParametersForQuery(parameters);
+      const result = convertToQueryParams(parameters);
 
       expect(result).toEqual({
-        complexObject: '{"nested":{"array":[1,2,3]},"boolean":true}',
-        complexArray: '[{"id":1,"name":"first"},{"id":2,"name":"second"}]',
+        filter: JSON.stringify({ status: 'active' }),
+        users: JSON.stringify([{ name: 'John' }])
       });
     });
   });
 
-  describe('strict parameter validation', () => {
-    const originalEnv = process.env.CUBICLER_STRICT_PARAMS;
+  describe('buildUrl', () => {
+    it('should build complete URL with path and query parameters', () => {
+      const baseUrl = 'http://localhost:5000/api';
+      const pathTemplate = '/users/{userId}';
+      const pathParams = { userId: '123' };
+      const queryParams = { include: 'profile', limit: '10' };
 
-    afterEach(() => {
-      // Restore original env value
-      if (originalEnv !== undefined) {
-        process.env.CUBICLER_STRICT_PARAMS = originalEnv;
-      } else {
-        delete process.env.CUBICLER_STRICT_PARAMS;
-      }
+      const result = buildUrl(baseUrl, pathTemplate, pathParams, queryParams);
+
+      expect(result).toBe('http://localhost:5000/api/users/123?include=profile&limit=10');
     });
 
-    it('should allow unknown parameters when strict mode is disabled', () => {
-      process.env.CUBICLER_STRICT_PARAMS = 'false';
+    it('should handle URL without query parameters', () => {
+      const baseUrl = 'http://localhost:5000/api';
+      const pathTemplate = '/users/{userId}';
+      const pathParams = { userId: '123' };
+      const queryParams = {};
 
-      const parameters = { known: 'value', unknown: 'should-be-allowed' };
-      const definitions = { known: { type: 'string' } as ParameterDefinition };
+      const result = buildUrl(baseUrl, pathTemplate, pathParams, queryParams);
 
-      const result = validateAndConvertParameters(parameters, definitions);
-
-      expect(result).toEqual({ known: 'value', unknown: 'should-be-allowed' });
+      expect(result).toBe('http://localhost:5000/api/users/123');
     });
 
-    it('should throw error for unknown parameters when strict mode is enabled', () => {
-      process.env.CUBICLER_STRICT_PARAMS = 'true';
+    it('should handle URL without path parameters', () => {
+      const baseUrl = 'http://localhost:5000/api';
+      const pathTemplate = '/users';
+      const pathParams = {};
+      const queryParams = { limit: '10' };
 
-      const parameters = { known: 'value', unknown: 'should-cause-error' };
-      const definitions = { known: { type: 'string' } as ParameterDefinition };
+      const result = buildUrl(baseUrl, pathTemplate, pathParams, queryParams);
 
-      expect(() => {
-        validateAndConvertParameters(parameters, definitions);
-      }).toThrow("Unknown parameter 'unknown' is not allowed in strict mode");
-    });
-
-    it('should validate payload properties in strict mode', () => {
-      process.env.CUBICLER_STRICT_PARAMS = 'true';
-
-      const payload = { known: 'value', unknown: 'should-cause-error' };
-      const payloadDefinition = {
-        type: 'object' as const,
-        properties: {
-          known: { type: 'string' as const },
-        },
-      };
-
-      expect(() => {
-        validateAndConvertPayload(payload, payloadDefinition);
-      }).toThrow("Unknown payload property 'unknown' is not allowed in strict mode");
-    });
-
-    it('should allow payload properties in non-strict mode', () => {
-      process.env.CUBICLER_STRICT_PARAMS = 'false';
-
-      const payload = { known: 'value', unknown: 'should-be-allowed' };
-      const payloadDefinition = {
-        type: 'object' as const,
-        properties: {
-          known: { type: 'string' as const },
-        },
-      };
-
-      const result = validateAndConvertPayload(payload, payloadDefinition);
-      expect(result).toEqual({ known: 'value', unknown: 'should-be-allowed' });
+      expect(result).toBe('http://localhost:5000/api/users?limit=10');
     });
   });
 });

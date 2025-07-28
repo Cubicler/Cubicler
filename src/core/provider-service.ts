@@ -1,386 +1,100 @@
-import { readFileSync } from 'fs';
-import { load } from 'js-yaml';
 import { config } from 'dotenv';
-import axios from 'axios';
-import { Cache, createEnvCache } from '../utils/cache.js';
-import { convertToFunctionSpecs } from '../utils/definition-helper.js';
-import { fetchWithDefaultTimeout } from '../utils/fetch-helper.js';
-import type { Provider, ProviderSpecResponse, ProvidersList } from '../model/types.js';
-import type { AgentFunctionDefinition, ProviderDefinition } from '../model/definitions.js';
+import type { ServersProviding } from '../interface/servers-providing.js';
+import type { ProvidersConfigProviding } from '../interface/provider-config-providing.js';
+import { ToolsListProviding } from '../interface/tools-list-providing.js';
+import { AvailableServersResponse, ServerToolsResponse } from '../model/tools.js';
 
 config();
 
-interface CachedProviderSpec {
-  context: string;
-  functions: AgentFunctionDefinition[];
-}
-
-const providersCache: Cache<ProvidersList> = createEnvCache('PROVIDERS_LIST', 600); // 10 minutes default
-const specCache: Cache<CachedProviderSpec> = createEnvCache('PROVIDER_SPEC', 600); // 10 minutes default
-
 /**
- * Get provider spec and context for AI agents
+ * Provider Service for Cubicler
+ * Handles both MCP servers and REST servers from providers.json configuration
+ * Uses MCPService through dependency injection for better modularity
  */
-async function getProviderSpec(providerName: string): Promise<ProviderSpecResponse> {
-  console.log(`🏢 [ProviderService] Getting spec for provider: ${providerName}`);
-  
-  // Check cache first
-  const cached = specCache.get(providerName);
-  if (cached) {
-    console.log(`🚀 [ProviderService] Returning cached spec for ${providerName} (${cached.functions.length} functions)`);
+class ProviderService implements ServersProviding {
+  private readonly configProvider: ProvidersConfigProviding;
+  private toolsProviders: ToolsListProviding[];
+
+  constructor(configProvider: ProvidersConfigProviding, toolsProviders: ToolsListProviding[]) {
+    this.configProvider = configProvider;
+    this.toolsProviders = toolsProviders;
+  }
+
+  /**
+   * Get all available servers (both MCP and REST)
+   */
+  async getAvailableServers(): Promise<AvailableServersResponse> {
+    const config = await this.configProvider.getProvidersConfig();
+    const servers: Array<{ identifier: string; name: string; description: string; toolsCount: number }> = [];
+
+    // Add MCP servers with actual tool counts
+    if (config.mcpServers) {
+      for (const server of config.mcpServers) {
+        let toolsCount = 0;
+        
+        // Try to get actual tool count from MCP provider
+        try {
+          const provider = this.toolsProviders.find(provider => 
+            provider.identifier === server.identifier
+          );
+
+          const tools = await provider?.toolsList();
+          toolsCount = tools ? tools.length : 0;
+        } catch (error) {
+          console.warn(`⚠️ [ProviderService] Failed to get tool count for MCP server ${server.identifier}:`, error);
+          // toolsCount remains 0 if we can't fetch tools
+        }
+        
+        servers.push({
+          identifier: server.identifier,
+          name: server.name,
+          description: server.description,
+          toolsCount
+        });
+      }
+    }
+
+    // Add REST servers
+    if (config.restServers) {
+      for (const server of config.restServers) {
+        servers.push({
+          identifier: server.identifier,
+          name: server.name,
+          description: server.description,
+          toolsCount: server.endPoints.length
+        });
+      }
+    }
+
     return {
-      context: cached.context,
-      functions: cached.functions,
+      total: servers.length,
+      servers
     };
   }
 
-  const provider = await findProvider(providerName);
-
-  console.log(`🔄 [ProviderService] Fetching spec and context for ${providerName}`);
-  const [providerDefinition, providerContext] = await Promise.all([
-    retrievesProviderDefinition(provider.spec_source),
-    retrievesProviderContext(provider.context_source),
-  ]);
-
-  // Convert spec to function specs with provider naming convention
-  const functions = convertToFunctionSpecs(providerDefinition, providerName);
-  console.log(`✅ [ProviderService] Successfully processed ${functions.length} functions for ${providerName}`);
-
-  // Cache the result
-  specCache.set(providerName, {
-    context: providerContext,
-    functions,
-  });
-
-  return {
-    context: providerContext,
-    functions,
-  };
-}
-
-/**
- * Find a provider by name
- */
-async function findProvider(providerName: string): Promise<Provider> {
-  console.log(`🔍 [ProviderService] Looking for provider: ${providerName}`);
-  
-  const availableProviders = await retrieveProvidersList();
-  const provider = availableProviders.providers.find((p: Provider) => p.name === providerName);
-
-  if (!provider) {
-    console.error(`❌ [ProviderService] Provider '${providerName}' not found. Available providers: ${availableProviders.providers.map(p => p.name).join(', ')}`);
-    throw new Error(`Provider '${providerName}' not found in providers list`);
-  }
-
-  console.log(`✅ [ProviderService] Found provider: ${providerName}`);
-  return provider;
-}
-
-/**
- * Fetch providers list from URL source
- * @param providersSource - URL to fetch providers list from
- * @returns Parsed ProvidersList object
- * @throws Error if unable to fetch providers from URL
- */
-async function fetchProvidersFromUrl(providersSource: string): Promise<ProvidersList> {
-  const errors: string[] = [];
-
-  console.log(`🌐 [ProviderService] Fetching providers from URL: ${providersSource}`);
-
-  try {
-    const response = await fetchWithDefaultTimeout(providersSource);
-
-    if (response.status >= 200 && response.status < 300) {
-      console.log(`✅ [ProviderService] Successfully fetched providers from URL`);
-      const yamlText = response.data;
-      const providers = load(yamlText) as ProvidersList;
-
-      if (!providers || typeof providers !== 'object') {
-        console.error(`❌ [ProviderService] Invalid providers YAML format`);
-        throw new Error('Invalid providers YAML format');
-      }
-
-      if (providers.kind !== 'providers') {
-        console.error(`❌ [ProviderService] Invalid providers YAML: kind is "${providers.kind}", expected "providers"`);
-        throw new Error('Invalid providers YAML: kind must be "providers"');
-      }
-
-      console.log(`✅ [ProviderService] Successfully parsed providers YAML with ${providers.providers?.length || 0} providers`);
-      return providers;
+  /**
+   * Get tools from a specific server
+   */
+  async getServerTools(serverIdentifier: string): Promise<ServerToolsResponse> {
+    for (const provider of this.toolsProviders) {
+        if (provider.identifier !== serverIdentifier) continue;
+        try {
+            const tools = await provider.toolsList();
+            return { tools };
+        } catch (error) {
+          console.warn(`⚠️ [ProviderService] Failed to get tools from ${serverIdentifier}:`, error);
+            throw error;
+        }
     }
-    console.log(`⚠️ [ProviderService] HTTP error: ${response.status} ${response.statusText}`);
-    errors.push(`Fetch failed: ${response.status} ${response.statusText}`);
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('timeout')) {
-      errors.push(`Provider fetch timeout: ${error.message}`);
-    } else if (axios.isAxiosError(error)) {
-      const status = error.response?.status || 0;
-      const statusText = error.response?.statusText || 'Unknown error';
-      errors.push(`Fetch failed: ${status} ${statusText}`);
-    } else {
-      errors.push(`Fetch error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }
-
-  throw new Error(
-    `Cannot fetch providers from URL '${providersSource}'. Errors: ${errors.join('; ')}`
-  );
-}
-
-/**
- * Fetch providers list from local file source
- * @param providersSource - Local path to fetch providers list from
- * @returns Parsed ProvidersList object
- * @throws Error if unable to fetch providers from local path
- */
-function fetchProvidersFromFile(providersSource: string): ProvidersList {
-  const errors: string[] = [];
-
-  try {
-    const yamlText = readFileSync(providersSource, 'utf-8');
-    const providers = load(yamlText) as ProvidersList;
-
-    if (!providers || typeof providers !== 'object') {
-      throw new Error('Invalid providers YAML format');
-    }
-
-    if (providers.kind !== 'providers') {
-      throw new Error('Invalid providers YAML: kind must be "providers"');
-    }
-
-    return providers;
-  } catch (error) {
-    errors.push(`File read error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
-
-  throw new Error(
-    `Cannot fetch providers from path '${providersSource}'. Errors: ${errors.join('; ')}`
-  );
-}
-
-/**
- * Fetch provider definition from URL source
- * @param specUrl - URL to fetch spec from
- * @returns Parsed ProviderDefinition object
- * @throws Error if unable to fetch spec from URL
- */
-async function fetchProviderDefinitionFromUrl(specUrl: string): Promise<ProviderDefinition> {
-  const errors: string[] = [];
-
-  try {
-    const response = await fetchWithDefaultTimeout(specUrl);
-
-    if (response.status >= 200 && response.status < 300) {
-      const yamlText = response.data;
-      const spec = load(yamlText) as ProviderDefinition;
-
-      if (!spec || typeof spec !== 'object') {
-        throw new Error('Invalid provider spec YAML format');
-      }
-
-      return spec;
-    }
-    errors.push(`Spec fetch failed: ${response.status} ${response.statusText}`);
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('timeout')) {
-      errors.push(`Provider spec fetch timeout: ${error.message}`);
-    } else if (axios.isAxiosError(error)) {
-      const status = error.response?.status || 0;
-      const statusText = error.response?.statusText || 'Unknown error';
-      errors.push(`Spec fetch failed: ${status} ${statusText}`);
-    } else {
-      errors.push(`Spec fetch error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }
-
-  throw new Error(`Cannot fetch provider spec from URL '${specUrl}'. Errors: ${errors.join('; ')}`);
-}
-
-/**
- * Fetch provider definition from local file source
- * @param specUrl - Local path to fetch spec from
- * @returns Parsed ProviderDefinition object
- * @throws Error if unable to fetch spec from local path
- */
-function fetchProviderDefinitionFromFile(specUrl: string): ProviderDefinition {
-  const errors: string[] = [];
-
-  try {
-    const yamlText = readFileSync(specUrl, 'utf-8');
-    const spec = load(yamlText) as ProviderDefinition;
-
-    if (!spec || typeof spec !== 'object') {
-      throw new Error('Invalid provider spec YAML format');
-    }
-
-    return spec;
-  } catch (error) {
-    errors.push(`File read error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
-
-  throw new Error(
-    `Cannot fetch provider spec from path '${specUrl}'. Errors: ${errors.join('; ')}`
-  );
-}
-
-/**
- * Fetch provider context from URL source
- * @param contextUrl - URL to fetch context from
- * @returns Context text content
- * @throws Error if unable to fetch context from URL
- */
-async function fetchProviderContextFromUrl(contextUrl: string): Promise<string> {
-  const errors: string[] = [];
-
-  try {
-    const response = await fetchWithDefaultTimeout(contextUrl);
-    if (response.status >= 200 && response.status < 300) {
-      return response.data;
-    }
-    errors.push(`Context fetch failed: ${response.status} ${response.statusText}`);
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('timeout')) {
-      errors.push(`Context fetch timeout: ${error.message}`);
-    } else if (axios.isAxiosError(error)) {
-      const status = error.response?.status || 0;
-      const statusText = error.response?.statusText || 'Unknown error';
-      errors.push(`Context fetch failed: ${status} ${statusText}`);
-    } else {
-      errors.push(
-        `Context fetch error: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
-    }
-  }
-
-  throw new Error(
-    `Cannot fetch provider context from URL '${contextUrl}'. Errors: ${errors.join('; ')}`
-  );
-}
-
-/**
- * Fetch provider context from local file source
- * @param contextUrl - Local path to fetch context from
- * @returns Context text content
- * @throws Error if unable to fetch context from local path
- */
-function fetchProviderContextFromFile(contextUrl: string): string {
-  const errors: string[] = [];
-
-  try {
-    return readFileSync(contextUrl, 'utf-8');
-  } catch (error) {
-    errors.push(`File read error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
-
-  throw new Error(
-    `Cannot fetch provider context from path '${contextUrl}'. Errors: ${errors.join('; ')}`
-  );
-}
-
-/**
- * Fetch and parse providers list from configured source (no caching)
- * @returns Complete ProvidersList object
- * @throws Error if environment variable is missing or if fetch fails
- */
-async function fetchProvidersList(): Promise<ProvidersList> {
-  const providersSource = process.env.CUBICLER_PROVIDERS_LIST;
-  if (!providersSource) {
-    throw new Error('CUBICLER_PROVIDERS_LIST is not defined in environment variables');
-  }
-
-  if (providersSource.startsWith('http')) {
-    return await fetchProvidersFromUrl(providersSource);
-  } else {
-    return fetchProvidersFromFile(providersSource);
+    throw new Error(`Server not found: ${serverIdentifier}`);
   }
 }
 
-/**
- * Load providers list from configured source with caching
- */
-async function retrieveProvidersList(): Promise<ProvidersList> {
-  const cached = providersCache.get('providers_list');
-  if (cached) {
-    return cached;
-  }
 
-  const providers = await fetchProvidersList();
+import providerMcpService from './provider-mcp-service.js';
+import providerRestService from './provider-rest-service.js';
+import configProvider from '../utils/provider-repository.js';
 
-  // Cache the result
-  providersCache.set('providers_list', providers);
-
-  return providers;
-}
-
-/**
- * Load and parse a provider's spec from URL or file
- * @param specUrl - URL or path to fetch spec from
- * @returns Parsed ProviderDefinition object
- * @throws Error if fetch fails
- */
-async function retrievesProviderDefinition(specUrl: string): Promise<ProviderDefinition> {
-  if (specUrl.startsWith('http')) {
-    return await fetchProviderDefinitionFromUrl(specUrl);
-  } else {
-    return fetchProviderDefinitionFromFile(specUrl);
-  }
-}
-
-/**
- * Load provider context from URL or file
- * @param contextUrl - URL or path to fetch context from
- * @returns Context text content
- * @throws Error if fetch fails
- */
-async function retrievesProviderContext(contextUrl: string): Promise<string> {
-  if (contextUrl.startsWith('http')) {
-    return await fetchProviderContextFromUrl(contextUrl);
-  } else {
-    return fetchProviderContextFromFile(contextUrl);
-  }
-}
-
-/**
- * Clear all caches
- */
-function clearCache(): void {
-  providersCache.clear();
-  specCache.clear();
-}
-
-/**
- * Get list of available providers
- * @returns Array of Provider objects
- * @throws Error if no providers are available
- */
-async function getProviders(): Promise<Provider[]> {
-  const providers = await retrieveProvidersList();
-
-  if (!providers.providers || providers.providers.length === 0) {
-    throw new Error('No providers defined in configuration');
-  }
-
-  return providers.providers;
-}
-
-/**
- * Fetch providers list from configured source (no caching)
- * @returns Array of Provider objects
- * @throws Error if fetch fails or no providers are available
- */
-async function fetchProviders(): Promise<Provider[]> {
-  const providers = await fetchProvidersList();
-
-  if (!providers.providers || providers.providers.length === 0) {
-    throw new Error('No providers defined in configuration');
-  }
-
-  return providers.providers;
-}
-
-export default {
-  getProviderSpec,
-  clearCache,
-  getProviders,
-  fetchProviders,
-};
+// Export the class for dependency injection and a default instance for backward compatibility
+export { ProviderService };
+export default new ProviderService(configProvider, [providerMcpService, providerRestService]);

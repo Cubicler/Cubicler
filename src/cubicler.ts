@@ -1,7 +1,25 @@
+// Export all types
 export * from './model/types.js';
-export { default as promptService } from './core/prompt-service.js';
-export { default as providerService } from './core/provider-service.js';
-export { default as executionService } from './core/execution-service.js';
+export * from './model/providers.js';
+export * from './model/agents.js';
+export * from './model/dispatch.js';
+export * from './model/tools.js';
+
+// Export all services (both classes and default instances)
 export { default as agentService } from './core/agent-service.js';
-export { default as callService } from './core/call-service.js';
+export { ProviderService, default as providerService } from './core/provider-service.js';
+export { DispatchService } from './core/dispatch-service.js';
+export { default as mcpService } from './core/mcp-service.js';
+export { ProviderMCPService } from './core/provider-mcp-service.js';
+export { ProviderRESTService, default as providerRESTService } from './core/provider-rest-service.js';
+export { default as internalFunctionsService } from './core/internal-tools-service.js';
+
+// Export utilities and protocols
+export { Cache, createEnvCache } from './utils/cache.js';
+export { default as providersRepository } from './utils/provider-repository.js';
+export * from './utils/env-helper.js';
+export * from './utils/fetch-helper.js';
+export * from './utils/parameter-helper.js';
+
+// Export the Express app
 export { app } from './index.js';

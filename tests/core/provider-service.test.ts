@@ -1,164 +1,168 @@
-import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
-import providerService from '../../src/core/provider-service.js';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
+import { ProviderService } from '../../src/core/provider-service.js';
 
 describe('Provider Service', () => {
-  const originalEnv = process.env;
+  let mockConfigProvider: any;
+  let mockMcpToolsProvider: any;
+  let mockRestToolsProvider: any;
+  let providerService: ProviderService;
 
   beforeEach(() => {
-    vi.resetModules();
-    process.env = { ...originalEnv };
+    vi.clearAllMocks();
 
-    process.env.CUBICLER_PROVIDERS_LIST = './tests/mocks/test-providers.yaml';
-    process.env.PROVIDER_SPEC_CACHE_ENABLED = 'false'; // Disable cache for tests
+    // Mock config provider
+    mockConfigProvider = {
+      getProvidersConfig: vi.fn()
+    };
 
-    providerService.clearCache();
+    // Mock MCP tools provider
+    mockMcpToolsProvider = {
+      identifier: 'weather_service',
+      toolsList: vi.fn()
+    };
+
+    // Mock REST tools provider
+    mockRestToolsProvider = {
+      identifier: 'user_api',
+      toolsList: vi.fn()
+    };
+
+    // Create provider service with mocked dependencies
+    providerService = new ProviderService(mockConfigProvider, [mockMcpToolsProvider, mockRestToolsProvider]);
   });
 
-  afterEach(() => {
-    process.env = originalEnv;
-  });
-
-  describe('getProviderSpec', () => {
-    it('should return spec and context for weather_api provider', async () => {
-      const result = await providerService.getProviderSpec('weather_api');
-
-      expect(result).toHaveProperty('context');
-      expect(result).toHaveProperty('functions');
-      expect(result.context).toContain('Weather API Context');
-      expect(result.context).toContain('getWeather');
-
-      expect(result.functions).toHaveLength(1);
-      const weatherFunction = result.functions[0];
-      expect(weatherFunction).toBeDefined();
-      expect(weatherFunction).toMatchObject({
-        name: 'weather_api.getWeather',
-        description: 'Get weather information by city and country',
-        parameters: {
-          type: 'object',
-          properties: expect.objectContaining({
-            city: { type: 'string' },
-            // Note: country should be excluded due to override_parameters
-            // Note: payload should be excluded due to override_payload
-          }),
-        },
+  describe('getAvailableServers', () => {
+    it('should return list of all servers (MCP + REST)', async () => {
+      mockConfigProvider.getProvidersConfig.mockResolvedValue({
+        mcpServers: [
+          { 
+            identifier: "weather_service", 
+            name: "Weather Service", 
+            description: "Weather API",
+            transport: "http", 
+            url: "http://localhost:4000/mcp" 
+          }
+        ],
+        restServers: [
+          { 
+            identifier: "user_api", 
+            name: "User API", 
+            description: "User management",
+            url: "http://localhost:5000/api",
+            endPoints: [
+              { name: "get_user", description: "Get user", path: "/users/{userId}", method: "GET" }
+            ]
+          }
+        ]
       });
 
-      // Verify override parameters are hidden
-      if (weatherFunction?.parameters?.properties) {
-        expect(weatherFunction.parameters.properties).not.toHaveProperty('country');
-        expect(weatherFunction.parameters.properties).not.toHaveProperty('payload');
-      }
+      mockMcpToolsProvider.toolsList.mockResolvedValue([
+        { name: 'weather_service.get_weather', description: 'Get weather data' }
+      ]);
+
+      const result = await providerService.getAvailableServers();
+
+      expect(result.total).toBe(2);
+      expect(result.servers).toHaveLength(2);
+      expect(result.servers[0].identifier).toBe('weather_service');
+      expect(result.servers[0].toolsCount).toBe(1); // From MCP tools
+      expect(result.servers[1].identifier).toBe('user_api');
+      expect(result.servers[1].toolsCount).toBe(1); // From REST endpoints
     });
 
-    it('should return spec and context for mock_service provider', async () => {
-      const result = await providerService.getProviderSpec('mock_service');
-
-      expect(result).toHaveProperty('context');
-      expect(result).toHaveProperty('functions');
-      expect(result.context).toContain('Mock Service Context');
-
-      expect(result.functions).toHaveLength(1);
-      const mockFunction = result.functions[0];
-      expect(mockFunction).toMatchObject({
-        name: 'mock_service.getData',
-        description: 'Get mock data by ID',
-        parameters: {
-          type: 'object',
-          properties: {
-            id: { type: 'string' },
-          },
-        },
+    it('should handle empty servers list', async () => {
+      mockConfigProvider.getProvidersConfig.mockResolvedValue({ 
+        mcpServers: [], 
+        restServers: [] 
       });
+
+      const result = await providerService.getAvailableServers();
+
+      expect(result.total).toBe(0);
+      expect(result.servers).toHaveLength(0);
     });
 
-    it('should throw error for non-existent provider', async () => {
-      await expect(providerService.getProviderSpec('non_existent')).rejects.toThrow(
-        "Provider 'non_existent' not found in providers list"
-      );
+    it('should handle MCP server tool fetch failure gracefully', async () => {
+      mockConfigProvider.getProvidersConfig.mockResolvedValue({
+        mcpServers: [
+          { 
+            identifier: "weather_service", 
+            name: "Weather Service", 
+            description: "Weather API"
+          }
+        ],
+        restServers: []
+      });
+
+      mockMcpToolsProvider.toolsList.mockRejectedValue(new Error('Connection failed'));
+
+      const result = await providerService.getAvailableServers();
+
+      expect(result.total).toBe(1);
+      expect(result.servers[0].toolsCount).toBe(0); // Fallback to 0 on error
     });
 
-    it('should throw error when CUBICLER_PROVIDERS_LIST is not set', async () => {
-      delete process.env.CUBICLER_PROVIDERS_LIST;
+    it('should count REST server endpoints correctly', async () => {
+      mockConfigProvider.getProvidersConfig.mockResolvedValue({
+        mcpServers: [],
+        restServers: [
+          { 
+            identifier: "user_api", 
+            name: "User API", 
+            description: "User management",
+            url: "http://localhost:5000/api",
+            endPoints: [
+              { name: "get_user", description: "Get user", path: "/users/{userId}", method: "GET" },
+              { name: "create_user", description: "Create user", path: "/users", method: "POST" },
+              { name: "update_user", description: "Update user", path: "/users/{userId}", method: "PUT" }
+            ]
+          }
+        ]
+      });
 
-      await expect(providerService.getProviderSpec('weather_api')).rejects.toThrow(
-        'CUBICLER_PROVIDERS_LIST is not defined in environment variables'
-      );
-    });
+      const result = await providerService.getAvailableServers();
 
-    it('should throw detailed error when remote providers list fetch fails', async () => {
-      process.env.CUBICLER_PROVIDERS_LIST = 'https://example.com/providers.yaml';
-
-      global.fetch = vi.fn(() =>
-        Promise.resolve({
-          ok: false,
-          status: 404,
-          statusText: 'Not Found',
-        } as Response)
-      );
-
-      await expect(providerService.getProviderSpec('weather_api')).rejects.toThrow(
-        'Cannot fetch providers from URL'
-      );
-    });
-
-    it('should throw detailed error when local providers file is missing', async () => {
-      process.env.CUBICLER_PROVIDERS_LIST = './tests/mocks/nonexistent-providers.yaml';
-
-      await expect(providerService.getProviderSpec('weather_api')).rejects.toThrow(
-        'Cannot fetch providers from path'
-      );
-    });
-  });
-
-  describe('getProviders', () => {
-    it('should return list of all providers', async () => {
-      const providers = await providerService.getProviders();
-
-      expect(providers).toHaveLength(2);
-      expect(providers).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            name: 'weather_api',
-            description: 'A provider for Weather API',
-          }),
-          expect.objectContaining({
-            name: 'mock_service',
-            description: 'A mock service for testing',
-          }),
-        ])
-      );
+      expect(result.servers[0].toolsCount).toBe(3);
     });
   });
 
-  describe('caching', () => {
-    beforeEach(() => {
-      process.env.PROVIDER_SPEC_CACHE_ENABLED = 'true';
-      process.env.PROVIDER_SPEC_CACHE_TIMEOUT = '1000'; // 1 second for testing
-      providerService.clearCache();
+  describe('getServerTools', () => {
+    it('should get tools from MCP server', async () => {
+      const mockTools = [
+        { name: 'weather_service.get_weather', description: 'Get weather data' },
+        { name: 'weather_service.get_forecast', description: 'Get weather forecast' }
+      ];
+
+      mockMcpToolsProvider.toolsList.mockResolvedValue(mockTools);
+
+      const result = await providerService.getServerTools('weather_service');
+
+      expect(result.tools).toEqual(mockTools);
+      expect(mockMcpToolsProvider.toolsList).toHaveBeenCalledTimes(1);
     });
 
-    it('should cache provider specs', async () => {
-      // First call
-      const result1 = await providerService.getProviderSpec('weather_api');
+    it('should get tools from REST server', async () => {
+      const mockTools = [
+        { name: 'user_api.get_user', description: 'Get user by ID' },
+        { name: 'user_api.create_user', description: 'Create new user' }
+      ];
 
-      // Second call should return cached result
-      const result2 = await providerService.getProviderSpec('weather_api');
+      mockRestToolsProvider.toolsList.mockResolvedValue(mockTools);
 
-      expect(result1).toEqual(result2);
+      const result = await providerService.getServerTools('user_api');
+
+      expect(result.tools).toEqual(mockTools);
+      expect(mockRestToolsProvider.toolsList).toHaveBeenCalledTimes(1);
     });
 
-    it('should respect cache timeout', async () => {
-      // Set very short timeout
-      process.env.PROVIDER_SPEC_CACHE_TIMEOUT = '1';
+    it('should throw error for non-existent server', async () => {
+      await expect(providerService.getServerTools('non_existent')).rejects.toThrow('Server not found: non_existent');
+    });
 
-      const result1 = await providerService.getProviderSpec('weather_api');
+    it('should propagate error from tools provider', async () => {
+      mockMcpToolsProvider.toolsList.mockRejectedValue(new Error('MCP server unreachable'));
 
-      // Wait for cache to expire
-      await new Promise((resolve) => setTimeout(resolve, 10));
-
-      const result2 = await providerService.getProviderSpec('weather_api');
-
-      expect(result1).toEqual(result2); // Content should be same, but re-fetched
+      await expect(providerService.getServerTools('weather_service')).rejects.toThrow('MCP server unreachable');
     });
   });
 });

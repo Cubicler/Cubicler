@@ -1,7 +1,3 @@
-/**
- * Generic caching utility for Cubicler services
- */
-
 interface CacheItem<T> {
   value: T;
   timestamp: number;
@@ -136,7 +132,8 @@ export class Cache<T> {
  * @returns Configured cache instance
  */
 export function createEnvCache<T>(envPrefix: string, defaultTtlSeconds: number = 600): Cache<T> {
-  const enabled = process.env[`${envPrefix}_CACHE_ENABLED`] !== 'false';
+  const enabledValue = process.env[`${envPrefix}_CACHE_ENABLED`];
+  const enabled = enabledValue !== 'false' && enabledValue !== '0';
   const timeoutEnv = process.env[`${envPrefix}_CACHE_TIMEOUT`];
   const ttlSeconds = timeoutEnv ? parseInt(timeoutEnv) : defaultTtlSeconds;
 

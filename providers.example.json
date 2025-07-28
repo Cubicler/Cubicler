@@ -1,0 +1,58 @@
+{
+  "mcpServers": [
+    {
+      "identifier": "weather_service",
+      "name": "Weather Service",
+      "description": "Provides weather information via MCP",
+      "transport": "http",
+      "url": "http://localhost:4000/mcp",
+      "headers": {
+        "Authorization": "Bearer your-api-key"
+      }
+    }
+  ],
+  "restServers": [
+    {
+      "identifier": "legacy_api",
+      "name": "Legacy API",
+      "description": "Legacy REST API without MCP",
+      "url": "http://localhost:5000/api",
+      "defaultHeaders": {
+        "Authorization": "Bearer your-api-key"
+      },
+      "endPoints": [
+        {
+          "name": "get_user_info",
+          "description": "Get user information by user ID",
+          "path": "/users/{userId}",
+          "method": "GET",
+          "headers": {
+            "X-Custom-Header": "value"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "query": {
+            "type": "object",
+            "properties": {
+              "include_profile": {
+                "type": "boolean"
+              }
+            }
+          },
+          "payload": {
+            "type": "object",
+            "properties": {
+              "filters": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

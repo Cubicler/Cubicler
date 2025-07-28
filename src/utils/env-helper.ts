@@ -15,28 +15,6 @@ export function substituteEnvVars(str: JSONValue | undefined | null): JSONValue 
 }
 
 /**
- * Helper function to get boolean value from environment variable
- * @param envVar - The environment variable name
- * @param defaultValue - The default value if environment variable is not set
- * @returns The boolean value
- */
-export function getEnvBoolean(envVar: string, defaultValue: boolean = false): boolean {
-  const value = process.env[envVar];
-  if (!value) return defaultValue;
-
-  const lowerValue = value.toLowerCase();
-  return lowerValue === 'true' || lowerValue === '1';
-}
-
-/**
- * Helper function to check if strict parameter validation is enabled
- * @returns true if strict parameter validation is enabled
- */
-export function isStrictParamsEnabled(): boolean {
-  return getEnvBoolean('CUBICLER_STRICT_PARAMS', false);
-}
-
-/**
  * Helper function to get timeout value from environment variable
  * @param envVar - The environment variable name
  * @param defaultValue - The default timeout value in milliseconds
@@ -79,6 +57,43 @@ export function getAgentCallTimeout(): number {
  */
 export function getDefaultCallTimeout(): number {
   return getEnvTimeout('DEFAULT_CALL_TIMEOUT', 30000);
+}
+
+/**
+ * Helper function to get configuration source URL with validation
+ * @param envVar - The environment variable name
+ * @param description - Description of what this configuration is for
+ * @returns The configuration source (URL or file path)
+ * @throws Error if the environment variable is not set
+ */
+export function getConfigurationSource(envVar: string, description: string): string {
+  const source = process.env[envVar];
+  if (!source || source.trim() === '') {
+    throw new Error(`${envVar} environment variable is not defined. Please set it to a file path or URL for ${description}.`);
+  }
+  return source.trim();
+}
+
+/**
+ * Helper function to validate if a string is a valid URL
+ * @param str - The string to validate
+ * @returns true if the string is a valid URL
+ */
+export function isValidUrl(str: string): boolean {
+  try {
+    const url = new URL(str);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Helper function to get configuration loading timeout
+ * @returns The configuration loading timeout in milliseconds (default: 10 seconds)
+ */
+export function getConfigLoadTimeout(): number {
+  return getEnvTimeout('CUBICLER_CONFIG_TIMEOUT', 10000);
 }
 
 /**
