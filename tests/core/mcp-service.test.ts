@@ -1,9 +1,10 @@
 import { beforeEach, describe, it, expect, vi, type MockedFunction } from 'vitest';
+import { MCPService } from '../../src/core/mcp-service.js';
 import type { MCPRequest } from '../../src/model/types.js';
 import type { ToolDefinition, MCPFormattedTool } from '../../src/model/tools.js';
 import type { MCPCompatible } from '../../src/interface/mcp-compatible.js';
 
-// Mock providers
+// Mock providers helper
 const createMockProvider = (
   identifier: string,
   tools: ToolDefinition[] = [],
@@ -19,7 +20,7 @@ const createMockProvider = (
 });
 
 describe('MCP Service', () => {
-  let MCPService: any;
+  let mcpService: MCPService;
   let mockProvider1: MCPCompatible;
   let mockProvider2: MCPCompatible;
   let mockProvider3: MCPCompatible;
@@ -62,9 +63,8 @@ describe('MCP Service', () => {
     },
   ];
 
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.clearAllMocks();
-    vi.resetModules();
 
     // Create mock providers
     mockProvider1 = createMockProvider('weather_service', sampleTools1, [
@@ -77,22 +77,8 @@ describe('MCP Service', () => {
       'cubicler.available_servers',
     ]);
 
-    // Mock the providers that are imported in mcp-service.ts
-    vi.doMock('../../src/core/provider-mcp-service.js', () => ({
-      default: mockProvider1,
-    }));
-
-    vi.doMock('../../src/core/provider-rest-service.js', () => ({
-      default: mockProvider2,
-    }));
-
-    vi.doMock('../../src/core/internal-tools-service.js', () => ({
-      default: mockProvider3,
-    }));
-
-    // Import MCPService constructor
-    const mcpServiceModule = await import('../../src/core/mcp-service.js');
-    MCPService = mcpServiceModule.default.constructor;
+    // Create MCP service with mocked dependencies
+    mcpService = new MCPService([mockProvider1, mockProvider2, mockProvider3]);
   });
 
   describe('constructor', () => {
@@ -144,12 +130,6 @@ describe('MCP Service', () => {
   });
 
   describe('handleMCPRequest', () => {
-    let service: any;
-
-    beforeEach(() => {
-      service = new MCPService([mockProvider1, mockProvider2, mockProvider3]);
-    });
-
     describe('initialize method', () => {
       it('should handle initialize request', async () => {
         const request: MCPRequest = {
@@ -159,7 +139,7 @@ describe('MCP Service', () => {
           params: {},
         };
 
-        const response = await service.handleMCPRequest(request);
+        const response = await mcpService.handleMCPRequest(request);
 
         expect(response).toEqual({
           jsonrpc: '2.0',
@@ -193,15 +173,18 @@ describe('MCP Service', () => {
           method: 'tools/list',
         };
 
-        const response = await service.handleMCPRequest(request);
+        const response = await mcpService.handleMCPRequest(request);
 
         expect(response.jsonrpc).toBe('2.0');
         expect(response.id).toBe(2);
         expect(response.result).toBeDefined();
-        expect(response.result.tools).toHaveLength(3);
+        
+        // Type assertion to access tools property safely
+        const result = response.result as unknown as { tools: MCPFormattedTool[] };
+        expect(result.tools).toHaveLength(3);
 
         // Verify tools are properly formatted for MCP
-        const tools = response.result.tools as MCPFormattedTool[];
+        const tools = result.tools;
         expect(tools[0]).toEqual({
           name: 'weather_service.get_weather',
           description: 'Get weather information',
@@ -230,13 +213,13 @@ describe('MCP Service', () => {
           method: 'tools/list',
         };
 
-        const response = await service.handleMCPRequest(request);
+        const response = await mcpService.handleMCPRequest(request);
 
         expect(response.jsonrpc).toBe('2.0');
         expect(response.id).toBe(2);
         expect(response.error).toBeDefined();
-        expect(response.error.code).toBe(-32603);
-        expect(response.error.message).toContain('Failed to list tools');
+        expect(response.error?.code).toBe(-32603);
+        expect(response.error?.message).toContain('Failed to list tools');
       });
 
       it('should return empty tools array when no providers', async () => {
@@ -249,7 +232,9 @@ describe('MCP Service', () => {
 
         const response = await emptyService.handleMCPRequest(request);
 
-        expect(response.result.tools).toHaveLength(0);
+        // Type assertion to access tools property safely
+        const result = response.result as unknown as { tools: MCPFormattedTool[] };
+        expect(result.tools).toHaveLength(0);
       });
     });
 
@@ -270,14 +255,17 @@ describe('MCP Service', () => {
           },
         };
 
-        const response = await service.handleMCPRequest(request);
+        const response = await mcpService.handleMCPRequest(request);
 
         expect(response.jsonrpc).toBe('2.0');
         expect(response.id).toBe(3);
         expect(response.result).toBeDefined();
-        expect(response.result.content).toHaveLength(1);
-        expect(response.result.content[0].type).toBe('text');
-        expect(response.result.content[0].text).toContain('temperature');
+        
+        // Type assertion for the response content
+        const result = response.result as unknown as { content: Array<{ type: string; text: string }> };
+        expect(result.content).toHaveLength(1);
+        expect(result.content[0].type).toBe('text');
+        expect(result.content[0].text).toContain('temperature');
 
         expect(mockProvider1.canHandleRequest).toHaveBeenCalledWith('weather_service.get_weather');
         expect(mockProvider1.toolsCall).toHaveBeenCalledWith('weather_service.get_weather', {
@@ -298,9 +286,10 @@ describe('MCP Service', () => {
           },
         };
 
-        const response = await service.handleMCPRequest(request);
+        const response = await mcpService.handleMCPRequest(request);
 
-        expect(response.result.content[0].text).toBe('Weather is sunny');
+        const result = response.result as unknown as { content: Array<{ type: string; text: string }> };
+        expect(result.content[0].text).toBe('Weather is sunny');
       });
 
       it('should return error for missing tool name', async () => {
@@ -313,11 +302,11 @@ describe('MCP Service', () => {
           },
         };
 
-        const response = await service.handleMCPRequest(request);
+        const response = await mcpService.handleMCPRequest(request);
 
         expect(response.error).toBeDefined();
-        expect(response.error.code).toBe(-32602);
-        expect(response.error.message).toBe('Missing required parameter: name');
+        expect(response.error?.code).toBe(-32602);
+        expect(response.error?.message).toBe('Missing required parameter: name');
       });
 
       it('should return error for missing params', async () => {
@@ -327,11 +316,11 @@ describe('MCP Service', () => {
           method: 'tools/call',
         };
 
-        const response = await service.handleMCPRequest(request);
+        const response = await mcpService.handleMCPRequest(request);
 
         expect(response.error).toBeDefined();
-        expect(response.error.code).toBe(-32602);
-        expect(response.error.message).toBe('Missing required parameter: name');
+        expect(response.error?.code).toBe(-32602);
+        expect(response.error?.message).toBe('Missing required parameter: name');
       });
 
       it('should return error when no provider can handle tool', async () => {
@@ -345,11 +334,11 @@ describe('MCP Service', () => {
           },
         };
 
-        const response = await service.handleMCPRequest(request);
+        const response = await mcpService.handleMCPRequest(request);
 
         expect(response.error).toBeDefined();
-        expect(response.error.code).toBe(-32603);
-        expect(response.error.message).toContain('No provider found for tool: unknown.tool');
+        expect(response.error?.code).toBe(-32603);
+        expect(response.error?.message).toContain('No provider found for tool: unknown.tool');
       });
 
       it('should handle provider execution error', async () => {
@@ -367,11 +356,11 @@ describe('MCP Service', () => {
           },
         };
 
-        const response = await service.handleMCPRequest(request);
+        const response = await mcpService.handleMCPRequest(request);
 
         expect(response.error).toBeDefined();
-        expect(response.error.code).toBe(-32603);
-        expect(response.error.message).toContain('Tool execution failed: Execution failed');
+        expect(response.error?.code).toBe(-32603);
+        expect(response.error?.message).toContain('Tool execution failed: Execution failed');
       });
 
       it('should handle arguments parameter as empty object when missing', async () => {
@@ -386,7 +375,7 @@ describe('MCP Service', () => {
           },
         };
 
-        const response = await service.handleMCPRequest(request);
+        const response = await mcpService.handleMCPRequest(request);
 
         expect(response.result).toBeDefined();
         expect(mockProvider3.toolsCall).toHaveBeenCalledWith('cubicler.available_servers', {});
@@ -401,14 +390,14 @@ describe('MCP Service', () => {
           method: 'unsupported/method',
         };
 
-        const response = await service.handleMCPRequest(request);
+        const response = await mcpService.handleMCPRequest(request);
 
         expect(response.jsonrpc).toBe('2.0');
         expect(response.id).toBe(4);
         expect(response.error).toBeDefined();
-        expect(response.error.code).toBe(-32601);
-        expect(response.error.message).toContain('Method not supported: unsupported/method');
-        expect(response.error.message).toContain(
+        expect(response.error?.code).toBe(-32601);
+        expect(response.error?.message).toContain('Method not supported: unsupported/method');
+        expect(response.error?.message).toContain(
           'Supported methods: initialize, tools/list, tools/call'
         );
       });
@@ -416,10 +405,13 @@ describe('MCP Service', () => {
 
     describe('error handling', () => {
       it('should handle general errors in request processing', async () => {
-        // Mock initialize to throw an error
-        vi.spyOn(service, 'handleInitialize').mockImplementation(() => {
-          throw new Error('Unexpected error');
-        });
+        // Create a service with a provider that will throw during initialize
+        const errorProvider = createMockProvider('error_service');
+        (errorProvider.initialize as MockedFunction<any>).mockRejectedValue(
+          new Error('Unexpected error')
+        );
+        
+        const errorService = new MCPService([errorProvider]);
 
         const request: MCPRequest = {
           jsonrpc: '2.0',
@@ -427,16 +419,16 @@ describe('MCP Service', () => {
           method: 'initialize',
         };
 
-        const response = await service.handleMCPRequest(request);
+        const response = await errorService.handleMCPRequest(request);
 
         expect(response.error).toBeDefined();
-        expect(response.error.code).toBe(-32603);
-        expect(response.error.message).toContain('Internal error: Unexpected error');
+        expect(response.error?.code).toBe(-32603);
+        expect(response.error?.message).toContain('Internal error: Unexpected error');
       });
     });
   });
 
-  describe('integration with actual providers', () => {
+  describe('integration with actual service', () => {
     it('should work with default export from mcp-service.js', async () => {
       // This tests the actual default export which includes the real providers
       const mcpServiceModule = await import('../../src/core/mcp-service.js');

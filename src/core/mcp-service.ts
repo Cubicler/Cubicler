@@ -7,7 +7,7 @@ import { MCPCompatible } from '../interface/mcp-compatible.js';
  * Aggregates all MCPCompatible services and handles the MCP protocol
  * Uses dependency injection to manage multiple providers
  */
-class MCPService {
+export class MCPService {
   private providers: MCPCompatible[];
 
   /**
@@ -49,7 +49,7 @@ class MCPService {
     try {
       switch (request.method) {
         case 'initialize':
-          return this.handleInitialize(request);
+          return await this.handleInitialize(request);
 
         case 'tools/list':
           return await this.handleToolsList(request);
@@ -212,5 +212,5 @@ import providerMcpService from './provider-mcp-service.js';
 import providerRestService from './provider-rest-service.js';
 import internalToolsService from './internal-tools-service.js';
 
-// Create and export the service (providers will be injected from index.ts)
+// Export default instance for backward compatibility
 export default new MCPService([internalToolsService, providerMcpService, providerRestService]);

@@ -7,7 +7,7 @@ import { AvailableServersResponse, ServerToolsResponse, ToolDefinition } from '.
  * Internal Functions Service for Cubicler
  * Provides cubicler.* functions available to agents
  */
-class InternalToolsService implements MCPCompatible {
+export class InternalToolsService implements MCPCompatible {
   readonly identifier = 'cubicler';
   private toolsProviders: ToolsListProviding[] = [];
 
@@ -234,5 +234,6 @@ class InternalToolsService implements MCPCompatible {
 
 import providerMcpService from './provider-mcp-service.js';
 import providerRestService from './provider-rest-service.js';
-// Export the class for dependency injection
+
+// Export default instance for backward compatibility
 export default new InternalToolsService([providerMcpService, providerRestService]);

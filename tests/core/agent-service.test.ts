@@ -1,174 +1,144 @@
-import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
-import fs from 'fs';
-import axios from 'axios';
-
-// Mock fs and axios modules
-vi.mock('fs');
-vi.mock('axios');
-
-const mockFs = vi.mocked(fs);
-const mockAxios = vi.mocked(axios, { partial: true });
+import { beforeEach, describe, it, expect, vi } from 'vitest';
+import { AgentService } from '../../src/core/agent-service.js';
+import type { AgentsConfigProviding } from '../../src/interface/agents-config-providing.js';
+import type { ServersProviding } from '../../src/interface/servers-providing.js';
+import type { AgentsConfig } from '../../src/model/agents.js';
+import type { AvailableServersResponse } from '../../src/model/tools.js';
 
 describe('Agent Service', () => {
-  const originalEnv = process.env;
+  let agentService: AgentService;
+  let mockAgentsConfigProvider: AgentsConfigProviding;
+  let mockServersProvider: ServersProviding;
 
-  beforeEach(async () => {
-    vi.resetModules();
-    process.env = { ...originalEnv };
-    process.env.AGENTS_LIST_CACHE_ENABLED = 'false'; // Disable cache for tests
-    vi.clearAllMocks();
-  });
+  beforeEach(() => {
+    // Create mock providers
+    mockAgentsConfigProvider = {
+      getAgentsConfig: vi.fn(),
+    };
 
-  afterEach(() => {
-    process.env = originalEnv;
+    mockServersProvider = {
+      getAvailableServers: vi.fn(),
+    };
+
+    // Create service instance with mocked dependencies
+    agentService = new AgentService(mockServersProvider, mockAgentsConfigProvider);
   });
 
   describe('getAllAgents', () => {
     it('should return list of available agents', async () => {
-      process.env.CUBICLER_AGENTS_LIST = './test-agents.json';
-      mockFs.readFileSync.mockReturnValue(
-        JSON.stringify({
-          basePrompt: 'You are a helpful AI assistant.',
-          defaultPrompt: 'You have access to tools.',
-          agents: [
-            {
-              identifier: 'gpt_4o',
-              name: 'GPT-4O',
-              transport: 'http',
-              url: 'http://localhost:3000',
-            },
-            {
-              identifier: 'claude_3_5',
-              name: 'Claude',
-              transport: 'http',
-              url: 'http://localhost:3001',
-            },
-          ],
-        })
-      );
+      const mockConfig: AgentsConfig = {
+        basePrompt: 'You are a helpful AI assistant.',
+        defaultPrompt: 'You have access to tools.',
+        agents: [
+          {
+            identifier: 'gpt_4o',
+            name: 'GPT-4O',
+            transport: 'http',
+            url: 'http://localhost:3000',
+            description: 'Advanced agent',
+          },
+          {
+            identifier: 'claude_3_5',
+            name: 'Claude',
+            transport: 'http',
+            url: 'http://localhost:3001',
+            description: 'Creative agent',
+          },
+        ],
+      };
 
-      const { default: agentService } = await import('../../src/core/agent-service.js');
+      vi.mocked(mockAgentsConfigProvider.getAgentsConfig).mockResolvedValue(mockConfig);
+
       const result = await agentService.getAllAgents();
 
       expect(result).toHaveLength(2);
       expect(result.map((a) => a.identifier)).toEqual(['gpt_4o', 'claude_3_5']);
-    });
-
-    it('should load agents from remote URL', async () => {
-      process.env.CUBICLER_AGENTS_LIST = 'https://example.com/agents.json';
-      mockAxios.mockResolvedValue({
-        status: 200,
-        statusText: 'OK',
-        data: {
-          agents: [
-            {
-              identifier: 'remote_agent',
-              name: 'Remote Agent',
-              transport: 'http',
-              url: 'http://remote:3000',
-              description: 'Remote agent',
-            },
-          ],
-        },
+      expect(result[0]).toEqual({
+        identifier: 'gpt_4o',
+        name: 'GPT-4O',
+        description: 'Advanced agent',
       });
-
-      const { default: agentService } = await import('../../src/core/agent-service.js');
-      const result = await agentService.getAllAgents();
-
-      expect(result).toHaveLength(1);
-      expect(result[0].identifier).toBe('remote_agent');
-      expect(mockAxios).toHaveBeenCalledWith(
-        expect.objectContaining({
-          url: 'https://example.com/agents.json',
-        })
-      );
     });
 
     it('should handle empty agents list', async () => {
-      process.env.CUBICLER_AGENTS_LIST = './empty-agents.json';
-      mockFs.readFileSync.mockReturnValue(JSON.stringify({ agents: [] }));
+      const mockConfig: AgentsConfig = {
+        agents: [],
+      };
 
-      const { default: agentService } = await import('../../src/core/agent-service.js');
+      vi.mocked(mockAgentsConfigProvider.getAgentsConfig).mockResolvedValue(mockConfig);
 
-      await expect(agentService.getAllAgents()).rejects.toThrow(
-        'Invalid agents configuration: at least one agent must be configured'
-      );
+      const result = await agentService.getAllAgents();
+
+      expect(result).toHaveLength(0);
     });
   });
 
   describe('hasAgent', () => {
+    const mockConfig: AgentsConfig = {
+      basePrompt: 'You are a helpful AI assistant.',
+      defaultPrompt: 'You have access to tools.',
+      agents: [
+        {
+          identifier: 'gpt_4o',
+          name: 'GPT-4O',
+          transport: 'http',
+          url: 'http://localhost:3000',
+          description: 'Advanced agent',
+          prompt: 'You are specialized.',
+        },
+        {
+          identifier: 'claude_3_5',
+          name: 'Claude',
+          transport: 'http',
+          url: 'http://localhost:3001',
+          description: 'Creative agent',
+        },
+      ],
+    };
+
     beforeEach(() => {
-      process.env.CUBICLER_AGENTS_LIST = './test-agents.json';
-      mockFs.readFileSync.mockReturnValue(
-        JSON.stringify({
-          basePrompt: 'You are a helpful AI assistant.',
-          defaultPrompt: 'You have access to tools.',
-          agents: [
-            {
-              identifier: 'gpt_4o',
-              name: 'GPT-4O',
-              transport: 'http',
-              url: 'http://localhost:3000',
-              description: 'Advanced agent',
-              prompt: 'You are specialized.',
-            },
-            {
-              identifier: 'claude_3_5',
-              name: 'Claude',
-              transport: 'http',
-              url: 'http://localhost:3001',
-              description: 'Creative agent',
-            },
-          ],
-        })
-      );
+      vi.mocked(mockAgentsConfigProvider.getAgentsConfig).mockResolvedValue(mockConfig);
     });
 
     it('should return true for existing agent', async () => {
-      const { default: agentService } = await import('../../src/core/agent-service.js');
       const result = await agentService.hasAgent('gpt_4o');
-
       expect(result).toBe(true);
     });
 
     it('should return false for non-existent agent', async () => {
-      const { default: agentService } = await import('../../src/core/agent-service.js');
       const result = await agentService.hasAgent('non_existent');
-
       expect(result).toBe(false);
     });
   });
 
   describe('getAgentInfo', () => {
+    const mockConfig: AgentsConfig = {
+      basePrompt: 'You are a helpful AI assistant.',
+      defaultPrompt: 'You have access to tools.',
+      agents: [
+        {
+          identifier: 'gpt_4o',
+          name: 'GPT-4O',
+          transport: 'http',
+          url: 'http://localhost:3000',
+          description: 'Advanced agent',
+          prompt: 'You are specialized.',
+        },
+        {
+          identifier: 'claude_3_5',
+          name: 'Claude',
+          transport: 'http',
+          url: 'http://localhost:3001',
+          description: 'Creative agent',
+        },
+      ],
+    };
+
     beforeEach(() => {
-      process.env.CUBICLER_AGENTS_LIST = './test-agents.json';
-      mockFs.readFileSync.mockReturnValue(
-        JSON.stringify({
-          basePrompt: 'You are a helpful AI assistant.',
-          defaultPrompt: 'You have access to tools.',
-          agents: [
-            {
-              identifier: 'gpt_4o',
-              name: 'GPT-4O',
-              transport: 'http',
-              url: 'http://localhost:3000',
-              description: 'Advanced agent',
-              prompt: 'You are specialized.',
-            },
-            {
-              identifier: 'claude_3_5',
-              name: 'Claude',
-              transport: 'http',
-              url: 'http://localhost:3001',
-              description: 'Creative agent',
-            },
-          ],
-        })
-      );
+      vi.mocked(mockAgentsConfigProvider.getAgentsConfig).mockResolvedValue(mockConfig);
     });
 
     it('should return specific agent info by identifier', async () => {
-      const { default: agentService } = await import('../../src/core/agent-service.js');
       const result = await agentService.getAgentInfo('gpt_4o');
 
       expect(result.identifier).toBe('gpt_4o');
@@ -177,7 +147,6 @@ describe('Agent Service', () => {
     });
 
     it('should return default agent info when no identifier provided', async () => {
-      const { default: agentService } = await import('../../src/core/agent-service.js');
       const result = await agentService.getAgentInfo();
 
       expect(result.identifier).toBe('gpt_4o'); // First agent is default
@@ -185,72 +154,174 @@ describe('Agent Service', () => {
   });
 
   describe('getAgentPrompt', () => {
+    const mockServersResponse: AvailableServersResponse = {
+      total: 2,
+      servers: [
+        {
+          identifier: 'weather_service',
+          name: 'Weather Service',
+          description: 'Provides weather information',
+          toolsCount: 3,
+        },
+        {
+          identifier: 'search_service',
+          name: 'Search Service',
+          description: 'Provides search capabilities',
+          toolsCount: 2,
+        },
+      ],
+    };
+
     beforeEach(() => {
-      process.env.CUBICLER_AGENTS_LIST = './test-agents.json';
-      mockFs.readFileSync.mockReturnValue(
-        JSON.stringify({
-          basePrompt: 'You are a helpful AI assistant.',
-          defaultPrompt: 'You have access to tools.',
-          agents: [
-            {
-              identifier: 'agent_with_prompt',
-              name: 'Agent With Prompt',
-              transport: 'http',
-              url: 'http://localhost:3000',
-              prompt: 'You are specialized in analysis.',
-            },
-            {
-              identifier: 'agent_without_prompt',
-              name: 'Agent Without Prompt',
-              transport: 'http',
-              url: 'http://localhost:3001',
-            },
-          ],
-        })
-      );
+      vi.mocked(mockServersProvider.getAvailableServers).mockResolvedValue(mockServersResponse);
     });
 
     it('should compose prompt with base + agent-specific prompt', async () => {
-      const { default: agentService } = await import('../../src/core/agent-service.js');
+      const mockConfig: AgentsConfig = {
+        basePrompt: 'You are a helpful AI assistant.',
+        defaultPrompt: 'You have access to tools.',
+        agents: [
+          {
+            identifier: 'agent_with_prompt',
+            name: 'Agent With Prompt',
+            transport: 'http',
+            url: 'http://localhost:3000',
+            description: 'Specialized agent',
+            prompt: 'You are specialized in analysis.',
+          },
+          {
+            identifier: 'agent_without_prompt',
+            name: 'Agent Without Prompt',
+            transport: 'http',
+            url: 'http://localhost:3001',
+            description: 'General agent',
+          },
+        ],
+      };
+
+      vi.mocked(mockAgentsConfigProvider.getAgentsConfig).mockResolvedValue(mockConfig);
+
       const result = await agentService.getAgentPrompt('agent_with_prompt');
 
-      expect(result).toBe('You are a helpful AI assistant.\n\nYou are specialized in analysis.');
+      expect(result).toContain('You are a helpful AI assistant.');
+      expect(result).toContain('You are specialized in analysis.');
+      expect(result).toContain('## Available Services');
+      expect(result).toContain('Weather Service (weather_service)');
     });
 
     it('should compose prompt with base + default prompt when agent has no specific prompt', async () => {
-      const { default: agentService } = await import('../../src/core/agent-service.js');
+      const mockConfig: AgentsConfig = {
+        basePrompt: 'You are a helpful AI assistant.',
+        defaultPrompt: 'You have access to tools.',
+        agents: [
+          {
+            identifier: 'agent_without_prompt',
+            name: 'Agent Without Prompt',
+            transport: 'http',
+            url: 'http://localhost:3001',
+            description: 'General agent',
+          },
+        ],
+      };
+
+      vi.mocked(mockAgentsConfigProvider.getAgentsConfig).mockResolvedValue(mockConfig);
+
       const result = await agentService.getAgentPrompt('agent_without_prompt');
 
-      expect(result).toBe('You are a helpful AI assistant.\n\nYou have access to tools.');
+      expect(result).toContain('You are a helpful AI assistant.');
+      expect(result).toContain('You have access to tools.');
+      expect(result).toContain('## Available Services');
     });
 
     it('should use default agent when no agent identifier provided', async () => {
-      const { default: agentService } = await import('../../src/core/agent-service.js');
+      const mockConfig: AgentsConfig = {
+        basePrompt: 'You are a helpful AI assistant.',
+        defaultPrompt: 'You have access to tools.',
+        agents: [
+          {
+            identifier: 'first_agent',
+            name: 'First Agent',
+            transport: 'http',
+            url: 'http://localhost:3000',
+            description: 'First agent',
+            prompt: 'You are specialized in analysis.',
+          },
+        ],
+      };
+
+      vi.mocked(mockAgentsConfigProvider.getAgentsConfig).mockResolvedValue(mockConfig);
+
       const result = await agentService.getAgentPrompt();
 
-      expect(result).toBe('You are a helpful AI assistant.\n\nYou are specialized in analysis.'); // First agent has specific prompt
+      expect(result).toContain('You are a helpful AI assistant.');
+      expect(result).toContain('You are specialized in analysis.');
     });
 
     it('should handle missing base prompt', async () => {
-      mockFs.readFileSync.mockReturnValue(
-        JSON.stringify({
-          defaultPrompt: 'You have access to tools.',
-          agents: [
-            {
-              identifier: 'test_agent',
-              name: 'Test Agent',
-              transport: 'http',
-              url: 'http://localhost:3000',
-              prompt: 'You are specialized.',
-            },
-          ],
-        })
-      );
+      const mockConfig: AgentsConfig = {
+        defaultPrompt: 'You have access to tools.',
+        agents: [
+          {
+            identifier: 'test_agent',
+            name: 'Test Agent',
+            transport: 'http',
+            url: 'http://localhost:3000',
+            description: 'Test agent',
+            prompt: 'You are specialized.',
+          },
+        ],
+      };
 
-      const { default: agentService } = await import('../../src/core/agent-service.js');
+      vi.mocked(mockAgentsConfigProvider.getAgentsConfig).mockResolvedValue(mockConfig);
+
       const result = await agentService.getAgentPrompt('test_agent');
 
-      expect(result).toBe('You are specialized.');
+      expect(result).toContain('You are specialized.');
+      expect(result).not.toContain('You are a helpful AI assistant.');
+    });
+
+    it('should handle case when servers provider fails', async () => {
+      const mockConfig: AgentsConfig = {
+        basePrompt: 'You are a helpful AI assistant.',
+        agents: [
+          {
+            identifier: 'test_agent',
+            name: 'Test Agent',
+            transport: 'http',
+            url: 'http://localhost:3000',
+            description: 'Test agent',
+          },
+        ],
+      };
+
+      vi.mocked(mockAgentsConfigProvider.getAgentsConfig).mockResolvedValue(mockConfig);
+      vi.mocked(mockServersProvider.getAvailableServers).mockRejectedValue(new Error('Server error'));
+
+      const result = await agentService.getAgentPrompt('test_agent');
+
+      expect(result).toContain('You are a helpful AI assistant.');
+      expect(result).not.toContain('## Available Services');
+    });
+
+    it('should return minimal default when no prompts configured', async () => {
+      const mockConfig: AgentsConfig = {
+        agents: [
+          {
+            identifier: 'minimal_agent',
+            name: 'Minimal Agent',
+            transport: 'http',
+            url: 'http://localhost:3000',
+            description: 'Minimal agent',
+          },
+        ],
+      };
+
+      vi.mocked(mockAgentsConfigProvider.getAgentsConfig).mockResolvedValue(mockConfig);
+      vi.mocked(mockServersProvider.getAvailableServers).mockResolvedValue({ total: 0, servers: [] });
+
+      const result = await agentService.getAgentPrompt('minimal_agent');
+
+      expect(result).toBe('You are a helpful AI assistant powered by Cubicler.');
     });
   });
 });

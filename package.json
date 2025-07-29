@@ -1,6 +1,6 @@
 {
   "name": "cubicler",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Modular AI Orchestration Framework",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -25,9 +25,9 @@
     "docker:example": "docker-compose -f docker-compose.example.yml up --build",
     "docker:stop": "docker-compose down",
     "docker:logs": "docker-compose logs -f",
-    "docker:build-hub": "docker build -t cubicler/cubicler:latest -t cubicler/cubicler:2.0.0 .",
-    "docker:push-hub": "docker push cubicler/cubicler:latest && docker push cubicler/cubicler:2.0.0",
-    "docker:push": "docker push cubicler/cubicler:latest && docker push cubicler/cubicler:2.0.0",
+    "docker:build-hub": "docker build -t cubicler/cubicler:latest -t cubicler/cubicler:2.0.1 .",
+    "docker:push-hub": "docker push cubicler/cubicler:latest && docker push cubicler/cubicler:2.0.1",
+    "docker:push": "docker push cubicler/cubicler:latest && docker push cubicler/cubicler:2.0.1",
     "docker:publish": "npm run docker:build-hub && npm run docker:push"
   },
   "repository": {
