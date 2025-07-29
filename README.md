@@ -6,7 +6,7 @@
 
 [![npm version](https://badge.fury.io/js/cubicler.svg)](https://badge.fury.io/js/cubicler)
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://opensource.org/licenses/ISC)
-[![Tests](https://github.com/hai**Cubicler: Where AI agents go to work** 🏢/workflows/Tests/badge.svg)](https://github.com/hainayanda/Cubicler/actions)
+[![Tests](https://github.com/hai**Cubicler: Where AI agents go to work** 🏢/workflows/Tests/badge.svg)](https://github.com/cubicler/Cubicler/actions)
 
 ## 🎯 What is Cubicler?
 
@@ -70,7 +70,7 @@ docker run -p 1503:1503
 ### Installation from Source
 
 ```bash
-git clone https://github.com/hainayanda/Cubicler.git
+git clone https://github.com/cubicler/Cubicler.git
 cd Cubicler
 npm install
 ```
