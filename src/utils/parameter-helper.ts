@@ -2,11 +2,84 @@ import { ToolCallParameters } from '../model/tools.js';
 import type { JSONValue } from '../model/types.js';
 
 /**
- * Parse function name in the format "server_identifier.function_name"
+ * Convert snake_case or kebab-case string to camelCase
+ * @param str - The string to convert
+ * @returns camelCase string
+ */
+export function toCamelCase(str: string): string {
+  return str
+    .replace(/[-_](.)/g, (_, char) => char.toUpperCase())
+    .replace(/^[A-Z]/, char => char.toLowerCase());
+}
+
+/**
+ * Generate OpenAI-compatible function name using camelCase pattern
+ * @param serverIdentifier - Server identifier (e.g., "weather_service")
+ * @param functionName - Function name (e.g., "get_current_weather")
+ * @returns OpenAI-compatible function name (e.g., "weatherService_getCurrentWeather")
+ */
+export function generateFunctionName(serverIdentifier: string, functionName: string): string {
+  const camelCaseServer = toCamelCase(serverIdentifier);
+  const camelCaseFunction = toCamelCase(functionName);
+  return `${camelCaseServer}_${camelCaseFunction}`;
+}
+
+/**
+ * Parse function name in the new camelCase format "serverCamelCase_functionCamelCase"
+ * and map back to original server and function identifiers
+ * @param functionName - The full function name
+ * @returns Object with original server identifier and function name
+ */
+export function parseFunctionName(functionName: string): {
+  serverIdentifier: string;
+  functionName: string;
+} {
+  const parts = functionName.split('_');
+  if (parts.length !== 2) {
+    throw new Error(
+      `Invalid function name format: ${functionName}. Expected format: serverCamelCase_functionCamelCase`
+    );
+  }
+
+  // For now, we need to map camelCase back to original format
+  // This is a simplified approach - in a real system you'd want a mapping table
+  const camelCaseServer = parts[0];
+  const camelCaseFunction = parts[1];
+  
+  if (!camelCaseServer || !camelCaseFunction) {
+    throw new Error(
+      `Invalid function name format: ${functionName}. Expected format: serverCamelCase_functionCamelCase`
+    );
+  }
+  
+  // Convert camelCase back to snake_case for internal system compatibility
+  const serverIdentifier = fromCamelCase(camelCaseServer);
+  const originalFunctionName = fromCamelCase(camelCaseFunction);
+  
+  return {
+    serverIdentifier,
+    functionName: originalFunctionName,
+  };
+}
+
+/**
+ * Convert camelCase back to snake_case
+ * @param str - The camelCase string to convert
+ * @returns snake_case string
+ */
+export function fromCamelCase(str: string): string {
+  return str
+    .replace(/([A-Z])/g, '_$1')
+    .toLowerCase()
+    .replace(/^_/, ''); // Remove leading underscore
+}
+
+/**
+ * Parse function name in the legacy dot format "server_identifier.function_name" (for backward compatibility)
  * @param functionName - The full function name
  * @returns Object with server identifier and function name
  */
-export function parseFunctionName(functionName: string): {
+export function parseLegacyFunctionName(functionName: string): {
   serverIdentifier: string;
   functionName: string;
 } {

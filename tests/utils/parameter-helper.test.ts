@@ -10,17 +10,17 @@ import {
 describe('Parameter Helper', () => {
   describe('parseFunctionName', () => {
     it('should parse valid function name', () => {
-      const result = parseFunctionName('weather_service.get_current_weather');
+      const result = parseFunctionName('weatherService_getCurrentWeather');
 
       expect(result.serverIdentifier).toBe('weather_service');
       expect(result.functionName).toBe('get_current_weather');
     });
 
     it('should throw error for invalid format', () => {
-      expect(() => parseFunctionName('invalid_function_name')).toThrow(
+      expect(() => parseFunctionName('justoneword')).toThrow(
         'Invalid function name format'
       );
-      expect(() => parseFunctionName('too.many.parts.here')).toThrow(
+      expect(() => parseFunctionName('')).toThrow(
         'Invalid function name format'
       );
     });

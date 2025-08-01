@@ -162,11 +162,11 @@ export class AgentService implements AgentsProviding {
       sections.push('## How to Access Tools');
       sections.push('');
       sections.push('To discover what tools are available from any service, use:');
-      sections.push('- `cubicler.available_servers` - Get list of all available servers');
-      sections.push('- `cubicler.fetch_server_tools` - Get detailed tool information for a specific server');
+      sections.push('- `cubicler_availableServers` - Get list of all available servers');
+      sections.push('- `cubicler_fetchServerTools` - Get detailed tool information for a specific server');
       sections.push('');
       sections.push('Once you know the available tools, you can call them directly using the format:');
-      sections.push('`{server_identifier}.{tool_name}` (e.g., `weather_service.get_current_weather`)');
+      sections.push('`{serverIdentifier}_{functionName}` (e.g., `weatherService_getCurrentWeather`)');
 
       return sections.join('\n');
     } catch (error) {

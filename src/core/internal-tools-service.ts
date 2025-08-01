@@ -36,7 +36,7 @@ export class InternalToolsService implements MCPCompatible {
   async toolsList(): Promise<ToolDefinition[]> {
     return [
       {
-        name: 'cubicler.available_servers',
+        name: 'cubicler_availableServers',
         description: 'Get information about available servers managed by Cubicler',
         parameters: {
           type: 'object',
@@ -44,7 +44,7 @@ export class InternalToolsService implements MCPCompatible {
         },
       },
       {
-        name: 'cubicler.fetch_server_tools',
+        name: 'cubicler_fetchServerTools',
         description: 'Get tools from one particular server managed by Cubicler',
         parameters: {
           type: 'object',
@@ -71,10 +71,10 @@ export class InternalToolsService implements MCPCompatible {
     console.log(`⚙️ [InternalToolsService] Executing internal tool: ${toolName}`);
 
     switch (toolName) {
-      case 'cubicler.available_servers':
+      case 'cubicler_availableServers':
         return await this.availableServers();
 
-      case 'cubicler.fetch_server_tools': {
+      case 'cubicler_fetchServerTools': {
         const serverIdentifier = parameters.serverIdentifier as string;
         if (!serverIdentifier) {
           throw new Error('Missing required parameter: serverIdentifier');
@@ -103,7 +103,7 @@ export class InternalToolsService implements MCPCompatible {
   private getToolsDefinitions(): ToolDefinition[] {
     return [
       {
-        name: 'cubicler.available_servers',
+        name: 'cubicler_availableServers',
         description: 'Get information about available servers managed by Cubicler',
         parameters: {
           type: 'object',
@@ -111,7 +111,7 @@ export class InternalToolsService implements MCPCompatible {
         },
       },
       {
-        name: 'cubicler.fetch_server_tools',
+        name: 'cubicler_fetchServerTools',
         description: 'Get tools from one particular server managed by Cubicler',
         parameters: {
           type: 'object',
@@ -128,7 +128,7 @@ export class InternalToolsService implements MCPCompatible {
   }
 
   /**
-   * Implementation of cubicler.available_servers
+   * Implementation of cubicler_availableServers
    * Get information about available servers managed by Cubicler
    */
   private async availableServers(): Promise<AvailableServersResponse> {
@@ -148,9 +148,13 @@ export class InternalToolsService implements MCPCompatible {
           // For each tool, extract server information
           const serverTools = new Map<string, number>();
           for (const tool of tools) {
-            const serverIdentifier = tool.name.split('.')[0];
-            if (serverIdentifier) {
-              serverTools.set(serverIdentifier, (serverTools.get(serverIdentifier) || 0) + 1);
+            // Extract server identifier from new camelCase_function format
+            const parts = tool.name.split('_');
+            if (parts.length >= 2) {
+              const serverIdentifier = parts[0]; // camelCase server identifier
+              if (serverIdentifier) {
+                serverTools.set(serverIdentifier, (serverTools.get(serverIdentifier) || 0) + 1);
+              }
             }
           }
 
@@ -158,7 +162,7 @@ export class InternalToolsService implements MCPCompatible {
           for (const [identifier, toolsCount] of serverTools.entries()) {
             servers.push({
               identifier,
-              name: identifier.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
+              name: identifier.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase()),
               description: `${service.identifier} server: ${identifier}`,
               toolsCount,
             });
@@ -186,7 +190,7 @@ export class InternalToolsService implements MCPCompatible {
   }
 
   /**
-   * Implementation of cubicler.fetch_server_tools
+   * Implementation of cubicler_fetchServerTools
    * Get tools from a specific server managed by Cubicler
    */
   private async fetchServerTools(serverIdentifier: string): Promise<ServerToolsResponse> {
@@ -206,7 +210,7 @@ export class InternalToolsService implements MCPCompatible {
       for (const service of this.toolsProviders) {
         try {
           const tools = await service.toolsList();
-          const serverTools = tools.filter((tool) => tool.name.startsWith(`${serverIdentifier}.`));
+          const serverTools = tools.filter((tool) => tool.name.startsWith(`${serverIdentifier}_`));
 
           if (serverTools.length > 0) {
             return { tools: serverTools };

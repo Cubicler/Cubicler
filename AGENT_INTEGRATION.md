@@ -44,7 +44,7 @@ A **CubicAgent** in Cubicler is an AI service that implements a streamlined API 
 ### Step-by-Step Flow
 
 1. **Cubicler → Agent**: `POST /agent` with complete `AgentRequest` containing agent info, tools, servers, and messages
-2. **CubicAgent → Cubicler**: Uses built-in tools like `cubicler.available_servers` and `cubicler.fetch_server_tools`
+2. **CubicAgent → Cubicler**: Uses built-in tools like `cubicler_availableServers` and `cubicler_fetchServerTools`
 3. **CubicAgent → Cubicler**: Calls external functions via `POST /mcp` using MCP protocol
 4. **CubicAgent → Cubicler**: Returns final `AgentResponse` with results
 
@@ -68,7 +68,7 @@ Your agent **MUST** implement an HTTP endpoint to receive requests from Cubicler
   },
   "tools": [
     {
-      "name": "cubicler.available_servers",
+      "name": "cubicler_availableServers",
       "description": "Get information for available servers managed by Cubicler",
       "parameters": {
         "type": "object",
@@ -76,7 +76,7 @@ Your agent **MUST** implement an HTTP endpoint to receive requests from Cubicler
       }
     },
     {
-      "name": "cubicler.fetch_server_tools", 
+      "name": "cubicler_fetchServerTools", 
       "description": "Get tools from one particular server managed by Cubicler",
       "parameters": {
         "type": "object",
@@ -146,7 +146,7 @@ Content-Type: application/json
   "id": 1,
   "method": "tools/call",
   "params": {
-    "name": "weather_service.get_current_weather",
+    "name": "weatherService_getCurrentWeather",
     "arguments": {
       "city": "Paris",
       "country": "France"
@@ -176,7 +176,7 @@ Content-Type: application/json
 
 Your agent has access to Cubicler's built-in functions for service discovery:
 
-#### 1. `cubicler.available_servers`
+#### 1. `cubicler_availableServers`
 
 Discover all available external services:
 
@@ -189,7 +189,7 @@ Content-Type: application/json
   "id": 1,
   "method": "tools/call",
   "params": {
-    "name": "cubicler.available_servers",
+    "name": "cubicler_availableServers",
     "arguments": {}
   }
 }
@@ -212,7 +212,7 @@ Content-Type: application/json
 }
 ```
 
-#### 2. `cubicler.fetch_server_tools`
+#### 2. `cubicler_fetchServerTools`
 
 Get detailed tools from a specific server:
 
@@ -225,7 +225,7 @@ Content-Type: application/json
   "id": 1,
   "method": "tools/call",
   "params": {
-    "name": "cubicler.fetch_server_tools",
+    "name": "cubicler_fetchServerTools",
     "arguments": {
       "serverIdentifier": "weather_service"
     }
@@ -272,11 +272,11 @@ app.post('/agent', async (req, res) => {
     console.log(`Messages: ${messages.length} message(s)`);
     
     // Step 1: Get available servers if needed
-    const availableServers = await callCubiclerTool('cubicler.available_servers', {});
+    const availableServers = await callCubiclerTool('cubicler_availableServers', {});
     console.log('Available servers:', availableServers);
     
     // Step 2: Get detailed tools for a specific server if needed
-    const weatherTools = await callCubiclerTool('cubicler.fetch_server_tools', {
+    const weatherTools = await callCubiclerTool('cubicler_fetchServerTools', {
       serverIdentifier: 'weather_service'
     });
     console.log('Weather service tools:', weatherTools);

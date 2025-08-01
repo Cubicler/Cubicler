@@ -1,6 +1,6 @@
 import type { JSONObject, JSONValue } from '../model/types.js';
 import { fetchWithDefaultTimeout } from '../utils/fetch-helper.js';
-import { convertToQueryParams, replacePathParameters } from '../utils/parameter-helper.js';
+import { convertToQueryParams, replacePathParameters, generateFunctionName, parseFunctionName } from '../utils/parameter-helper.js';
 import type { ProvidersConfigProviding } from '../interface/providers-config-providing.js';
 import providersRepository from '../repository/provider-repository.js';
 import { MCPCompatible } from '../interface/mcp-compatible.js';
@@ -60,38 +60,30 @@ class ProviderRESTService implements MCPCompatible {
 
   /**
    * Execute a tool call (MCPCompatible)
-   * @param toolName - Name of the tool to execute (format: server.tool)
+   * @param toolName - Name of the tool to execute (format: serverCamelCase_functionCamelCase)
    * @param parameters - Parameters to pass to the tool
    * @returns Result of the tool execution
    * @throws Error if tool name format is invalid or execution fails
    */
   async toolsCall(toolName: string, parameters: JSONObject): Promise<JSONValue> {
-    const parts = toolName.split('.');
-    if (parts.length !== 2) {
-      throw new Error(`Invalid tool name format: ${toolName}. Expected format: server.tool`);
-    }
-
-    const [serverIdentifier, functionName] = parts;
-    if (!serverIdentifier || !functionName) {
-      throw new Error(`Invalid tool name format: ${toolName}. Expected format: server.tool`);
-    }
-
+    const { serverIdentifier, functionName } = parseFunctionName(toolName);
     return await this.executeRESTTool(serverIdentifier, functionName, parameters);
   }
 
   /**
    * Check if this service can handle the given tool name
-   * @param toolName - Name of the tool to check (format: server.tool)
+   * @param toolName - Name of the tool to check (format: serverCamelCase_functionCamelCase)
    * @returns true if this service can handle the tool, false otherwise
    */
   async canHandleRequest(toolName: string): Promise<boolean> {
-    const parts = toolName.split('.');
-    if (parts.length !== 2) return false;
-
-    const [serverIdentifier] = parts;
-    const config = await this.configProvider.getProvidersConfig();
-    const restServer = config.restServers?.find((s) => s.identifier === serverIdentifier);
-    return restServer !== undefined;
+    try {
+      const { serverIdentifier } = parseFunctionName(toolName);
+      const config = await this.configProvider.getProvidersConfig();
+      const restServer = config.restServers?.find((s) => s.identifier === serverIdentifier);
+      return restServer !== undefined;
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -140,7 +132,7 @@ class ProviderRESTService implements MCPCompatible {
       }
 
       return {
-        name: `${serverIdentifier}.${endpoint.name}`,
+        name: generateFunctionName(serverIdentifier, endpoint.name),
         description: endpoint.description,
         parameters: {
           type: 'object',
@@ -161,7 +153,7 @@ class ProviderRESTService implements MCPCompatible {
     functionName: string,
     parameters: Record<string, JSONValue>
   ): Promise<JSONValue> {
-    console.log(`🌐 [RESTService] Executing REST tool: ${serverIdentifier}.${functionName}`);
+    console.log(`🌐 [RESTService] Executing REST tool: ${generateFunctionName(serverIdentifier, functionName)}`);
 
     const config = await this.configProvider.getProvidersConfig();
     const restServer = config.restServers?.find((s) => s.identifier === serverIdentifier);

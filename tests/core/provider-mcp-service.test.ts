@@ -142,22 +142,22 @@ describe('ProviderMCPService', () => {
 
   describe('canHandleRequest', () => {
     it('should return true for valid MCP server tool names', async () => {
-      expect(await providerMCPService.canHandleRequest('weather_service.get_weather')).toBe(true);
-      expect(await providerMCPService.canHandleRequest('file_service.read_file')).toBe(true);
+      expect(await providerMCPService.canHandleRequest('weatherService_getWeather')).toBe(true);
+      expect(await providerMCPService.canHandleRequest('fileService_readFile')).toBe(true);
     });
 
     it('should return false for REST server tool names', async () => {
-      expect(await providerMCPService.canHandleRequest('user_api.get_user')).toBe(false);
+      expect(await providerMCPService.canHandleRequest('userApi_getUser')).toBe(false);
     });
 
     it('should return false for invalid tool name formats', async () => {
       expect(await providerMCPService.canHandleRequest('invalid')).toBe(false);
-      expect(await providerMCPService.canHandleRequest('too.many.parts')).toBe(false);
+      expect(await providerMCPService.canHandleRequest('too_many_parts_here')).toBe(false);
       expect(await providerMCPService.canHandleRequest('')).toBe(false);
     });
 
     it('should return false for unknown servers', async () => {
-      expect(await providerMCPService.canHandleRequest('unknown_server.some_tool')).toBe(false);
+      expect(await providerMCPService.canHandleRequest('unknownServer_someTool')).toBe(false);
     });
   });
 
@@ -191,7 +191,7 @@ describe('ProviderMCPService', () => {
       const tools = await providerMCPService.toolsList();
 
       expect(tools).toHaveLength(2); // One from each server
-      expect(tools[0].name).toBe('weather_service.get_weather');
+      expect(tools[0].name).toBe('weatherService_getWeather');
       expect(mockFetch).toHaveBeenCalledWith('http://localhost:4000/mcp', {
         method: 'POST',
         headers: {
@@ -285,8 +285,8 @@ describe('ProviderMCPService', () => {
       const tools = await providerMCPService.toolsList();
 
       expect(tools).toHaveLength(2);
-      expect(tools[0].name).toBe('weather_service.get_weather');
-      expect(tools[1].name).toBe('file_service.read_file');
+      expect(tools[0].name).toBe('weatherService_getWeather');
+      expect(tools[1].name).toBe('fileService_readFile');
     });
 
     it('should continue with other servers if one fails', async () => {
@@ -313,7 +313,7 @@ describe('ProviderMCPService', () => {
       const tools = await providerMCPService.toolsList();
 
       expect(tools).toHaveLength(1);
-      expect(tools[0].name).toBe('file_service.read_file');
+      expect(tools[0].name).toBe('fileService_readFile');
     });
   });
 
@@ -338,8 +338,8 @@ describe('ProviderMCPService', () => {
       const tools = await providerMCPService.toolsList();
 
       expect(tools).toHaveLength(2); // One tool from each server
-      expect(tools[0].name).toBe('weather_service.test_tool');
-      expect(tools[1].name).toBe('file_service.test_tool');
+      expect(tools[0].name).toBe('weatherService_testTool');
+      expect(tools[1].name).toBe('fileService_testTool');
     });
   });
 
@@ -355,7 +355,7 @@ describe('ProviderMCPService', () => {
         })
       );
 
-      const result = await providerMCPService.toolsCall('weather_service.get_weather', {
+      const result = await providerMCPService.toolsCall('weatherService_getWeather', {
         city: 'Jakarta',
       });
 
@@ -391,21 +391,21 @@ describe('ProviderMCPService', () => {
       );
 
       await expect(
-        providerMCPService.toolsCall('weather_service.get_weather', { city: 'Jakarta' })
+        providerMCPService.toolsCall('weatherService_getWeather', { city: 'Jakarta' })
       ).rejects.toThrow('MCP tool execution failed: Invalid params');
     });
 
     it('should reject invalid tool name formats', async () => {
       await expect(providerMCPService.toolsCall('invalid', {})).rejects.toThrow(
-        'Invalid function name format: invalid. Expected format: server.function'
+        'Invalid function name format: invalid. Expected format: serverCamelCase_functionCamelCase'
       );
 
-      await expect(providerMCPService.toolsCall('too.many.parts', {})).rejects.toThrow(
-        'Invalid function name format: too.many.parts. Expected format: server.function'
+      await expect(providerMCPService.toolsCall('too_many_parts_here', {})).rejects.toThrow(
+        'Invalid function name format: too_many_parts_here. Expected format: serverCamelCase_functionCamelCase'
       );
 
-      await expect(providerMCPService.toolsCall('server.', {})).rejects.toThrow(
-        'Invalid function name format: server.. Expected format: server.function'
+      await expect(providerMCPService.toolsCall('server_', {})).rejects.toThrow(
+        'Invalid function name format: server_. Expected format: serverCamelCase_functionCamelCase'
       );
     });
   });
@@ -422,7 +422,7 @@ describe('ProviderMCPService', () => {
         })
       );
 
-      const result = await providerMCPService.toolsCall('weather_service.get_weather', {
+      const result = await providerMCPService.toolsCall('weatherService_getWeather', {
         city: 'Jakarta',
       });
 
@@ -469,7 +469,7 @@ describe('ProviderMCPService', () => {
       const tools = await providerMCPService.toolsList();
 
       expect(tools[0]).toEqual({
-        name: 'weather_service.simple_tool',
+        name: 'weatherService_simpleTool',
         description: 'MCP tool: simple_tool',
         parameters: { type: 'object', properties: {} },
       });

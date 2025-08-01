@@ -122,7 +122,7 @@ describe('ProviderRESTService', () => {
 
       expect(tools).toHaveLength(3);
       expect(tools[0]).toEqual({
-        name: 'user_api.get_user',
+        name: 'userApi_getUser',
         description: 'Get user information by ID',
         parameters: {
           type: 'object',
@@ -141,7 +141,7 @@ describe('ProviderRESTService', () => {
       });
 
       expect(tools[1]).toEqual({
-        name: 'user_api.create_user',
+        name: 'userApi_createUser',
         description: 'Create a new user',
         parameters: {
           type: 'object',
@@ -160,7 +160,7 @@ describe('ProviderRESTService', () => {
       });
 
       expect(tools[2]).toEqual({
-        name: 'user_api.update_user',
+        name: 'userApi_updateUser',
         description: 'Update user with path and query parameters',
         parameters: {
           type: 'object',
@@ -221,7 +221,7 @@ describe('ProviderRESTService', () => {
       const mockResponse = { id: '123', name: 'John Doe', email: 'john@example.com' };
       mockFetch.mockResolvedValue(createMockAxiosResponse(mockResponse));
 
-      const result = await providerRESTService.toolsCall('user_api.get_user', {
+      const result = await providerRESTService.toolsCall('userApi_getUser', {
         userId: '123',
         query: { include_profile: true },
       });
@@ -243,7 +243,7 @@ describe('ProviderRESTService', () => {
       const mockResponse = { id: '456', name: 'Jane Doe', email: 'jane@example.com' };
       mockFetch.mockResolvedValue(createMockAxiosResponse(mockResponse));
 
-      const result = await providerRESTService.toolsCall('user_api.create_user', {
+      const result = await providerRESTService.toolsCall('userApi_createUser', {
         payload: { name: 'Jane Doe', email: 'jane@example.com' },
       });
 
@@ -262,7 +262,7 @@ describe('ProviderRESTService', () => {
       const mockResponse = { success: true };
       mockFetch.mockResolvedValue(createMockAxiosResponse(mockResponse));
 
-      const result = await providerRESTService.toolsCall('user_api.update_user', {
+      const result = await providerRESTService.toolsCall('userApi_updateUser', {
         userId: '789',
         query: { notify: false },
         payload: { bio: 'Updated bio' },
@@ -287,7 +287,7 @@ describe('ProviderRESTService', () => {
       const mockResponse = { id: '123', name: 'John Doe' };
       mockFetch.mockResolvedValue(createMockAxiosResponse(mockResponse));
 
-      await providerRESTService.toolsCall('user_api.get_user', {
+      await providerRESTService.toolsCall('userApi_getUser', {
         userId: '123',
       });
 
@@ -300,26 +300,26 @@ describe('ProviderRESTService', () => {
     });
 
     it('should throw error for invalid tool name format', async () => {
-      await expect(providerRESTService.toolsCall('invalid_tool_name', {})).rejects.toThrow(
-        'Invalid tool name format: invalid_tool_name. Expected format: server.tool'
+      await expect(providerRESTService.toolsCall('invalidToolName', {})).rejects.toThrow(
+        'Invalid function name format: invalidToolName. Expected format: serverCamelCase_functionCamelCase'
       );
     });
 
     it('should throw error for empty server identifier', async () => {
-      await expect(providerRESTService.toolsCall('.function_name', {})).rejects.toThrow(
-        'Invalid tool name format: .function_name. Expected format: server.tool'
+      await expect(providerRESTService.toolsCall('_functionName', {})).rejects.toThrow(
+        'Invalid function name format: _functionName. Expected format: serverCamelCase_functionCamelCase'
       );
     });
 
     it('should throw error for non-existent server', async () => {
-      await expect(providerRESTService.toolsCall('non_existent.function', {})).rejects.toThrow(
+      await expect(providerRESTService.toolsCall('nonExistent_function', {})).rejects.toThrow(
         'REST server not found: non_existent'
       );
     });
 
     it('should throw error for non-existent endpoint', async () => {
       await expect(
-        providerRESTService.toolsCall('user_api.non_existent_function', {})
+        providerRESTService.toolsCall('userApi_nonExistentFunction', {})
       ).rejects.toThrow('REST endpoint not found: non_existent_function in server user_api');
     });
 
@@ -327,7 +327,7 @@ describe('ProviderRESTService', () => {
       mockFetch.mockResolvedValue(createMockAxiosResponse({}, 404));
 
       await expect(
-        providerRESTService.toolsCall('user_api.get_user', { userId: '123' })
+        providerRESTService.toolsCall('userApi_getUser', { userId: '123' })
       ).rejects.toThrow('REST call failed with status 404: Error');
     });
 
@@ -336,7 +336,7 @@ describe('ProviderRESTService', () => {
       mockFetch.mockRejectedValue(networkError);
 
       await expect(
-        providerRESTService.toolsCall('user_api.get_user', { userId: '123' })
+        providerRESTService.toolsCall('userApi_getUser', { userId: '123' })
       ).rejects.toThrow('REST execution failed: Network error');
     });
 
@@ -344,10 +344,10 @@ describe('ProviderRESTService', () => {
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       mockFetch.mockResolvedValue(createMockAxiosResponse({}));
 
-      await providerRESTService.toolsCall('user_api.get_user', { userId: '123' });
+      await providerRESTService.toolsCall('userApi_getUser', { userId: '123' });
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        '🌐 [RESTService] Executing REST tool: user_api.get_user'
+        '🌐 [RESTService] Executing REST tool: userApi_getUser'
       );
       expect(consoleSpy).toHaveBeenCalledWith(
         '🚀 [RESTService] Calling GET http://localhost:5000/api/users/123'
@@ -363,7 +363,7 @@ describe('ProviderRESTService', () => {
       mockFetch.mockRejectedValue(networkError);
 
       await expect(
-        providerRESTService.toolsCall('user_api.get_user', { userId: '123' })
+        providerRESTService.toolsCall('userApi_getUser', { userId: '123' })
       ).rejects.toThrow();
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -377,17 +377,17 @@ describe('ProviderRESTService', () => {
 
   describe('canHandleRequest', () => {
     it('should return true for valid REST server tool names', async () => {
-      const canHandle = await providerRESTService.canHandleRequest('user_api.get_user');
+      const canHandle = await providerRESTService.canHandleRequest('userApi_getUser');
       expect(canHandle).toBe(true);
     });
 
     it('should return false for invalid tool name format', async () => {
-      const canHandle = await providerRESTService.canHandleRequest('invalid_format');
+      const canHandle = await providerRESTService.canHandleRequest('invalidFormat');
       expect(canHandle).toBe(false);
     });
 
     it('should return false for non-existent server', async () => {
-      const canHandle = await providerRESTService.canHandleRequest('non_existent.function');
+      const canHandle = await providerRESTService.canHandleRequest('nonExistent_function');
       expect(canHandle).toBe(false);
     });
 
@@ -406,7 +406,7 @@ describe('ProviderRESTService', () => {
       };
       mockProviderConfig.getProvidersConfig = vi.fn().mockResolvedValue(mcpConfig);
 
-      const canHandle = await providerRESTService.canHandleRequest('mcp_server.function');
+      const canHandle = await providerRESTService.canHandleRequest('mcpServer_function');
       expect(canHandle).toBe(false);
     });
   });
@@ -416,7 +416,7 @@ describe('ProviderRESTService', () => {
       const mockResponse = { users: [] };
       mockFetch.mockResolvedValue(createMockAxiosResponse(mockResponse));
 
-      await providerRESTService.toolsCall('user_api.create_user', {
+      await providerRESTService.toolsCall('userApi_createUser', {
         payload: { name: 'Test', email: 'test@example.com' },
       });
 
@@ -433,7 +433,7 @@ describe('ProviderRESTService', () => {
       const mockResponse = { id: '123' };
       mockFetch.mockResolvedValue(createMockAxiosResponse(mockResponse));
 
-      await providerRESTService.toolsCall('user_api.get_user', {
+      await providerRESTService.toolsCall('userApi_getUser', {
         userId: '123',
       });
 
@@ -449,7 +449,7 @@ describe('ProviderRESTService', () => {
       const mockResponse = { deleted: true };
       mockFetch.mockResolvedValue(createMockAxiosResponse(mockResponse));
 
-      await providerRESTService.toolsCall('user_api.get_user', {
+      await providerRESTService.toolsCall('userApi_getUser', {
         userId: '123',
       });
 

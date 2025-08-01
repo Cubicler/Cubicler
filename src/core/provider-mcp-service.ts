@@ -1,6 +1,7 @@
 import type { JSONObject, JSONValue, MCPRequest, MCPResponse } from '../model/types.js';
 import type { MCPTool, ToolDefinition } from '../model/tools.js';
 import { fetchWithDefaultTimeout } from '../utils/fetch-helper.js';
+import { generateFunctionName, parseFunctionName } from '../utils/parameter-helper.js';
 import type { ProvidersConfigProviding } from '../interface/providers-config-providing.js';
 import providersRepository from '../repository/provider-repository.js';
 import { MCPCompatible } from '../interface/mcp-compatible.js';
@@ -55,22 +56,21 @@ class ProviderMCPService implements MCPCompatible {
 
   /**
    * Check if this service can handle the given tool name
-   * @param toolName - Name of the tool to check (format: server.function)
+   * @param toolName - Name of the tool to check (format: serverCamelCase_functionCamelCase)
    * @returns true if this service can handle the tool, false otherwise
    */
   async canHandleRequest(toolName: string): Promise<boolean> {
-    const parts = toolName.split('.');
-    if (parts.length !== 2) return false;
-
-    const [serverIdentifier] = parts;
-    if (!serverIdentifier) return false;
-
-    return await this.isMCPServer(serverIdentifier);
+    try {
+      const { serverIdentifier } = parseFunctionName(toolName);
+      return await this.isMCPServer(serverIdentifier);
+    } catch {
+      return false;
+    }
   }
 
   /**
    * Execute a tool call (MCPCompatible)
-   * @param toolName - Name of the tool to execute (format: server.function)
+   * @param toolName - Name of the tool to execute (format: serverCamelCase_functionCamelCase)
    * @param parameters - Parameters to pass to the tool
    * @returns Result of the tool execution
    * @throws Error if tool execution fails
@@ -94,7 +94,7 @@ class ProviderMCPService implements MCPCompatible {
 
         // Convert MCP tools to Cubicler function definitions
         const tools: ToolDefinition[] = mcpTools.map((tool) => ({
-          name: `${server.identifier}.${tool.name}`,
+          name: generateFunctionName(server.identifier, tool.name),
           description: tool.description || `MCP tool: ${tool.name}`,
           parameters: tool.inputSchema || { type: 'object', properties: {} },
         }));
@@ -116,26 +116,13 @@ class ProviderMCPService implements MCPCompatible {
   }
 
   /**
-   * Execute a tool by parsing the full function name {serverIdentifier}.{functionName}
+   * Execute a tool by parsing the full function name serverCamelCase_functionCamelCase
    */
   private async executeToolByName(fullFunctionName: string, parameters: JSONObject): Promise<JSONValue> {
     console.log(`⚙️ [ProviderMCPService] Executing MCP tool: ${fullFunctionName}`);
 
-    // Parse the function name
-    const parts = fullFunctionName.split('.');
-    if (parts.length !== 2) {
-      throw new Error(
-        `Invalid function name format: ${fullFunctionName}. Expected format: server.function`
-      );
-    }
-
-    const [serverIdentifier, functionName] = parts;
-
-    if (!serverIdentifier || !functionName) {
-      throw new Error(
-        `Invalid function name format: ${fullFunctionName}. Expected format: server.function`
-      );
-    }
+    // Parse the function name using utility
+    const { serverIdentifier, functionName } = parseFunctionName(fullFunctionName);
 
     // Execute MCP tool
     const result = await this.executeMCPTool(serverIdentifier, functionName, parameters);

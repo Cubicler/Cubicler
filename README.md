@@ -335,13 +335,13 @@ POST /dispatch
 
 AI agents automatically get access to these Cubicler tools:
 
-#### `cubicler.available_servers`
+#### `cubicler_availableServers`
 
 - **Purpose**: Lists all connected external services
 - **Parameters**: None
 - **Returns**: List of available APIs and their capabilities
 
-#### `cubicler.fetch_server_tools`
+#### `cubicler_fetchServerTools`
 
 - **Purpose**: Gets detailed information about a specific service
 - **Parameters**: `serverIdentifier` (string)
@@ -391,8 +391,8 @@ POST /dispatch
 
 The AI agent uses built-in tools to discover available services:
 
-- Calls `cubicler.available_servers` → finds weather service
-- Calls `cubicler.fetch_server_tools` → gets weather functions
+- Calls `cubicler_availableServers` → finds weather service
+- Calls `cubicler_fetchServerTools` → gets weather functions
 
 ### 3. Service Call
 

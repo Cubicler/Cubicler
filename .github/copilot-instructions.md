@@ -22,8 +22,8 @@ While the term **CubicProvider** refers to external services (MCP servers or RES
 - `GET /health` - health check for all services
 
 **Cubicler Internal Functions (available as tools to agents):**
-- `cubicler.available_servers` - get information about available servers
-- `cubicler.fetch_server_tools` - get tools from specific MCP server
+- `cubicler_availableServers` - get information about available servers
+- `cubicler_fetchServerTools` - get tools from specific MCP server
 
 ## 🏗️ Core Architecture Principles
 
@@ -44,7 +44,7 @@ export default new ProviderService(configProvider, [providerMcpService, provider
 
 ### Multi-Provider Tool Aggregation
 The `MCPService` aggregates tools from multiple `MCPCompatible` providers:
-- `InternalToolsService` - Provides `cubicler.*` internal functions
+- `InternalToolsService` - Provides `cubicler_*` internal functions
 - `ProviderMCPService` - Handles MCP server communication
 - `ProviderRESTService` - Handles REST API endpoints
 
@@ -156,9 +156,9 @@ CUBICLER_PORT=1503
   - Arrays of objects: JSON stringified
 
 ### Function Naming Convention
-- **MCP Servers**: `{server_identifier}.{function_name}` (e.g., `weather_service.get_current_weather`)
-- **REST Servers**: `{server_identifier}.{endpoint_name}` (e.g., `legacy_api.get_user_info`)
-- **Internal tools**: `cubicler.available_servers`, `cubicler.fetch_server_tools`
+- **MCP servers**: `serverCamelCase_functionCamelCase` (e.g., `weatherService_getCurrentWeather`)
+- **REST servers**: `serverCamelCase_endpointCamelCase` (e.g., `legacyApi_getUserInfo`)
+- **Internal tools**: `cubicler_availableServers`, `cubicler_fetchServerTools`
 
 ### Transport Support
 - **Current Phase**: HTTP transport only for both MCP servers and agents
@@ -192,7 +192,7 @@ CUBICLER_PORT=1503
   },
   "tools": [
     {
-      "name": "cubicler.available_servers",
+      "name": "cubicler_availableServers",
       "description": "Get information for available servers managed by Cubicler",
       "parameters": { "type": "object", "properties": {} }
     }
@@ -226,14 +226,14 @@ CUBICLER_PORT=1503
 
 ## � Cubicler Internal Functions
 
-### `cubicler.available_servers`
+### `cubicler_availableServers`
 
 Get information about available servers managed by Cubicler.
 
 **Schema:**
 ```json
 { 
-    "name": "cubicler.available_servers",
+    "name": "cubicler_availableServers",
     "description": "Get information for available servers managed by Cubicler",
     "parameters": {
         "type": "object",
@@ -255,14 +255,14 @@ Get information about available servers managed by Cubicler.
 }
 ```
 
-### `cubicler.fetch_server_tools`
+### `cubicler_fetchServerTools`
 
 Get tools from a specific MCP server managed by Cubicler.
 
 **Schema:**
 ```json
 { 
-    "name": "cubicler.fetch_server_tools",
+    "name": "cubicler_fetchServerTools",
     "description": "Get tools from one particular server managed by Cubicler",
     "parameters": {
         "type": "object",
@@ -327,7 +327,7 @@ npm run docker:prod   # Production build
 2. **Provider Management**: Providers loaded from `providers.json` (MCP servers + REST endpoints)
 3. **Message Dispatch**: Enhanced message format → agent selection → prompt composition → response
 4. **MCP Communication**: Direct MCP protocol endpoint for tool discovery and execution
-5. **Internal Functions**: Built-in `cubicler.*` functions for server discovery and tool introspection
+5. **Internal Functions**: Built-in `cubicler_*` functions for server discovery and tool introspection
 
 ### Service Architecture
 The system maintains modular service separation:
@@ -351,9 +351,9 @@ console.error(`❌ [ServiceName] Error message`);
 ```
 
 ### Function Naming & Tool Resolution
-- **Internal tools**: `cubicler.available_servers`, `cubicler.fetch_server_tools`
-- **MCP tools**: `{server_identifier}.{mcp_function_name}`
-- **REST tools**: `{server_identifier}.{endpoint_name}`
+- **Internal tools**: `cubicler_availableServers`, `cubicler_fetchServerTools`
+- **MCP tools**: `serverCamelCase_functionCamelCase`
+- **REST tools**: `serverCamelCase_endpointCamelCase`
 
 The system routes tool calls by parsing the prefix and delegating to the appropriate service.
 
@@ -381,7 +381,7 @@ The system routes tool calls by parsing the prefix and delegating to the appropr
 ### Adding Internal Functions
 1. Add tool definition to `InternalToolsService.getToolsDefinitions()`
 2. Implement handler in `toolsCall` method
-3. Use `cubicler.*` namespace for consistency
+3. Use `cubicler_*` namespace for consistency
 
 ### Extending Agent Communication
 - Agent requests follow strict schema in `model/dispatch.ts`
