@@ -64,7 +64,7 @@ Cubicler connects four types of components:
 docker run -p 1503:1503 
   -e CUBICLER_AGENTS_LIST=https://your-cloud.com/agents.json 
   -e CUBICLER_PROVIDERS_LIST=https://your-cloud.com/providers.json 
-  cubicler/cubicler:2.0.0
+  cubicler/cubicler:2.2.0
 ```
 
 ### Installation from Source
