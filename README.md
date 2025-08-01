@@ -150,6 +150,44 @@ This tells Cubicler which AI agents are available. You can use `{{env.VARIABLE_N
 }
 ```
 
+#### 📝 Prompt Configuration Options
+
+**Cubicler supports three flexible ways to define prompts:**
+
+1. **📄 Inline Text** (most common):
+
+   ```json
+   {
+     "basePrompt": "You are a helpful AI assistant with access to tools.",
+     "prompt": "You specialize in data analysis and provide detailed insights."
+   }
+   ```
+
+2. **📁 Local Files**:
+
+   ```json
+   {
+     "basePrompt": "./prompts/base-system.md",
+     "prompt": "../shared/specialist-prompt.txt"
+   }
+   ```
+
+3. **🌐 Remote URLs**:
+
+   ```json
+   {
+     "basePrompt": "https://your-server.com/prompts/base.md",
+     "prompt": "https://raw.githubusercontent.com/your-org/prompts/main/agent.md"
+   }
+   ```
+
+**✨ Smart Detection**: Cubicler automatically detects the prompt type:
+
+- URLs starting with `http://` or `https://` are loaded remotely
+- Paths containing `/`, `\`, `~`, or file extensions are treated as files
+- Everything else is treated as inline text content
+- **Graceful Fallback**: If file/URL loading fails, content is used as inline text
+
 > **💡 Environment Variables**: Use `{{env.VARIABLE_NAME}}` syntax in any string value to substitute environment variables. Perfect for keeping sensitive URLs and tokens secure!
 
 ### Providers Configuration (`providers.json`)

@@ -417,6 +417,43 @@ Add your agent to the `agents.json` configuration:
 }
 ```
 
+#### 📝 Flexible Prompt Configuration
+
+**Cubicler automatically handles three types of prompt sources:**
+
+1. **Inline Text** - Simple string prompts (recommended for most cases):
+
+   ```json
+   {
+     "basePrompt": "You are a helpful AI assistant with tool access.",
+     "prompt": "You specialize in data analysis and provide structured insights."
+   }
+   ```
+
+2. **Local Files** - Load prompts from filesystem:
+
+   ```json
+   {
+     "basePrompt": "./prompts/system-base.md",
+     "prompt": "~/agent-configs/specialist.txt"
+   }
+   ```
+
+3. **Remote URLs** - Fetch prompts from web sources:
+
+   ```json
+   {
+     "basePrompt": "https://your-org.com/prompts/base.md",
+     "prompt": "https://raw.githubusercontent.com/your-org/configs/main/agent.md"
+   }
+   ```
+
+**Smart Detection & Fallback:**
+
+- Cubicler automatically detects the prompt type based on content
+- If file/URL loading fails, content is gracefully used as inline text
+- No need to specify the prompt type - Cubicler handles it automatically
+
 ### TypeScript Implementation
 
 ```typescript
