@@ -13,6 +13,10 @@ describe('Provider Service', () => {
     // Mock config provider
     mockConfigProvider = {
       getProvidersConfig: vi.fn(),
+      clearCache: vi.fn(),
+      getAvailableServers: vi.fn(),
+      getServerHash: vi.fn(),
+      updateServerToolCount: vi.fn(),
     };
 
     // Mock MCP tools provider
@@ -36,101 +40,87 @@ describe('Provider Service', () => {
 
   describe('getAvailableServers', () => {
     it('should return list of all servers (MCP + REST)', async () => {
-      mockConfigProvider.getProvidersConfig.mockResolvedValue({
-        mcpServers: [
+      const mockResponse = {
+        total: 2,
+        servers: [
           {
             identifier: 'weather_service',
             name: 'Weather Service',
             description: 'Weather API',
-            transport: 'http',
-            url: 'http://localhost:4000/mcp',
+            toolsCount: 1,
           },
-        ],
-        restServers: [
           {
             identifier: 'user_api',
             name: 'User API',
             description: 'User management',
-            url: 'http://localhost:5000/api',
-            endPoints: [
-              { name: 'get_user', description: 'Get user', path: '/users/{userId}', method: 'GET' },
-            ],
+            toolsCount: 1,
           },
         ],
-      });
+      };
 
-      mockMcpToolsProvider.toolsList.mockResolvedValue([
-        { name: 'weather_service.get_weather', description: 'Get weather data' },
-      ]);
+      mockConfigProvider.getAvailableServers.mockResolvedValue(mockResponse);
 
       const result = await providerService.getAvailableServers();
 
-      expect(result.total).toBe(2);
-      expect(result.servers).toHaveLength(2);
-      expect(result.servers[0].identifier).toBe('weather_service');
-      expect(result.servers[0].toolsCount).toBe(1); // From MCP tools
-      expect(result.servers[1].identifier).toBe('user_api');
-      expect(result.servers[1].toolsCount).toBe(1); // From REST endpoints
+      expect(result).toEqual(mockResponse);
+      expect(mockConfigProvider.getAvailableServers).toHaveBeenCalledTimes(1);
     });
 
     it('should handle empty servers list', async () => {
-      mockConfigProvider.getProvidersConfig.mockResolvedValue({
-        mcpServers: [],
-        restServers: [],
-      });
+      const mockResponse = {
+        total: 0,
+        servers: [],
+      };
+
+      mockConfigProvider.getAvailableServers.mockResolvedValue(mockResponse);
 
       const result = await providerService.getAvailableServers();
 
-      expect(result.total).toBe(0);
-      expect(result.servers).toHaveLength(0);
+      expect(result).toEqual(mockResponse);
+      expect(mockConfigProvider.getAvailableServers).toHaveBeenCalledTimes(1);
     });
 
     it('should handle MCP server tool fetch failure gracefully', async () => {
-      mockConfigProvider.getProvidersConfig.mockResolvedValue({
-        mcpServers: [
+      const mockResponse = {
+        total: 1,
+        servers: [
           {
             identifier: 'weather_service',
             name: 'Weather Service',
             description: 'Weather API',
+            toolsCount: 0, // Fallback to 0 on error
           },
         ],
-        restServers: [],
-      });
+      };
 
-      mockMcpToolsProvider.toolsList.mockRejectedValue(new Error('Connection failed'));
+      mockConfigProvider.getAvailableServers.mockResolvedValue(mockResponse);
 
       const result = await providerService.getAvailableServers();
 
-      expect(result.total).toBe(1);
-      expect(result.servers[0].toolsCount).toBe(0); // Fallback to 0 on error
+      expect(result).toEqual(mockResponse);
+      expect(mockConfigProvider.getAvailableServers).toHaveBeenCalledTimes(1);
     });
 
     it('should count REST server endpoints correctly', async () => {
-      mockConfigProvider.getProvidersConfig.mockResolvedValue({
-        mcpServers: [],
-        restServers: [
+      const mockResponse = {
+        total: 1,
+        servers: [
           {
             identifier: 'user_api',
             name: 'User API',
             description: 'User management',
-            url: 'http://localhost:5000/api',
-            endPoints: [
-              { name: 'get_user', description: 'Get user', path: '/users/{userId}', method: 'GET' },
-              { name: 'create_user', description: 'Create user', path: '/users', method: 'POST' },
-              {
-                name: 'update_user',
-                description: 'Update user',
-                path: '/users/{userId}',
-                method: 'PUT',
-              },
-            ],
+            toolsCount: 3, // Three endpoints
           },
         ],
-      });
+      };
+
+      mockConfigProvider.getAvailableServers.mockResolvedValue(mockResponse);
 
       const result = await providerService.getAvailableServers();
 
+      expect(result).toEqual(mockResponse);
       expect(result.servers[0].toolsCount).toBe(3);
+      expect(mockConfigProvider.getAvailableServers).toHaveBeenCalledTimes(1);
     });
   });
 });

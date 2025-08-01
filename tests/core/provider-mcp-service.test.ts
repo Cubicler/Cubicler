@@ -83,25 +83,16 @@ describe('ProviderMCPService', () => {
     // Mock provider config
     mockProviderConfig = {
       getProvidersConfig: vi.fn().mockResolvedValue(mockProvidersConfig),
+      clearCache: vi.fn(),
+      getAvailableServers: vi.fn(),
+      getServerHash: vi.fn(),
+      updateServerToolCount: vi.fn(),
     };
 
     // Mock servers provider
     mockServersProvider = {
       getAvailableServers: vi.fn(),
-      getServerIndex: vi.fn().mockImplementation(async (identifier: string) => {
-        // Mock server ordering: MCP servers first, then REST servers
-        if (identifier === 'weather_service') return 0;
-        if (identifier === 'file_service') return 1;
-        if (identifier === 'user_api') return 2;
-        return -1;
-      }),
-      getServerIdentifier: vi.fn().mockImplementation(async (index: number) => {
-        // Mock server ordering: MCP servers first, then REST servers
-        if (index === 0) return 'weather_service';
-        if (index === 1) return 'file_service';
-        if (index === 2) return 'user_api';
-        return null;
-      }),
+      getServerHash: vi.fn(),
     };
 
     // Mock fetch helper

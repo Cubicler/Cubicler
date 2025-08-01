@@ -26,130 +26,22 @@ class ProviderService implements ServersProviding {
   }
 
   /**
-   * Get all available servers (both MCP and REST)
+   * Get all available servers (ServersProviding)
    * @returns Available servers response with total count and server details
    */
   async getAvailableServers(): Promise<AvailableServersResponse> {
-    const config = await this.configProvider.getProvidersConfig();
-    const servers: Array<{
-      identifier: string;
-      name: string;
-      description: string;
-      toolsCount: number;
-    }> = [];
-
-    // Add MCP servers with actual tool counts
-    if (config.mcpServers) {
-      for (const server of config.mcpServers) {
-        let toolsCount = 0;
-
-        // Try to get actual tool count from MCP provider
-        try {
-          const provider = this.toolsProviders.find(
-            (provider) => provider.identifier === server.identifier
-          );
-
-          const tools = await provider?.toolsList();
-          toolsCount = tools ? tools.length : 0;
-        } catch (error) {
-          console.warn(
-            `⚠️ [ProviderService] Failed to get tool count for MCP server ${server.identifier}:`,
-            error
-          );
-          // toolsCount remains 0 if we can't fetch tools
-        }
-
-        servers.push({
-          identifier: server.identifier,
-          name: server.name,
-          description: server.description,
-          toolsCount,
-        });
-      }
-    }
-
-    // Add REST servers
-    if (config.restServers) {
-      for (const server of config.restServers) {
-        servers.push({
-          identifier: server.identifier,
-          name: server.name,
-          description: server.description,
-          toolsCount: server.endPoints.length,
-        });
-      }
-    }
-
-    return {
-      total: servers.length,
-      servers,
-    };
+    // Delegate to repository (single source of truth)
+    return await this.configProvider.getAvailableServers();
   }
 
   /**
-   * Get server index by identifier for function naming
-   * Based on order of servers in providers.json (MCP servers first, then REST servers)
-   * @param serverIdentifier - The server identifier
-   * @returns The server index (0-based) or -1 if not found
+   * Get server hash for tool naming (ServersProviding)
+   * @param serverIdentifier - The server identifier (snake_case)
+   * @returns The server hash or null if not found
    */
-  async getServerIndex(serverIdentifier: string): Promise<number> {
-    const config = await this.configProvider.getProvidersConfig();
-    let index = 0;
-
-    // Check MCP servers first
-    if (config.mcpServers) {
-      for (const server of config.mcpServers) {
-        if (server.identifier === serverIdentifier) {
-          return index;
-        }
-        index++;
-      }
-    }
-
-    // Check REST servers next
-    if (config.restServers) {
-      for (const server of config.restServers) {
-        if (server.identifier === serverIdentifier) {
-          return index;
-        }
-        index++;
-      }
-    }
-
-    return -1; // Not found
-  }
-
-  /**
-   * Get server identifier by index for function parsing
-   * Based on order of servers in providers.json (MCP servers first, then REST servers)
-   * @param serverIndex - The server index (0-based)
-   * @returns The server identifier or null if not found
-   */
-  async getServerIdentifier(serverIndex: number): Promise<string | null> {
-    const config = await this.configProvider.getProvidersConfig();
-    let currentIndex = 0;
-
-    // Check MCP servers first
-    if (config.mcpServers) {
-      for (const server of config.mcpServers) {
-        if (currentIndex === serverIndex) {
-          return server.identifier;
-        }
-        currentIndex++;
-      }
-    }
-
-    // Check REST servers next
-    if (config.restServers) {
-      for (const server of config.restServers) {
-        if (currentIndex === serverIndex) {
-          return server.identifier;
-        }
-        currentIndex++;
-      }
-    }
-
-    return null; // Not found
+  async getServerHash(serverIdentifier: string): Promise<string | null> {
+    // Delegate to repository (single source of truth)
+    return await this.configProvider.getServerHash(serverIdentifier);
   }
 }
 

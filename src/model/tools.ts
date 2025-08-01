@@ -26,7 +26,7 @@ export interface ToolCallParameters extends JSONObject {
 export type ToolCallResult = JSONValue;
 
 /**
- * Response for cubicler_fetchServerTools
+ * Response for cubicler_fetch_server_tools
  */
 export interface ServerToolsResponse extends JSONObject {
   tools: ToolDefinition[];
@@ -59,7 +59,7 @@ export interface MCPFormattedTool {
 }
 
 /**
- * Available servers response for cubicler_availableServers
+ * Available servers response for cubicler_available_servers
  */
 export interface AvailableServersResponse extends JSONObject {
   total: number;

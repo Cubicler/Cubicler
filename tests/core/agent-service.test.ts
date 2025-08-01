@@ -18,6 +18,7 @@ describe('Agent Service', () => {
 
     mockServersProvider = {
       getAvailableServers: vi.fn(),
+      getServerHash: vi.fn(),
     };
 
     // Create service instance with mocked dependencies

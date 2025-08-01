@@ -22,8 +22,8 @@ While the term **CubicProvider** refers to external services (MCP servers or RES
 - `GET /health` - health check for all services
 
 **Cubicler Internal Functions (available as tools to agents):**
-- `cubicler_availableServers` - get information about available servers
-- `cubicler_fetchServerTools` - get tools from specific MCP server
+- `cubicler_available_servers` - get information about available servers
+- `cubicler_fetch_server_tools` - get tools from specific MCP server
 
 ## 🏗️ Core Architecture Principles
 
@@ -158,7 +158,7 @@ CUBICLER_PORT=1503
 ### Function Naming Convention
 - **MCP servers**: `s{hash}_{snake_case_function}` (e.g., `s1r2dj4_get_current_weather`)
 - **REST servers**: `s{hash}_{snake_case_endpoint}` (e.g., `ssft7he_get_user_info`)
-- **Internal tools**: `cubicler_availableServers`, `cubicler_fetchServerTools`
+- **Internal tools**: `cubicler_available_servers`, `cubicler_fetch_server_tools`
 
 The hash is a 6-character base36 encoding derived from SHA-256 hash of `{server_identifier}:{server_url}`, ensuring collision-resistant and config-order-independent function names.
 
@@ -194,7 +194,7 @@ The hash is a 6-character base36 encoding derived from SHA-256 hash of `{server_
   },
   "tools": [
     {
-      "name": "cubicler_availableServers",
+      "name": "cubicler_available_servers",
       "description": "Get information for available servers managed by Cubicler",
       "parameters": { "type": "object", "properties": {} }
     }
@@ -228,14 +228,14 @@ The hash is a 6-character base36 encoding derived from SHA-256 hash of `{server_
 
 ## � Cubicler Internal Functions
 
-### `cubicler_availableServers`
+### `cubicler_available_servers`
 
 Get information about available servers managed by Cubicler.
 
 **Schema:**
 ```json
 { 
-    "name": "cubicler_availableServers",
+    "name": "cubicler_available_servers",
     "description": "Get information for available servers managed by Cubicler",
     "parameters": {
         "type": "object",
@@ -257,14 +257,14 @@ Get information about available servers managed by Cubicler.
 }
 ```
 
-### `cubicler_fetchServerTools`
+### `cubicler_fetch_server_tools`
 
 Get tools from a specific MCP server managed by Cubicler.
 
 **Schema:**
 ```json
 { 
-    "name": "cubicler_fetchServerTools",
+    "name": "cubicler_fetch_server_tools",
     "description": "Get tools from one particular server managed by Cubicler",
     "parameters": {
         "type": "object",
@@ -353,7 +353,7 @@ console.error(`❌ [ServiceName] Error message`);
 ```
 
 ### Function Naming & Tool Resolution
-- **Internal tools**: `cubicler_availableServers`, `cubicler_fetchServerTools`
+- **Internal tools**: `cubicler_available_servers`, `cubicler_fetch_server_tools`
 - **MCP tools**: `s{hash}_{snake_case_function}`
 - **REST tools**: `s{hash}_{snake_case_endpoint}`
 

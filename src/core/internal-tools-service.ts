@@ -3,7 +3,7 @@ import { MCPCompatible } from '../interface/mcp-compatible.js';
 import { ToolsListProviding } from '../interface/tools-list-providing.js';
 import { ServersProviding } from '../interface/servers-providing.js';
 import { AvailableServersResponse, ServerToolsResponse, ToolDefinition } from '../model/tools.js';
-import { toSnakeCase } from '../utils/parameter-helper.js';
+import { toSnakeCase, generateServerHash } from '../utils/parameter-helper.js';
 
 /**
  * Internal Functions Service for Cubicler
@@ -104,104 +104,27 @@ export class InternalToolsService implements MCPCompatible {
    * @returns true if this service can handle the tool, false otherwise
    */
   async canHandleRequest(toolName: string): Promise<boolean> {
-    const availableTools = this.getToolsDefinitions();
+    const availableTools = await this.toolsList();
     return availableTools.some((tool) => tool.name === toolName);
   }
 
   /**
-   * Get all internal Cubicler functions (private - used internally)
-   */
-  private getToolsDefinitions(): ToolDefinition[] {
-    return [
-      {
-        name: 'cubicler_available_servers',
-        description: 'Get information about available servers managed by Cubicler',
-        parameters: {
-          type: 'object',
-          properties: {},
-        },
-      },
-      {
-        name: 'cubicler_fetch_server_tools',
-        description: 'Get tools from one particular server managed by Cubicler',
-        parameters: {
-          type: 'object',
-          properties: {
-            serverIdentifier: {
-              type: 'string',
-              description: 'Identifier of the server to fetch tools from',
-            },
-          },
-          required: ['serverIdentifier'],
-        },
-      },
-    ];
-  }
-
-  /**
-   * Implementation of cubicler_availableServers
+   * Implementation of cubicler_available_servers
    * Get information about available servers managed by Cubicler
    */
   private async availableServers(): Promise<AvailableServersResponse> {
     try {
-      const servers: {
-        identifier: string;
-        name: string;
-        description: string;
-        toolsCount: number;
-      }[] = [];
-
       if (!this.serversProvider) {
         throw new Error('Servers provider not set. Cannot resolve server identifiers.');
       }
 
-      // Get server information from each provider service
-      for (const service of this.toolsProviders) {
-        try {
-          const tools = await service.toolsList();
+      // Get server information directly from the servers provider
+      // This returns all configured servers regardless of initialization status
+      const result = await this.serversProvider.getAvailableServers();
+      
+      console.log(`✅ [InternalToolsService] Found ${result.total} servers`);
 
-          // For each tool, extract server information using server index
-          const serverTools = new Map<string, number>();
-          for (const tool of tools) {
-            // Extract server identifier from indexed format (s0_, s1_, etc.)
-            const parts = tool.name.split('_');
-            if (parts.length >= 2 && parts[0] && parts[0].startsWith('s')) {
-              const indexStr = parts[0].slice(1); // Remove 's' prefix
-              const index = parseInt(indexStr, 10);
-              if (!isNaN(index)) {
-                // Get the original server identifier for this index
-                const originalIdentifier = await this.serversProvider.getServerIdentifier(index);
-                if (originalIdentifier) {
-                  serverTools.set(originalIdentifier, (serverTools.get(originalIdentifier) || 0) + 1);
-                }
-              }
-            }
-          }
-
-          // Add server info using snake_case identifiers
-          for (const [identifier, toolsCount] of serverTools.entries()) {
-            const snakeCaseIdentifier = toSnakeCase(identifier);
-            servers.push({
-              identifier: snakeCaseIdentifier,
-              name: identifier.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase()),
-              description: `${service.identifier} server: ${identifier}`,
-              toolsCount,
-            });
-          }
-        } catch (error) {
-          console.warn(
-            `⚠️ [InternalToolsService] Failed to get tools from service ${service.identifier}:`,
-            error
-          );
-        }
-      }
-
-      console.log(`✅ [InternalToolsService] Found ${servers.length} servers`);
-
-      return {
-        total: servers.length,
-        servers,
-      };
+      return result;
     } catch (error) {
       console.error(`❌ [InternalToolsService] Error getting available servers:`, error);
       throw new Error(
@@ -223,50 +146,37 @@ export class InternalToolsService implements MCPCompatible {
       // Check if it's internal tools
       if (serverIdentifier === 'cubicler') {
         return {
-          tools: this.getToolsDefinitions(),
+          tools: await this.toolsList(),
         };
       }
 
       if (!this.serversProvider) {
-        throw new Error('Servers provider not set. Cannot resolve server identifiers.');
+        throw new Error('Servers provider not set. Cannot get server tools.');
       }
 
-      // Find the server index for the given identifier (which comes in as snake_case)
-      let targetServerIndex: number | null = null;
-      for (let i = 0; i < 100; i++) { // Reasonable upper limit
-        const identifier = await this.serversProvider.getServerIdentifier(i);
-        if (identifier === null) break; // No more servers
-        
-        // Convert the original identifier to snake_case for comparison
-        const snakeCaseIdentifier = toSnakeCase(identifier);
-        if (snakeCaseIdentifier === serverIdentifier) {
-          targetServerIndex = i;
-          break;
-        }
-      }
-
-      if (targetServerIndex === null) {
+      // Get server hash from repository (single source of truth)
+      const serverHash = await this.serversProvider.getServerHash(serverIdentifier);
+      if (!serverHash) {
         throw new Error(`Server not found: ${serverIdentifier}`);
       }
 
-      // Search through all provider services for tools from the specified server index
+      // Find tools that start with the server hash prefix
+      const targetPrefix = `s${serverHash}_`;
+      const matchingTools: ToolDefinition[] = [];
+
+      // Search through all provider services for tools with matching hash prefix
       for (const service of this.toolsProviders) {
         try {
           const tools = await service.toolsList();
           
-          // Check if any tools from this provider match the requested server index
-          const matchingTools = tools.filter(tool => {
-            const parts = tool.name.split('_');
-            if (parts.length >= 2 && parts[0] && parts[0].startsWith('s')) {
-              const indexStr = parts[0].slice(1); // Remove 's' prefix
-              const index = parseInt(indexStr, 10);
-              return !isNaN(index) && index === targetServerIndex;
+          for (const tool of tools) {
+            if (tool.name.startsWith(targetPrefix)) {
+              matchingTools.push({
+                name: tool.name,
+                description: tool.description,
+                parameters: tool.parameters || tool.inputSchema,
+              });
             }
-            return false;
-          });
-          
-          if (matchingTools.length > 0) {
-            return { tools: matchingTools };
           }
         } catch (error) {
           console.warn(
@@ -277,7 +187,8 @@ export class InternalToolsService implements MCPCompatible {
         }
       }
 
-      throw new Error(`Server not found: ${serverIdentifier}`);
+      console.log(`✅ [InternalToolsService] Found ${matchingTools.length} tools for server: ${serverIdentifier}`);
+      return { tools: matchingTools };
     } catch (error) {
       console.error(
         `❌ [InternalToolsService] Error getting tools for server ${serverIdentifier}:`,

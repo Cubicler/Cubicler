@@ -95,21 +95,16 @@ describe('ProviderRESTService', () => {
 
     mockProviderConfig = {
       getProvidersConfig: vi.fn().mockResolvedValue(mockProvidersConfig),
+      clearCache: vi.fn(),
+      getAvailableServers: vi.fn(),
+      getServerHash: vi.fn(),
+      updateServerToolCount: vi.fn(),
     };
 
     // Mock servers provider (assuming REST servers come after MCP servers)
     mockServersProvider = {
       getAvailableServers: vi.fn(),
-      getServerIndex: vi.fn().mockImplementation(async (identifier: string) => {
-        // Mock server ordering: MCP servers first (indexes 0, 1), then REST servers
-        if (identifier === 'user_api') return 2;
-        return -1;
-      }),
-      getServerIdentifier: vi.fn().mockImplementation(async (index: number) => {
-        // Mock server ordering: MCP servers first (indexes 0, 1), then REST servers
-        if (index === 2) return 'user_api';
-        return null;
-      }),
+      getServerHash: vi.fn(),
     };
 
     providerRESTService = new ProviderRESTService(mockProviderConfig);

@@ -27,9 +27,8 @@ describe('Internal Tools Service', () => {
 
     // Create mock servers provider
     mockServersProvider = {
-      getServerIndex: vi.fn(),
-      getServerIdentifier: vi.fn(),
       getAvailableServers: vi.fn(),
+      getServerHash: vi.fn(),
     };
 
     // Create internal tools service with mocked dependencies
@@ -77,60 +76,29 @@ describe('Internal Tools Service', () => {
     });
 
     it('should execute cubicler_available_servers successfully', async () => {
-      const mockTools: ToolDefinition[] = [
-        {
-          name: 's0_get_weather',
-          description: 'Get weather data',
-          parameters: { type: 'object', properties: {} },
-        },
-        {
-          name: 's0_get_forecast',
-          description: 'Get weather forecast',
-          parameters: { type: 'object', properties: {} },
-        },
-        {
-          name: 's1_search',
-          description: 'Search for content',
-          parameters: { type: 'object', properties: {} },
-        },
-      ];
-
-      vi.mocked(mockToolsProviders[0].toolsList).mockResolvedValue([
-        mockTools[0],
-        mockTools[1],
-      ]);
-
-      vi.mocked(mockToolsProviders[1].toolsList).mockResolvedValue([mockTools[2]]);
-
-      // Mock servers provider to map indexes to identifiers
-      vi.mocked(mockServersProvider.getServerIdentifier)
-        .mockImplementation(async (index: number) => {
-          switch (index) {
-            case 0: return 'weatherService';
-            case 1: return 'searchService';
-            default: return null;
-          }
-        });
-
-      const result = await internalToolsService.toolsCall('cubicler_available_servers', {});
-
-      expect(result).toEqual({
+      const mockAvailableServersResponse = {
         total: 2,
         servers: [
           {
             identifier: 'weather_service',
             name: 'Weather Service',
-            description: 'weather_service server: weatherService',
+            description: 'Provides weather information',
             toolsCount: 2,
           },
           {
             identifier: 'search_service',
             name: 'Search Service',
-            description: 'search_service server: searchService',
+            description: 'Provides search functionality',
             toolsCount: 1,
           },
         ],
-      });
+      };
+
+      vi.mocked(mockServersProvider.getAvailableServers).mockResolvedValue(mockAvailableServersResponse);
+
+      const result = await internalToolsService.toolsCall('cubicler_available_servers', {});
+
+      expect(result).toEqual(mockAvailableServersResponse);
     });
 
     it('should execute cubicler_fetch_server_tools for cubicler server', async () => {
@@ -175,14 +143,12 @@ describe('Internal Tools Service', () => {
         },
       ]);
 
-      // Mock servers provider to resolve weatherService to index 0
-      vi.mocked(mockServersProvider.getServerIdentifier)
-        .mockImplementation(async (index: number) => {
-          switch (index) {
-            case 0: return 'weatherService';
-            case 1: return 'searchService';
-            default: return null;
-          }
+      // Mock servers provider to resolve server hash
+      vi.mocked(mockServersProvider.getServerHash)
+        .mockImplementation(async (identifier: string) => {
+          if (identifier === 'weather_service') return '0';
+          if (identifier === 'search_service') return '1';
+          return null;
         });
 
       const result = await internalToolsService.toolsCall('cubicler_fetch_server_tools', {
@@ -201,23 +167,13 @@ describe('Internal Tools Service', () => {
     });
 
     it('should throw error for non-existent server in fetch_server_tools', async () => {
-      // Mock servers provider to return known identifiers
-      vi.mocked(mockServersProvider.getServerIdentifier)
-        .mockImplementation(async (index: number) => {
-          if (index === 0) return 'weatherService';
-          if (index === 1) return 'searchService';
-          return null;
+      // Mock servers provider to return null for non-existent server
+      vi.mocked(mockServersProvider.getServerHash)
+        .mockImplementation(async (identifier: string) => {
+          if (identifier === 'weather_service') return '0';
+          if (identifier === 'search_service') return '1';
+          return null; // Return null for non-existent servers
         });
-
-      vi.mocked(mockToolsProviders[0].toolsList).mockResolvedValue([
-        {
-          name: 'weatherService_getWeather',
-          description: 'Get weather',
-          parameters: { type: 'object', properties: {} },
-        },
-      ]);
-
-      vi.mocked(mockToolsProviders[1].toolsList).mockResolvedValue([]);
 
       await expect(
         internalToolsService.toolsCall('cubicler_fetch_server_tools', {
@@ -227,44 +183,32 @@ describe('Internal Tools Service', () => {
     });
 
     it('should handle provider errors gracefully in available_servers', async () => {
-      // Mock servers provider to return correct identifiers
-      vi.mocked(mockServersProvider.getServerIdentifier)
-        .mockImplementation(async (index: number) => {
-          if (index === 0) return 'weatherService';
-          if (index === 1) return 'searchService';
-          return null;
-        });
-
-      vi.mocked(mockToolsProviders[0].toolsList).mockRejectedValue(new Error('Provider error'));
-      vi.mocked(mockToolsProviders[1].toolsList).mockResolvedValue([
-        {
-          name: 's1_search',
-          description: 'Search',
-          parameters: { type: 'object', properties: {} },
-        },
-      ]);
-
-      const result = await internalToolsService.toolsCall('cubicler_available_servers', {});
-
-      expect(result).toEqual({
+      // Mock the servers provider to return available servers
+      const mockAvailableServersResponse = {
         total: 1,
         servers: [
           {
             identifier: 'search_service',
             name: 'Search Service',
-            description: 'search_service server: searchService',
+            description: 'Provides search functionality',
             toolsCount: 1,
           },
         ],
-      });
+      };
+
+      vi.mocked(mockServersProvider.getAvailableServers).mockResolvedValue(mockAvailableServersResponse);
+
+      const result = await internalToolsService.toolsCall('cubicler_available_servers', {});
+
+      expect(result).toEqual(mockAvailableServersResponse);
     });
 
     it('should handle provider errors gracefully in fetch_server_tools', async () => {
-      // Mock servers provider to return correct identifiers  
-      vi.mocked(mockServersProvider.getServerIdentifier)
-        .mockImplementation(async (index: number) => {
-          if (index === 0) return 'weatherService';
-          if (index === 1) return 'searchService'; 
+      // Mock servers provider to return server hash
+      vi.mocked(mockServersProvider.getServerHash)
+        .mockImplementation(async (identifier: string) => {
+          if (identifier === 'weather_service') return '0';
+          if (identifier === 'search_service') return '1';
           return null;
         });
 

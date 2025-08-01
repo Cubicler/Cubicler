@@ -42,6 +42,7 @@ describe('Dispatch Service', () => {
 
     mockServerProvider = {
       getAvailableServers: vi.fn(),
+      getServerHash: vi.fn(),
     };
 
     // Create dispatch service with mocked dependencies

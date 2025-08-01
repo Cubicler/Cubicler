@@ -9,16 +9,9 @@ export interface ServersProviding {
   getAvailableServers(): Promise<import('../model/tools.js').AvailableServersResponse>;
 
   /**
-   * Get server index by identifier for function naming
-   * @param serverIdentifier - The server identifier
-   * @returns The server index (0-based) or -1 if not found
+   * Get server hash for tool naming
+   * @param serverIdentifier - The server identifier (snake_case)
+   * @returns The server hash or null if not found
    */
-  getServerIndex(serverIdentifier: string): Promise<number>;
-
-  /**
-   * Get server identifier by index for function parsing
-   * @param serverIndex - The server index (0-based)
-   * @returns The server identifier or null if not found
-   */
-  getServerIdentifier(serverIndex: number): Promise<string | null>;
+  getServerHash(serverIdentifier: string): Promise<string | null>;
 }

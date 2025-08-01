@@ -61,47 +61,6 @@ class ProviderMCPService implements MCPCompatible {
    * @returns Array of tool definitions from all MCP servers
    */
   async toolsList(): Promise<ToolDefinition[]> {
-    return await this.getAllMCPTools();
-  }
-
-  /**
-   * Check if this service can handle the given tool name
-   * @param toolName - Name of the tool to check (format: s{hash}_{snake_case_function})
-   * @returns true if this service can handle the tool, false otherwise
-   */
-  async canHandleRequest(toolName: string): Promise<boolean> {
-    try {
-      const { serverHash } = parseFunctionName(toolName);
-      
-      const config = await this.providerConfig.getProvidersConfig();
-      const mcpServers = config.mcpServers || [];
-      
-      const server = mcpServers.find(s => {
-        const expectedHash = generateServerHash(s.identifier, s.url);
-        return expectedHash === serverHash;
-      });
-      
-      return server !== undefined;
-    } catch {
-      return false;
-    }
-  }
-
-  /**
-   * Execute a tool call (MCPCompatible)
-   * @param toolName - Name of the tool to execute (format: serverCamelCase_functionCamelCase)
-   * @param parameters - Parameters to pass to the tool
-   * @returns Result of the tool execution
-   * @throws Error if tool execution fails
-   */
-  async toolsCall(toolName: string, parameters: JSONObject): Promise<JSONValue> {
-    return await this.executeToolByName(toolName, parameters);
-  }
-
-  /**
-   * Get all tools from all MCP servers only
-   */
-  private async getAllMCPTools(): Promise<ToolDefinition[]> {
     const config = await this.providerConfig.getProvidersConfig();
     const mcpServers = config.mcpServers || [];
     const allMCPTools: ToolDefinition[] = [];
@@ -140,13 +99,40 @@ class ProviderMCPService implements MCPCompatible {
   }
 
   /**
-   * Execute a tool by parsing the full function name s{hash}_{snake_case_function}
+   * Check if this service can handle the given tool name
+   * @param toolName - Name of the tool to check (format: s{hash}_{snake_case_function})
+   * @returns true if this service can handle the tool, false otherwise
    */
-  private async executeToolByName(fullFunctionName: string, parameters: JSONObject): Promise<JSONValue> {
-    console.log(`⚙️ [ProviderMCPService] Executing MCP tool: ${fullFunctionName}`);
+  async canHandleRequest(toolName: string): Promise<boolean> {
+    try {
+      const { serverHash } = parseFunctionName(toolName);
+      
+      const config = await this.providerConfig.getProvidersConfig();
+      const mcpServers = config.mcpServers || [];
+      
+      const server = mcpServers.find(s => {
+        const expectedHash = generateServerHash(s.identifier, s.url);
+        return expectedHash === serverHash;
+      });
+      
+      return server !== undefined;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Execute a tool call (MCPCompatible)
+   * @param toolName - Name of the tool to execute (format: serverCamelCase_functionCamelCase)
+   * @param parameters - Parameters to pass to the tool
+   * @returns Result of the tool execution
+   * @throws Error if tool execution fails
+   */
+  async toolsCall(toolName: string, parameters: JSONObject): Promise<JSONValue> {
+    console.log(`⚙️ [ProviderMCPService] Executing MCP tool: ${toolName}`);
 
     // Parse the function name using utility
-    const { serverHash, functionName } = parseFunctionName(fullFunctionName);
+    const { serverHash, functionName } = parseFunctionName(toolName);
     
     // Find server by hash
     const config = await this.providerConfig.getProvidersConfig();
