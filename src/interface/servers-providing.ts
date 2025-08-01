@@ -13,5 +13,6 @@ export interface ServersProviding {
    * @param serverIdentifier - The server identifier (snake_case)
    * @returns The server hash or null if not found
    */
+  // eslint-disable-next-line no-unused-vars
   getServerHash(serverIdentifier: string): Promise<string | null>;
 }

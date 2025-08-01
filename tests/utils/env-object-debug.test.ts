@@ -24,10 +24,10 @@ describe('Environment Variable Object Substitution Debug', () => {
           name: 'Test Service',
           url: '{{env.SERVICE_URL}}/mcp',
           headers: {
-            Authorization: 'Bearer {{env.API_TOKEN}}'
-          }
-        }
-      ]
+            Authorization: 'Bearer {{env.API_TOKEN}}',
+          },
+        },
+      ],
     };
 
     const result = substituteEnvVarsInObject(testObj);
@@ -42,10 +42,10 @@ describe('Environment Variable Object Substitution Debug', () => {
           name: 'Test Service',
           url: 'http://localhost:4000/mcp',
           headers: {
-            Authorization: 'Bearer secret-token'
-          }
-        }
-      ]
+            Authorization: 'Bearer secret-token',
+          },
+        },
+      ],
     });
   });
 });

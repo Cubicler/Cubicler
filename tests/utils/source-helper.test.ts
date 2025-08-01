@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { isRemoteUrl, isFilePath, isInline, detectSourceType } from '../../src/utils/source-helper.js';
+import {
+  isRemoteUrl,
+  isFilePath,
+  isInline,
+  detectSourceType,
+} from '../../src/utils/source-helper.js';
 
 describe('SourceHelper', () => {
   describe('isRemoteUrl', () => {
@@ -197,10 +202,10 @@ describe('SourceHelper', () => {
     it('should prioritize detection correctly', () => {
       // URLs should be detected first
       expect(detectSourceType('https://example.com/path.txt')).toBe('remote-url');
-      
+
       // File paths should be detected second
       expect(detectSourceType('./prompt.txt')).toBe('file-path');
-      
+
       // Everything else should be inline
       expect(detectSourceType('simple text')).toBe('inline');
     });

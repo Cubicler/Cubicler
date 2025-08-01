@@ -24,10 +24,12 @@ export interface ProvidersConfigProviding {
   /**
    * Get server hash for tool naming
    */
+  // eslint-disable-next-line no-unused-vars
   getServerHash(serverIdentifier: string): Promise<string | null>;
 
   /**
    * Update tool count for a specific server (used by MCP services after initialization)
    */
+  // eslint-disable-next-line no-unused-vars
   updateServerToolCount(serverIdentifier: string, toolsCount: number): Promise<void>;
 }

@@ -296,7 +296,9 @@ describe('Agent Service', () => {
       };
 
       vi.mocked(mockAgentsConfigProvider.getAgentsConfig).mockResolvedValue(mockConfig);
-      vi.mocked(mockServersProvider.getAvailableServers).mockRejectedValue(new Error('Server error'));
+      vi.mocked(mockServersProvider.getAvailableServers).mockRejectedValue(
+        new Error('Server error')
+      );
 
       const result = await agentService.getAgentPrompt('test_agent');
 
@@ -318,7 +320,10 @@ describe('Agent Service', () => {
       };
 
       vi.mocked(mockAgentsConfigProvider.getAgentsConfig).mockResolvedValue(mockConfig);
-      vi.mocked(mockServersProvider.getAvailableServers).mockResolvedValue({ total: 0, servers: [] });
+      vi.mocked(mockServersProvider.getAvailableServers).mockResolvedValue({
+        total: 0,
+        servers: [],
+      });
 
       const result = await agentService.getAgentPrompt('minimal_agent');
 

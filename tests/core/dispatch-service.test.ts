@@ -46,11 +46,7 @@ describe('Dispatch Service', () => {
     };
 
     // Create dispatch service with mocked dependencies
-    dispatchService = new DispatchService(
-      mockToolsProvider,
-      mockAgentProvider,
-      mockServerProvider
-    );
+    dispatchService = new DispatchService(mockToolsProvider, mockAgentProvider, mockServerProvider);
   });
 
   describe('dispatch', () => {
@@ -172,7 +168,10 @@ describe('Dispatch Service', () => {
         'You specialize in creative and analytical tasks.'
       );
       vi.mocked(mockToolsProvider.toolsList).mockResolvedValue([]);
-      vi.mocked(mockServerProvider.getAvailableServers).mockResolvedValue({ total: 0, servers: [] });
+      vi.mocked(mockServerProvider.getAvailableServers).mockResolvedValue({
+        total: 0,
+        servers: [],
+      });
 
       const mockAxiosResponse: AxiosResponse = {
         status: 200,
@@ -211,7 +210,10 @@ describe('Dispatch Service', () => {
       vi.mocked(mockAgentProvider.getAgentUrl).mockResolvedValue('http://localhost:3000/agent');
       vi.mocked(mockAgentProvider.getAgentPrompt).mockResolvedValue('Test prompt');
       vi.mocked(mockToolsProvider.toolsList).mockResolvedValue([]);
-      vi.mocked(mockServerProvider.getAvailableServers).mockResolvedValue({ total: 0, servers: [] });
+      vi.mocked(mockServerProvider.getAvailableServers).mockResolvedValue({
+        total: 0,
+        servers: [],
+      });
 
       const networkError = new Error('Network error');
       vi.mocked(mockFetchWithAgentTimeout).mockRejectedValue(networkError);
@@ -241,7 +243,10 @@ describe('Dispatch Service', () => {
       vi.mocked(mockAgentProvider.getAgentUrl).mockResolvedValue('http://localhost:3000/agent');
       vi.mocked(mockAgentProvider.getAgentPrompt).mockResolvedValue('Test prompt');
       vi.mocked(mockToolsProvider.toolsList).mockResolvedValue([]);
-      vi.mocked(mockServerProvider.getAvailableServers).mockResolvedValue({ total: 0, servers: [] });
+      vi.mocked(mockServerProvider.getAvailableServers).mockResolvedValue({
+        total: 0,
+        servers: [],
+      });
 
       // Mock invalid response (missing required fields)
       const mockAxiosResponse: AxiosResponse = {
@@ -279,7 +284,10 @@ describe('Dispatch Service', () => {
       vi.mocked(mockAgentProvider.getAgentUrl).mockResolvedValue('http://localhost:3000/agent');
       vi.mocked(mockAgentProvider.getAgentPrompt).mockResolvedValue('Test prompt');
       vi.mocked(mockToolsProvider.toolsList).mockResolvedValue([]);
-      vi.mocked(mockServerProvider.getAvailableServers).mockResolvedValue({ total: 0, servers: [] });
+      vi.mocked(mockServerProvider.getAvailableServers).mockResolvedValue({
+        total: 0,
+        servers: [],
+      });
 
       // Mock HTTP error response
       const mockAxiosResponse: AxiosResponse = {

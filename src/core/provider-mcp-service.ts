@@ -1,7 +1,12 @@
 import type { JSONObject, JSONValue, MCPRequest, MCPResponse } from '../model/types.js';
 import type { MCPTool, ToolDefinition } from '../model/tools.js';
 import { fetchWithDefaultTimeout } from '../utils/fetch-helper.js';
-import { generateFunctionName, generateServerHash, parseFunctionName, toSnakeCase } from '../utils/parameter-helper.js';
+import {
+  generateFunctionName,
+  generateServerHash,
+  parseFunctionName,
+  toSnakeCase,
+} from '../utils/parameter-helper.js';
 import type { ProvidersConfigProviding } from '../interface/providers-config-providing.js';
 import type { ServersProviding } from '../interface/servers-providing.js';
 import providersRepository from '../repository/provider-repository.js';
@@ -106,15 +111,15 @@ class ProviderMCPService implements MCPCompatible {
   async canHandleRequest(toolName: string): Promise<boolean> {
     try {
       const { serverHash } = parseFunctionName(toolName);
-      
+
       const config = await this.providerConfig.getProvidersConfig();
       const mcpServers = config.mcpServers || [];
-      
-      const server = mcpServers.find(s => {
+
+      const server = mcpServers.find((s) => {
         const expectedHash = generateServerHash(s.identifier, s.url);
         return expectedHash === serverHash;
       });
-      
+
       return server !== undefined;
     } catch {
       return false;
@@ -133,16 +138,16 @@ class ProviderMCPService implements MCPCompatible {
 
     // Parse the function name using utility
     const { serverHash, functionName } = parseFunctionName(toolName);
-    
+
     // Find server by hash
     const config = await this.providerConfig.getProvidersConfig();
     const mcpServers = config.mcpServers || [];
-    
-    const server = mcpServers.find(s => {
+
+    const server = mcpServers.find((s) => {
       const expectedHash = generateServerHash(s.identifier, s.url);
       return expectedHash === serverHash;
     });
-    
+
     if (!server) {
       throw new Error(`Server not found for hash: ${serverHash}`);
     }
@@ -155,7 +160,10 @@ class ProviderMCPService implements MCPCompatible {
   /**
    * Send an MCP request to a specific server
    */
-  private async sendMCPRequest(serverIdentifier: string, request: MCPRequest): Promise<MCPResponse> {
+  private async sendMCPRequest(
+    serverIdentifier: string,
+    request: MCPRequest
+  ): Promise<MCPResponse> {
     console.log(
       `📡 [ProviderMCPService] Sending MCP request to ${serverIdentifier}:`,
       request.method

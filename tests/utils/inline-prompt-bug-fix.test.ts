@@ -11,7 +11,7 @@ describe('Inline Prompt Bug Fix', () => {
       'Summarize this article in 3 bullet points',
       'Debug this error message and suggest a fix',
       'Write a creative story about a robot',
-      'Explain quantum computing in simple terms'
+      'Explain quantum computing in simple terms',
     ];
 
     for (const prompt of inlinePrompts) {
@@ -27,7 +27,7 @@ describe('Inline Prompt Bug Fix', () => {
       '../agents/agent-prompt.txt',
       '/path/to/system-prompt.md',
       '~/prompts/base.txt',
-      'config.json'
+      'config.json',
     ];
 
     for (const path of filePaths) {
@@ -39,10 +39,7 @@ describe('Inline Prompt Bug Fix', () => {
 
   it('should still detect and load URLs', async () => {
     // These should be detected as URLs (but will fail to load and fallback to inline)
-    const urls = [
-      'https://example.com/prompt.md',
-      'http://localhost:3000/api/prompt'
-    ];
+    const urls = ['https://example.com/prompt.md', 'http://localhost:3000/api/prompt'];
 
     for (const url of urls) {
       const result = await loadPrompt(url, 'test URL prompt');
@@ -54,13 +51,13 @@ describe('Inline Prompt Bug Fix', () => {
   it('should handle edge cases correctly', async () => {
     // Empty content
     expect(await loadPrompt('', 'empty')).toBe('');
-    
+
     // Whitespace-only content
     expect(await loadPrompt('   ', 'whitespace')).toBe('');
-    
+
     // Content with spaces (clearly inline)
     expect(await loadPrompt('hello world', 'inline with spaces')).toBe('hello world');
-    
+
     // Content with punctuation (clearly inline)
     expect(await loadPrompt('What is AI?', 'inline with question')).toBe('What is AI?');
   });

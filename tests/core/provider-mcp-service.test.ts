@@ -100,7 +100,7 @@ describe('ProviderMCPService', () => {
 
     // Create service instance
     providerMCPService = new ProviderMCPService(mockProviderConfig);
-    
+
     // Set the servers provider
     providerMCPService.setServersProvider(mockServersProvider);
   });

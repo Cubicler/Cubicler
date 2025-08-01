@@ -14,8 +14,9 @@ export function isRemoteUrl(value: string): boolean {
   // - Domain with at least one dot or localhost
   // - Optional port number
   // - Optional path, query parameters, and fragments
-  const urlRegex = /^https?:\/\/(?:(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}|localhost)(?::\d+)?(?:\/[^\s]*)?$/i;
-  
+  const urlRegex =
+    /^https?:\/\/(?:(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}|localhost)(?::\d+)?(?:\/[^\s]*)?$/i;
+
   return urlRegex.test(value.trim());
 }
 
@@ -39,22 +40,22 @@ export function isFilePath(value: string): boolean {
   // Robust file path detection patterns
   const filePathPatterns = [
     // Absolute paths (Unix-like: /path/to/file, Windows: C:\path\to\file, D:/path/to/file)
-    /^(?:[a-zA-Z]:)?[\/\\](?:[^\/\\:*?"<>|]+[\/\\])*[^\/\\:*?"<>|]*$/,
-    
+    /^(?:[a-zA-Z]:)?[/\\](?:[^/\\:*?"<>|]+[/\\])*[^/\\:*?"<>|]*$/,
+
     // Relative paths starting with ./ or ../
-    /^\.{1,2}[\/\\](?:[^\/\\:*?"<>|]+[\/\\])*[^\/\\:*?"<>|]*$/,
-    
+    /^\.{1,2}[/\\](?:[^/\\:*?"<>|]+[/\\])*[^/\\:*?"<>|]*$/,
+
     // Home directory paths starting with ~/
-    /^~[\/\\](?:[^\/\\:*?"<>|]+[\/\\])*[^\/\\:*?"<>|]*$/,
-    
+    /^~[/\\](?:[^/\\:*?"<>|]+[/\\])*[^/\\:*?"<>|]*$/,
+
     // Files with common text extensions anywhere in the path
-    /^(?:[^\/\\:*?"<>|]+[\/\\])*[^\/\\:*?"<>|]+\.(txt|md|markdown|text|json|yaml|yml|toml|ini|conf|config|log|readme)$/i,
-    
+    /^(?:[^/\\:*?"<>|]+[/\\])*[^/\\:*?"<>|]+\.(txt|md|markdown|text|json|yaml|yml|toml|ini|conf|config|log|readme)$/i,
+
     // Paths containing directory separators (at least one slash or backslash, with characters on both sides)
-    /^[^\/\\:*?"<>|]+[\/\\]+[^\/\\:*?"<>|]+.*$/
+    /^[^/\\:*?"<>|]+[/\\]+[^/\\:*?"<>|]+.*$/,
   ];
 
-  return filePathPatterns.some(pattern => pattern.test(trimmedValue));
+  return filePathPatterns.some((pattern) => pattern.test(trimmedValue));
 }
 
 /**
@@ -84,10 +85,10 @@ export function detectSourceType(value: string): 'remote-url' | 'file-path' | 'i
   if (isRemoteUrl(value)) {
     return 'remote-url';
   }
-  
+
   if (isFilePath(value)) {
     return 'file-path';
   }
-  
+
   return 'inline';
 }

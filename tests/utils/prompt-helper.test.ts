@@ -57,10 +57,7 @@ describe('PromptHelper', () => {
         config: {},
       } as any);
 
-      const result = await loadPromptFromSource(
-        'https://example.com/prompt.md',
-        'test prompt'
-      );
+      const result = await loadPromptFromSource('https://example.com/prompt.md', 'test prompt');
 
       expect(result).toBe(mockContent);
       expect(mockFetchWithDefaultTimeout).toHaveBeenCalledWith(
@@ -69,8 +66,8 @@ describe('PromptHelper', () => {
           timeout: 5000,
           headers: expect.objectContaining({
             Accept: 'text/plain, text/markdown, application/octet-stream',
-            'User-Agent': 'Cubicler/2.0'
-          })
+            'User-Agent': 'Cubicler/2.0',
+          }),
         })
       );
     });
@@ -98,9 +95,9 @@ describe('PromptHelper', () => {
         throw new Error('File not found');
       });
 
-      await expect(
-        loadPromptFromSource('./nonexistent.md', 'test prompt')
-      ).rejects.toThrow('Failed to load test prompt from file');
+      await expect(loadPromptFromSource('./nonexistent.md', 'test prompt')).rejects.toThrow(
+        'Failed to load test prompt from file'
+      );
     });
 
     it('should handle HTTP error responses', async () => {
@@ -151,7 +148,7 @@ describe('PromptHelper', () => {
     it('should handle empty or null values', async () => {
       expect(await loadPrompt('', 'test prompt')).toBe('');
       expect(await loadPrompt('   ', 'test prompt')).toBe('');
-      
+
       expect(mockReadFileSync).not.toHaveBeenCalled();
       expect(mockFetchWithDefaultTimeout).not.toHaveBeenCalled();
     });
@@ -164,7 +161,7 @@ describe('PromptHelper', () => {
         'Question prompt?',
         'Exclamation prompt!',
         'Long sentence with punctuation.',
-        'Multiple words separated by spaces'
+        'Multiple words separated by spaces',
       ];
 
       for (const testCase of testCases) {
@@ -172,7 +169,7 @@ describe('PromptHelper', () => {
         expect(result).toBe(testCase);
         expect(mockReadFileSync).not.toHaveBeenCalled();
         expect(mockFetchWithDefaultTimeout).not.toHaveBeenCalled();
-        
+
         vi.clearAllMocks();
       }
     });
@@ -209,7 +206,8 @@ describe('PromptHelper', () => {
 
     it('should fallback to inline content for path-like strings that are actually prompts', async () => {
       // This should be detected as a path due to the file extension
-      const promptWithPath = './some-config.md but actually this is a long prompt with instructions';
+      const promptWithPath =
+        './some-config.md but actually this is a long prompt with instructions';
       mockReadFileSync.mockImplementation(() => {
         throw new Error('File not found');
       });
@@ -217,7 +215,10 @@ describe('PromptHelper', () => {
       const result = await loadPrompt(promptWithPath, 'test prompt');
 
       expect(result).toBe(promptWithPath);
-      expect(mockReadFileSync).toHaveBeenCalledWith('./some-config.md but actually this is a long prompt with instructions', 'utf-8');
+      expect(mockReadFileSync).toHaveBeenCalledWith(
+        './some-config.md but actually this is a long prompt with instructions',
+        'utf-8'
+      );
     });
   });
 });

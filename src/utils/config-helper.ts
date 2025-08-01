@@ -1,6 +1,10 @@
 import { readFileSync } from 'fs';
 import { fetchWithDefaultTimeout } from './fetch-helper.js';
-import { getConfigLoadTimeout, getConfigurationSource, substituteEnvVarsInObject } from './env-helper.js';
+import {
+  getConfigLoadTimeout,
+  getConfigurationSource,
+  substituteEnvVarsInObject,
+} from './env-helper.js';
 import { isRemoteUrl } from './source-helper.js';
 import type { ProvidersConfig } from '../model/providers.js';
 import type { AgentsConfig } from '../model/agents.js';

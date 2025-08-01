@@ -2,7 +2,6 @@ import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { InternalToolsService } from '../../src/core/internal-tools-service.js';
 import type { ToolsListProviding } from '../../src/interface/tools-list-providing.js';
 import type { ServersProviding } from '../../src/interface/servers-providing.js';
-import type { ToolDefinition } from '../../src/model/tools.js';
 
 describe('Internal Tools Service', () => {
   let internalToolsService: InternalToolsService;
@@ -19,7 +18,7 @@ describe('Internal Tools Service', () => {
     };
 
     const mockProvider2: ToolsListProviding = {
-      identifier: 'search_service', 
+      identifier: 'search_service',
       toolsList: vi.fn(),
     };
 
@@ -94,7 +93,9 @@ describe('Internal Tools Service', () => {
         ],
       };
 
-      vi.mocked(mockServersProvider.getAvailableServers).mockResolvedValue(mockAvailableServersResponse);
+      vi.mocked(mockServersProvider.getAvailableServers).mockResolvedValue(
+        mockAvailableServersResponse
+      );
 
       const result = await internalToolsService.toolsCall('cubicler_available_servers', {});
 
@@ -144,12 +145,13 @@ describe('Internal Tools Service', () => {
       ]);
 
       // Mock servers provider to resolve server hash
-      vi.mocked(mockServersProvider.getServerHash)
-        .mockImplementation(async (identifier: string) => {
+      vi.mocked(mockServersProvider.getServerHash).mockImplementation(
+        async (identifier: string) => {
           if (identifier === 'weather_service') return '0';
           if (identifier === 'search_service') return '1';
           return null;
-        });
+        }
+      );
 
       const result = await internalToolsService.toolsCall('cubicler_fetch_server_tools', {
         serverIdentifier: 'weather_service',
@@ -168,18 +170,21 @@ describe('Internal Tools Service', () => {
 
     it('should throw error for non-existent server in fetch_server_tools', async () => {
       // Mock servers provider to return null for non-existent server
-      vi.mocked(mockServersProvider.getServerHash)
-        .mockImplementation(async (identifier: string) => {
+      vi.mocked(mockServersProvider.getServerHash).mockImplementation(
+        async (identifier: string) => {
           if (identifier === 'weather_service') return '0';
           if (identifier === 'search_service') return '1';
           return null; // Return null for non-existent servers
-        });
+        }
+      );
 
       await expect(
         internalToolsService.toolsCall('cubicler_fetch_server_tools', {
           serverIdentifier: 'non_existent_service',
         })
-      ).rejects.toThrow('Failed to get tools for server non_existent_service: Server not found: non_existent_service');
+      ).rejects.toThrow(
+        'Failed to get tools for server non_existent_service: Server not found: non_existent_service'
+      );
     });
 
     it('should handle provider errors gracefully in available_servers', async () => {
@@ -196,7 +201,9 @@ describe('Internal Tools Service', () => {
         ],
       };
 
-      vi.mocked(mockServersProvider.getAvailableServers).mockResolvedValue(mockAvailableServersResponse);
+      vi.mocked(mockServersProvider.getAvailableServers).mockResolvedValue(
+        mockAvailableServersResponse
+      );
 
       const result = await internalToolsService.toolsCall('cubicler_available_servers', {});
 
@@ -205,12 +212,13 @@ describe('Internal Tools Service', () => {
 
     it('should handle provider errors gracefully in fetch_server_tools', async () => {
       // Mock servers provider to return server hash
-      vi.mocked(mockServersProvider.getServerHash)
-        .mockImplementation(async (identifier: string) => {
+      vi.mocked(mockServersProvider.getServerHash).mockImplementation(
+        async (identifier: string) => {
           if (identifier === 'weather_service') return '0';
           if (identifier === 'search_service') return '1';
           return null;
-        });
+        }
+      );
 
       vi.mocked(mockToolsProviders[0].toolsList).mockRejectedValue(new Error('Provider error'));
       vi.mocked(mockToolsProviders[1].toolsList).mockResolvedValue([

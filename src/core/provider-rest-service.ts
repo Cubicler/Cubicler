@@ -1,6 +1,13 @@
 import type { JSONObject, JSONValue } from '../model/types.js';
 import { fetchWithDefaultTimeout } from '../utils/fetch-helper.js';
-import { convertToQueryParams, replacePathParameters, generateFunctionName, generateServerHash, parseFunctionName, toSnakeCase } from '../utils/parameter-helper.js';
+import {
+  convertToQueryParams,
+  generateFunctionName,
+  generateServerHash,
+  parseFunctionName,
+  replacePathParameters,
+  toSnakeCase,
+} from '../utils/parameter-helper.js';
 import type { ProvidersConfigProviding } from '../interface/providers-config-providing.js';
 import type { ServersProviding } from '../interface/servers-providing.js';
 import providersRepository from '../repository/provider-repository.js';
@@ -73,7 +80,7 @@ class ProviderRESTService implements MCPCompatible {
     return allTools;
   }
 
-    /**
+  /**
    * Execute a REST tool by parsing function name and delegating to executeRESTTool
    * @param toolName - Name of the tool to execute (format: s{hash}_{snake_case_function})
    * @param parameters - Parameters for the tool execution
@@ -82,16 +89,16 @@ class ProviderRESTService implements MCPCompatible {
    */
   async toolsCall(toolName: string, parameters: JSONObject): Promise<JSONValue> {
     const { serverHash, functionName } = parseFunctionName(toolName);
-    
+
     // Find server by hash
     const config = await this.configProvider.getProvidersConfig();
     const restServers = config.restServers || [];
-    
-    const server = restServers.find(s => {
+
+    const server = restServers.find((s) => {
       const expectedHash = generateServerHash(s.identifier, s.url);
       return expectedHash === serverHash;
     });
-    
+
     if (!server) {
       throw new Error(`REST server not found for hash: ${serverHash}`);
     }
@@ -107,15 +114,15 @@ class ProviderRESTService implements MCPCompatible {
   async canHandleRequest(toolName: string): Promise<boolean> {
     try {
       const { serverHash } = parseFunctionName(toolName);
-      
+
       const config = await this.configProvider.getProvidersConfig();
       const restServers = config.restServers || [];
-      
-      const server = restServers.find(s => {
+
+      const server = restServers.find((s) => {
         const expectedHash = generateServerHash(s.identifier, s.url);
         return expectedHash === serverHash;
       });
-      
+
       return server !== undefined;
     } catch {
       return false;
@@ -168,7 +175,11 @@ class ProviderRESTService implements MCPCompatible {
       }
 
       return {
-        name: generateFunctionName(restServer.identifier, restServer.url, toSnakeCase(endpoint.name)),
+        name: generateFunctionName(
+          restServer.identifier,
+          restServer.url,
+          toSnakeCase(endpoint.name)
+        ),
         description: endpoint.description,
         parameters: {
           type: 'object',

@@ -12,20 +12,22 @@ export function toSnakeCase(str: string): string {
   if (!str || typeof str !== 'string') {
     return str || '';
   }
-  return str
-    // Handle spaced case
-    .replace(/\s+/g, '_')
-    // Handle kebab-case
-    .replace(/-/g, '_')
-    // Handle camelCase and PascalCase
-    .replace(/([a-z])([A-Z])/g, '$1_$2')
-    // Handle consecutive uppercase letters (like XMLHttpRequest)
-    .replace(/([A-Z])([A-Z][a-z])/g, '$1_$2')
-    .toLowerCase()
-    // Clean up multiple underscores
-    .replace(/_+/g, '_')
-    // Remove leading/trailing underscores
-    .replace(/^_|_$/g, '');
+  return (
+    str
+      // Handle spaced case
+      .replace(/\s+/g, '_')
+      // Handle kebab-case
+      .replace(/-/g, '_')
+      // Handle camelCase and PascalCase
+      .replace(/([a-z])([A-Z])/g, '$1_$2')
+      // Handle consecutive uppercase letters (like XMLHttpRequest)
+      .replace(/([A-Z])([A-Z][a-z])/g, '$1_$2')
+      .toLowerCase()
+      // Clean up multiple underscores
+      .replace(/_+/g, '_')
+      // Remove leading/trailing underscores
+      .replace(/^_|_$/g, '')
+  );
 }
 
 /**
@@ -38,14 +40,14 @@ export function toSnakeCase(str: string): string {
 export function generateServerHash(serverIdentifier: string, serverUrl: string): string {
   // Create deterministic input by combining identifier and URL
   const input = `${serverIdentifier}:${serverUrl}`;
-  
+
   // Generate SHA-256 hash
   const hash = createHash('sha256').update(input).digest('hex');
-  
+
   // Convert first 32 bits (8 hex chars) to base36 for compact representation
   const hashNum = parseInt(hash.substring(0, 8), 16);
   const base36Hash = hashNum.toString(36);
-  
+
   // Pad to 6 characters with leading zeros if needed
   return base36Hash.padStart(6, '0');
 }
@@ -57,7 +59,11 @@ export function generateServerHash(serverIdentifier: string, serverUrl: string):
  * @param functionName - Function name (will be converted to snake_case)
  * @returns Function name in format "s{hash}_{snake_case_function}"
  */
-export function generateFunctionName(serverIdentifier: string, serverUrl: string, functionName: string): string {
+export function generateFunctionName(
+  serverIdentifier: string,
+  serverUrl: string,
+  functionName: string
+): string {
   const serverHash = generateServerHash(serverIdentifier, serverUrl);
   const snakeCaseFunction = toSnakeCase(functionName);
   return `s${serverHash}_${snakeCaseFunction}`;
@@ -79,15 +85,15 @@ export function parseFunctionName(functionName: string): {
     );
   }
 
-  const serverHash = match[1]!;
-  const snakeCaseFunction = match[2]!;
-  
-  if (!snakeCaseFunction) {
+  const serverHash = match[1];
+  const snakeCaseFunction = match[2];
+
+  if (!serverHash || !snakeCaseFunction) {
     throw new Error(
       `Invalid function name format: ${functionName}. Expected format: s{hash}_{snake_case_function}`
     );
   }
-  
+
   return {
     serverHash,
     functionName: snakeCaseFunction,

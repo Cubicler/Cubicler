@@ -1,5 +1,5 @@
 import type { JSONObject, JSONValue, MCPRequest, MCPResponse } from '../model/types.js';
-import type { MCPFormattedTool, ToolDefinition } from '../model/tools.js';
+import type { MCPFormattedTool } from '../model/tools.js';
 import { MCPCompatible } from '../interface/mcp-compatible.js';
 
 /**

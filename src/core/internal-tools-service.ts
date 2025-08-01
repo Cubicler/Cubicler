@@ -3,7 +3,6 @@ import { MCPCompatible } from '../interface/mcp-compatible.js';
 import { ToolsListProviding } from '../interface/tools-list-providing.js';
 import { ServersProviding } from '../interface/servers-providing.js';
 import { AvailableServersResponse, ServerToolsResponse, ToolDefinition } from '../model/tools.js';
-import { toSnakeCase, generateServerHash } from '../utils/parameter-helper.js';
 
 /**
  * Internal Functions Service for Cubicler
@@ -121,7 +120,7 @@ export class InternalToolsService implements MCPCompatible {
       // Get server information directly from the servers provider
       // This returns all configured servers regardless of initialization status
       const result = await this.serversProvider.getAvailableServers();
-      
+
       console.log(`✅ [InternalToolsService] Found ${result.total} servers`);
 
       return result;
@@ -168,7 +167,7 @@ export class InternalToolsService implements MCPCompatible {
       for (const service of this.toolsProviders) {
         try {
           const tools = await service.toolsList();
-          
+
           for (const tool of tools) {
             if (tool.name.startsWith(targetPrefix)) {
               matchingTools.push({
@@ -187,7 +186,9 @@ export class InternalToolsService implements MCPCompatible {
         }
       }
 
-      console.log(`✅ [InternalToolsService] Found ${matchingTools.length} tools for server: ${serverIdentifier}`);
+      console.log(
+        `✅ [InternalToolsService] Found ${matchingTools.length} tools for server: ${serverIdentifier}`
+      );
       return { tools: matchingTools };
     } catch (error) {
       console.error(
@@ -206,7 +207,10 @@ import providerRestService from './provider-rest-service.js';
 import providerService from './provider-service.js';
 
 // Create the internal tools service instance with providers
-const internalToolsServiceInstance = new InternalToolsService([providerMcpService, providerRestService]);
+const internalToolsServiceInstance = new InternalToolsService([
+  providerMcpService,
+  providerRestService,
+]);
 
 // Set up the servers provider dependency
 internalToolsServiceInstance.setServersProvider(providerService);

@@ -7,10 +7,7 @@ import {
 } from '../../src/utils/config-helper.js';
 import { isRemoteUrl } from '../../src/utils/source-helper.js';
 import { fetchWithDefaultTimeout } from '../../src/utils/fetch-helper.js';
-import {
-  getConfigurationSource,
-  getConfigLoadTimeout,
-} from '../../src/utils/env-helper.js';
+import { getConfigurationSource, getConfigLoadTimeout } from '../../src/utils/env-helper.js';
 import type { ProvidersConfig } from '../../src/model/providers.js';
 import type { AgentsConfig } from '../../src/model/agents.js';
 

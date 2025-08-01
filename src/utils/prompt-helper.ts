@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs';
 import { fetchWithDefaultTimeout } from './fetch-helper.js';
 import { getConfigLoadTimeout } from './env-helper.js';
-import { isRemoteUrl, isFilePath, isInline } from './source-helper.js';
+import { isFilePath, isInline, isRemoteUrl } from './source-helper.js';
 
 /**
  * Prompt loading helper utilities
@@ -45,7 +45,9 @@ export async function loadPromptFromSource(source: string, description: string):
         throw new Error('Remote URL returned invalid content');
       }
 
-      console.log(`✅ [PromptHelper] Successfully loaded ${description} from remote URL (${content.length} characters)`);
+      console.log(
+        `✅ [PromptHelper] Successfully loaded ${description} from remote URL (${content.length} characters)`
+      );
     } catch (error) {
       console.error(`❌ [PromptHelper] Failed to fetch ${description} from URL:`, error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -56,14 +58,18 @@ export async function loadPromptFromSource(source: string, description: string):
     try {
       console.log(`📁 [PromptHelper] Loading ${description} from local file...`);
       content = readFileSync(source, 'utf-8');
-      console.log(`✅ [PromptHelper] Successfully loaded ${description} from local file (${content.length} characters)`);
+      console.log(
+        `✅ [PromptHelper] Successfully loaded ${description} from local file (${content.length} characters)`
+      );
     } catch (error) {
       console.error(`❌ [PromptHelper] Failed to load ${description} from file:`, error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       throw new Error(`Failed to load ${description} from file "${source}": ${errorMessage}`);
     }
   } else {
-    throw new Error(`Invalid source format for ${description}: "${source}". Must be a valid URL or file path.`);
+    throw new Error(
+      `Invalid source format for ${description}: "${source}". Must be a valid URL or file path.`
+    );
   }
 
   return content.trim();
@@ -102,7 +108,10 @@ export async function loadPrompt(promptValue: string, description: string): Prom
       return await loadPromptFromSource(promptValue, description);
     } catch (error) {
       // If loading from source fails, fall back to treating as inline content
-      console.warn(`⚠️ [PromptHelper] Failed to load ${description} from source, treating as inline content:`, error instanceof Error ? error.message : 'Unknown error');
+      console.warn(
+        `⚠️ [PromptHelper] Failed to load ${description} from source, treating as inline content:`,
+        error instanceof Error ? error.message : 'Unknown error'
+      );
       return promptValue.trim();
     }
   }

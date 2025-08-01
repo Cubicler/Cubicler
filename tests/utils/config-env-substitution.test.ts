@@ -8,6 +8,7 @@ vi.mock('fs');
 vi.mock('../../src/utils/fetch-helper.js');
 
 const mockReadFileSync = vi.mocked(readFileSync);
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const mockFetchWithDefaultTimeout = vi.mocked(fetchWithDefaultTimeout);
 
 describe('Environment Variable Substitution in Config', () => {
@@ -42,11 +43,11 @@ describe('Environment Variable Substitution in Config', () => {
           transport: 'http',
           url: '{{env.SERVICE_URL}}/mcp',
           headers: {
-            Authorization: 'Bearer {{env.API_TOKEN}}'
-          }
-        }
+            Authorization: 'Bearer {{env.API_TOKEN}}',
+          },
+        },
       ],
-      restServers: []
+      restServers: [],
     };
 
     // Mock the file reading
@@ -63,11 +64,11 @@ describe('Environment Variable Substitution in Config', () => {
           transport: 'http',
           url: 'http://localhost:4000/mcp',
           headers: {
-            Authorization: 'Bearer secret-token'
-          }
-        }
+            Authorization: 'Bearer secret-token',
+          },
+        },
       ],
-      restServers: []
+      restServers: [],
     });
   });
 
@@ -86,11 +87,11 @@ describe('Environment Variable Substitution in Config', () => {
           transport: 'http',
           url: '{{env.MISSING_URL}}/mcp',
           headers: {
-            Authorization: 'Bearer {{env.MISSING_TOKEN}}'
-          }
-        }
+            Authorization: 'Bearer {{env.MISSING_TOKEN}}',
+          },
+        },
       ],
-      restServers: []
+      restServers: [],
     };
 
     // Mock the file reading
@@ -107,11 +108,11 @@ describe('Environment Variable Substitution in Config', () => {
           transport: 'http',
           url: '{{env.MISSING_URL}}/mcp',
           headers: {
-            Authorization: 'Bearer {{env.MISSING_TOKEN}}'
-          }
-        }
+            Authorization: 'Bearer {{env.MISSING_TOKEN}}',
+          },
+        },
       ],
-      restServers: []
+      restServers: [],
     });
   });
 
@@ -129,9 +130,9 @@ describe('Environment Variable Substitution in Config', () => {
           name: 'Test Agent',
           transport: 'http',
           url: '{{env.AGENT_URL}}/agent',
-          description: 'Test agent with token {{env.AGENT_KEY}}'
-        }
-      ]
+          description: 'Test agent with token {{env.AGENT_KEY}}',
+        },
+      ],
     };
 
     // Mock the file reading
@@ -147,9 +148,9 @@ describe('Environment Variable Substitution in Config', () => {
           name: 'Test Agent',
           transport: 'http',
           url: 'http://localhost:3000/agent',
-          description: 'Test agent with token agent-api-key'
-        }
-      ]
+          description: 'Test agent with token agent-api-key',
+        },
+      ],
     });
   });
 });

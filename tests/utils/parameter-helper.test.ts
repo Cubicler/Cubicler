@@ -17,12 +17,8 @@ describe('Parameter Helper', () => {
     });
 
     it('should throw error for invalid format', () => {
-      expect(() => parseFunctionName('justoneword')).toThrow(
-        'Invalid function name format'
-      );
-      expect(() => parseFunctionName('')).toThrow(
-        'Invalid function name format'
-      );
+      expect(() => parseFunctionName('justoneword')).toThrow('Invalid function name format');
+      expect(() => parseFunctionName('')).toThrow('Invalid function name format');
     });
   });
 

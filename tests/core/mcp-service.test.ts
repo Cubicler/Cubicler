@@ -178,7 +178,7 @@ describe('MCP Service', () => {
         expect(response.jsonrpc).toBe('2.0');
         expect(response.id).toBe(2);
         expect(response.result).toBeDefined();
-        
+
         // Type assertion to access tools property safely
         const result = response.result as unknown as { tools: MCPFormattedTool[] };
         expect(result.tools).toHaveLength(3);
@@ -260,9 +260,11 @@ describe('MCP Service', () => {
         expect(response.jsonrpc).toBe('2.0');
         expect(response.id).toBe(3);
         expect(response.result).toBeDefined();
-        
+
         // Type assertion for the response content
-        const result = response.result as unknown as { content: Array<{ type: string; text: string }> };
+        const result = response.result as unknown as {
+          content: Array<{ type: string; text: string }>;
+        };
         expect(result.content).toHaveLength(1);
         expect(result.content[0].type).toBe('text');
         expect(result.content[0].text).toContain('temperature');
@@ -288,7 +290,9 @@ describe('MCP Service', () => {
 
         const response = await mcpService.handleMCPRequest(request);
 
-        const result = response.result as unknown as { content: Array<{ type: string; text: string }> };
+        const result = response.result as unknown as {
+          content: Array<{ type: string; text: string }>;
+        };
         expect(result.content[0].text).toBe('Weather is sunny');
       });
 
@@ -410,7 +414,7 @@ describe('MCP Service', () => {
         (errorProvider.initialize as MockedFunction<any>).mockRejectedValue(
           new Error('Unexpected error')
         );
-        
+
         const errorService = new MCPService([errorProvider]);
 
         const request: MCPRequest = {

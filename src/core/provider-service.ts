@@ -50,7 +50,10 @@ import providerRestService from './provider-rest-service.js';
 import configProvider from '../repository/provider-repository.js';
 
 // Create the provider service instance
-const providerServiceInstance = new ProviderService(configProvider, [providerMcpService, providerRestService]);
+const providerServiceInstance = new ProviderService(configProvider, [
+  providerMcpService,
+  providerRestService,
+]);
 
 // Set up circular dependencies
 providerMcpService.setServersProvider(providerServiceInstance);

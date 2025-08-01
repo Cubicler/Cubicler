@@ -108,10 +108,10 @@ describe('ProviderRESTService', () => {
     };
 
     providerRESTService = new ProviderRESTService(mockProviderConfig);
-    
+
     // Set the servers provider
     providerRESTService.setServersProvider(mockServersProvider);
-    
+
     mockFetch = vi.mocked(fetchHelper.fetchWithDefaultTimeout);
   });
 

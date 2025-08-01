@@ -1,10 +1,10 @@
 import { config } from 'dotenv';
-import type { ProvidersConfig, MCPServer, RESTServer } from '../model/providers.js';
+import type { ProvidersConfig } from '../model/providers.js';
 import { AvailableServersResponse } from '../model/tools.js';
 import { Cache, createEnvCache } from '../utils/cache.js';
 import { ProvidersConfigProviding } from '../interface/providers-config-providing.js';
 import { loadConfigFromSource, validateProvidersConfig } from '../utils/config-helper.js';
-import { toSnakeCase, generateServerHash } from '../utils/parameter-helper.js';
+import { generateServerHash, toSnakeCase } from '../utils/parameter-helper.js';
 
 config();
 
@@ -100,8 +100,8 @@ class ProviderRepository implements ProvidersConfigProviding {
    */
   async getAvailableServers(): Promise<AvailableServersResponse> {
     const metadata = await this.getServerMetadata();
-    
-    const servers = metadata.map(server => ({
+
+    const servers = metadata.map((server) => ({
       identifier: server.identifier, // Already snake_case
       name: server.name,
       description: server.description,
@@ -119,8 +119,8 @@ class ProviderRepository implements ProvidersConfigProviding {
    */
   async getServerByIdentifier(serverIdentifier: string): Promise<ServerMetadata | null> {
     const metadata = await this.getServerMetadata();
-    
-    return metadata.find(server => server.identifier === serverIdentifier) || null;
+
+    return metadata.find((server) => server.identifier === serverIdentifier) || null;
   }
 
   /**
@@ -143,7 +143,7 @@ class ProviderRepository implements ProvidersConfigProviding {
       for (const mcpServer of config.mcpServers) {
         const identifier = toSnakeCase(mcpServer.identifier); // Store as snake_case
         const hash = generateServerHash(mcpServer.identifier, mcpServer.url);
-        
+
         metadata.push({
           identifier,
           name: mcpServer.name,
@@ -163,7 +163,7 @@ class ProviderRepository implements ProvidersConfigProviding {
       for (const restServer of config.restServers) {
         const identifier = toSnakeCase(restServer.identifier); // Store as snake_case
         const hash = generateServerHash(restServer.identifier, restServer.url);
-        
+
         metadata.push({
           identifier,
           name: restServer.name,
@@ -192,7 +192,7 @@ class ProviderRepository implements ProvidersConfigProviding {
     let hash = 0;
     for (let i = 0; i < configString.length; i++) {
       const char = configString.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash; // Convert to 32-bit integer
     }
     return hash.toString();
@@ -203,8 +203,8 @@ class ProviderRepository implements ProvidersConfigProviding {
    */
   async updateServerToolCount(serverIdentifier: string, toolsCount: number): Promise<void> {
     const metadata = await this.getServerMetadata();
-    const server = metadata.find(s => s.identifier === serverIdentifier);
-    
+    const server = metadata.find((s) => s.identifier === serverIdentifier);
+
     if (server) {
       server.toolsCount = toolsCount;
       // Update cache

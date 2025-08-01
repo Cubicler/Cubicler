@@ -1,5 +1,5 @@
 import { config } from 'dotenv';
-import type { Agent, AgentInfo, AgentsConfig } from '../model/agents.js';
+import type { Agent, AgentInfo } from '../model/agents.js';
 import type { AgentsProviding } from '../interface/agents-providing.js';
 import type { ServersProviding } from '../interface/servers-providing.js';
 import type { AgentsConfigProviding } from '../interface/agents-config-providing.js';
@@ -18,8 +18,10 @@ export class AgentService implements AgentsProviding {
    * @param agentsConfigProvider - Repository for accessing agents configuration
    */
   constructor(
-    private serversProvider: ServersProviding,
-    private agentsConfigProvider: AgentsConfigProviding
+    // eslint-disable-next-line no-unused-vars
+    private readonly serversProvider: ServersProviding,
+    // eslint-disable-next-line no-unused-vars
+    private readonly agentsConfigProvider: AgentsConfigProviding
   ) {}
 
   /**
@@ -35,7 +37,7 @@ export class AgentService implements AgentsProviding {
    * @returns The composed prompt string for the agent
    */
   async getAgentPrompt(agentIdentifier?: string): Promise<string> {
-    const config = await this.agentsConfigProvider.getAgentsConfig();;
+    const config = await this.agentsConfigProvider.getAgentsConfig();
 
     let agent: Agent;
     if (agentIdentifier) {
@@ -97,9 +99,9 @@ export class AgentService implements AgentsProviding {
    * @returns Array of agent information objects
    */
   async getAllAgents(): Promise<AgentInfo[]> {
-    const config = await this.agentsConfigProvider.getAgentsConfig();;
+    const config = await this.agentsConfigProvider.getAgentsConfig();
 
-    return config.agents.map((agent) => ({
+    return config.agents.map((agent: Agent) => ({
       identifier: agent.identifier,
       name: agent.name,
       description: agent.description,
@@ -138,7 +140,7 @@ export class AgentService implements AgentsProviding {
   private async generateTechnicalSection(): Promise<string> {
     try {
       const serversResponse = await this.serversProvider.getAvailableServers();
-      
+
       if (serversResponse.total === 0) {
         return '';
       }
@@ -147,7 +149,7 @@ export class AgentService implements AgentsProviding {
         '## Available Services',
         '',
         'You have access to the following external services through Cubicler:',
-        ''
+        '',
       ];
 
       // Add information about each server
@@ -163,9 +165,13 @@ export class AgentService implements AgentsProviding {
       sections.push('');
       sections.push('To discover what tools are available from any service, use:');
       sections.push('- `cubicler_available_servers` - Get list of all available servers');
-      sections.push('- `cubicler_fetch_server_tools` - Get detailed tool information for a specific server');
+      sections.push(
+        '- `cubicler_fetch_server_tools` - Get detailed tool information for a specific server'
+      );
       sections.push('');
-      sections.push('Once you know the available tools, you can call them directly using the format:');
+      sections.push(
+        'Once you know the available tools, you can call them directly using the format:'
+      );
       sections.push('`s{index}_{function_name}` (e.g., `s0_get_current_weather`)');
 
       return sections.join('\n');
@@ -179,7 +185,7 @@ export class AgentService implements AgentsProviding {
    * Get a specific agent by identifier
    */
   private async getAgent(agentIdentifier: string): Promise<Agent> {
-    const config = await this.agentsConfigProvider.getAgentsConfig();;
+    const config = await this.agentsConfigProvider.getAgentsConfig();
     const agent = config.agents.find((a) => a.identifier === agentIdentifier);
 
     if (!agent) {
@@ -193,7 +199,7 @@ export class AgentService implements AgentsProviding {
    * Get the first available agent (default agent)
    */
   private async getDefaultAgent(): Promise<Agent> {
-    const config = await this.agentsConfigProvider.getAgentsConfig();;
+    const config = await this.agentsConfigProvider.getAgentsConfig();
 
     if (config.agents.length === 0) {
       throw new Error('No agents available');
