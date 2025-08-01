@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs';
 import { fetchWithDefaultTimeout } from './fetch-helper.js';
-import { getConfigLoadTimeout, isValidUrl } from './env-helper.js';
-import { isRemoteUrl } from './config-helper.js';
+import { getConfigLoadTimeout } from './env-helper.js';
+import { isRemoteUrl, isFilePath, isInline } from './source-helper.js';
 
 /**
  * Prompt loading helper utilities
@@ -20,11 +20,6 @@ export async function loadPromptFromSource(source: string, description: string):
   let content: string;
 
   if (isRemoteUrl(source)) {
-    // Validate URL format
-    if (!isValidUrl(source)) {
-      throw new Error(`Invalid URL format for ${description}: ${source}`);
-    }
-
     // Load from URL
     try {
       console.log(`🌐 [PromptHelper] Fetching ${description} from remote URL...`);
@@ -56,7 +51,7 @@ export async function loadPromptFromSource(source: string, description: string):
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       throw new Error(`Failed to load ${description} from URL "${source}": ${errorMessage}`);
     }
-  } else {
+  } else if (isFilePath(source)) {
     // Load from file
     try {
       console.log(`📁 [PromptHelper] Loading ${description} from local file...`);
@@ -67,6 +62,8 @@ export async function loadPromptFromSource(source: string, description: string):
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       throw new Error(`Failed to load ${description} from file "${source}": ${errorMessage}`);
     }
+  } else {
+    throw new Error(`Invalid source format for ${description}: "${source}". Must be a valid URL or file path.`);
   }
 
   return content.trim();
@@ -78,25 +75,7 @@ export async function loadPromptFromSource(source: string, description: string):
  * @returns true if the value looks like a path/URL rather than inline content
  */
 export function isPromptSource(value: string): boolean {
-  // Check if it's a URL
-  if (isRemoteUrl(value)) {
-    return true;
-  }
-
-  // Check if it looks like a file path
-  // - Contains forward slash or backslash
-  // - Ends with common text file extensions
-  // - Starts with ./ or ../
-  const pathIndicators = [
-    value.includes('/'),
-    value.includes('\\'),
-    /\.(txt|md|markdown|text)$/i.test(value),
-    value.startsWith('./'),
-    value.startsWith('../'),
-    value.startsWith('~/')
-  ];
-
-  return pathIndicators.some(indicator => indicator);
+  return isRemoteUrl(value) || isFilePath(value);
 }
 
 /**
@@ -106,6 +85,17 @@ export function isPromptSource(value: string): boolean {
  * @returns Promise that resolves to the prompt content
  */
 export async function loadPrompt(promptValue: string, description: string): Promise<string> {
+  // Handle empty or null values
+  if (!promptValue || typeof promptValue !== 'string') {
+    return '';
+  }
+
+  // If it's inline content, return it directly
+  if (isInline(promptValue)) {
+    console.log(`📝 [PromptHelper] Using inline ${description} (${promptValue.length} characters)`);
+    return promptValue.trim();
+  }
+
   // If it looks like a source path/URL, try to load from source
   if (isPromptSource(promptValue)) {
     try {
@@ -117,6 +107,7 @@ export async function loadPrompt(promptValue: string, description: string): Prom
     }
   }
 
-  // Otherwise, treat as inline content
+  // Fallback: treat as inline content
+  console.log(`📝 [PromptHelper] Using inline ${description} (${promptValue.length} characters)`);
   return promptValue.trim();
 }

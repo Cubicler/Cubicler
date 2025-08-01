@@ -77,20 +77,6 @@ export function getConfigurationSource(envVar: string, description: string): str
 }
 
 /**
- * Helper function to validate if a string is a valid URL
- * @param str - The string to validate
- * @returns true if the string is a valid URL
- */
-export function isValidUrl(str: string): boolean {
-  try {
-    const url = new URL(str);
-    return url.protocol === 'http:' || url.protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
-
-/**
  * Helper function to get configuration loading timeout
  * @returns The configuration loading timeout in milliseconds (default: 10 seconds)
  */

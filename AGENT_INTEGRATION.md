@@ -134,7 +134,6 @@ Your agent **MUST** implement an HTTP endpoint to receive requests from Cubicler
 
 When your agent needs to call external functions, use Cubicler's MCP endpoint:
 
-
 #### Request: `POST /mcp`
 
 ```bash

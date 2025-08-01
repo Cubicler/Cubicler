@@ -1,15 +1,14 @@
 import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
 import { readFileSync } from 'fs';
 import {
-  isRemoteUrl,
   loadConfigFromSource,
   validateProvidersConfig,
   validateAgentsConfig,
 } from '../../src/utils/config-helper.js';
+import { isRemoteUrl } from '../../src/utils/source-helper.js';
 import { fetchWithDefaultTimeout } from '../../src/utils/fetch-helper.js';
 import {
   getConfigurationSource,
-  isValidUrl,
   getConfigLoadTimeout,
 } from '../../src/utils/env-helper.js';
 import type { ProvidersConfig } from '../../src/model/providers.js';
@@ -23,7 +22,6 @@ vi.mock('../../src/utils/env-helper.js');
 const mockReadFileSync = vi.mocked(readFileSync);
 const mockFetchWithDefaultTimeout = vi.mocked(fetchWithDefaultTimeout);
 const mockGetConfigurationSource = vi.mocked(getConfigurationSource);
-const mockIsValidUrl = vi.mocked(isValidUrl);
 const mockGetConfigLoadTimeout = vi.mocked(getConfigLoadTimeout);
 
 describe('Config Helper', () => {
@@ -106,7 +104,6 @@ describe('Config Helper', () => {
 
       beforeEach(() => {
         mockGetConfigurationSource.mockReturnValue('https://example.com/config.json');
-        mockIsValidUrl.mockReturnValue(true);
       });
 
       it('should successfully load valid JSON from URL', async () => {
@@ -130,14 +127,6 @@ describe('Config Helper', () => {
               'User-Agent': 'Cubicler/2.0',
             },
           }
-        );
-      });
-
-      it('should throw error for invalid URL format', async () => {
-        mockIsValidUrl.mockReturnValue(false);
-
-        await expect(loadConfigFromSource('TEST_ENV', 'test config')).rejects.toThrow(
-          'Invalid URL format: https://example.com/config.json'
         );
       });
 

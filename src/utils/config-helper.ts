@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs';
 import { fetchWithDefaultTimeout } from './fetch-helper.js';
-import { getConfigLoadTimeout, getConfigurationSource, isValidUrl, substituteEnvVarsInObject } from './env-helper.js';
+import { getConfigLoadTimeout, getConfigurationSource, substituteEnvVarsInObject } from './env-helper.js';
+import { isRemoteUrl } from './source-helper.js';
 import type { ProvidersConfig } from '../model/providers.js';
 import type { AgentsConfig } from '../model/agents.js';
 import type { JSONObject } from '../model/types.js';
@@ -9,15 +10,6 @@ import type { JSONObject } from '../model/types.js';
  * Configuration loading helper utilities
  * Provides unified configuration loading for both providers and agents
  */
-
-/**
- * Check if a source string is a remote URL
- * @param source - The source string to check
- * @returns true if the source is a remote URL
- */
-export function isRemoteUrl(source: string): boolean {
-  return source.startsWith('http://') || source.startsWith('https://');
-}
 
 /**
  * Load configuration from source (file or URL)
@@ -33,11 +25,6 @@ export async function loadConfigFromSource<T>(envVar: string, description: strin
   let config: T;
 
   if (isRemoteUrl(source)) {
-    // Validate URL format
-    if (!isValidUrl(source)) {
-      throw new Error(`Invalid URL format: ${source}`);
-    }
-
     // Load from URL
     try {
       console.log(`🌐 [ConfigHelper] Fetching from remote URL...`);

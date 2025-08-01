@@ -8,14 +8,6 @@ vi.mock('fs');
 vi.mock('../../src/utils/fetch-helper.js');
 vi.mock('../../src/utils/env-helper.js', () => ({
   getConfigLoadTimeout: () => 5000,
-  isValidUrl: (url: string) => {
-    try {
-      new URL(url);
-      return true;
-    } catch {
-      return false;
-    }
-  }
 }));
 
 const mockReadFileSync = vi.mocked(readFileSync);
@@ -154,6 +146,35 @@ describe('PromptHelper', () => {
       expect(result).toBe(inlineContent);
       expect(mockReadFileSync).not.toHaveBeenCalled();
       expect(mockFetchWithDefaultTimeout).not.toHaveBeenCalled();
+    });
+
+    it('should handle empty or null values', async () => {
+      expect(await loadPrompt('', 'test prompt')).toBe('');
+      expect(await loadPrompt('   ', 'test prompt')).toBe('');
+      
+      expect(mockReadFileSync).not.toHaveBeenCalled();
+      expect(mockFetchWithDefaultTimeout).not.toHaveBeenCalled();
+    });
+
+    it('should detect and use inline content correctly', async () => {
+      const testCases = [
+        'You are a helpful assistant',
+        'This is a multi-line\nprompt content',
+        'Prompt with numbers 123 and symbols !@#',
+        'Question prompt?',
+        'Exclamation prompt!',
+        'Long sentence with punctuation.',
+        'Multiple words separated by spaces'
+      ];
+
+      for (const testCase of testCases) {
+        const result = await loadPrompt(testCase, 'test prompt');
+        expect(result).toBe(testCase);
+        expect(mockReadFileSync).not.toHaveBeenCalled();
+        expect(mockFetchWithDefaultTimeout).not.toHaveBeenCalled();
+        
+        vi.clearAllMocks();
+      }
     });
 
     it('should trim inline content', async () => {
