@@ -85,12 +85,85 @@ class ProviderService implements ServersProviding {
       servers,
     };
   }
+
+  /**
+   * Get server index by identifier for function naming
+   * Based on order of servers in providers.json (MCP servers first, then REST servers)
+   * @param serverIdentifier - The server identifier
+   * @returns The server index (0-based) or -1 if not found
+   */
+  async getServerIndex(serverIdentifier: string): Promise<number> {
+    const config = await this.configProvider.getProvidersConfig();
+    let index = 0;
+
+    // Check MCP servers first
+    if (config.mcpServers) {
+      for (const server of config.mcpServers) {
+        if (server.identifier === serverIdentifier) {
+          return index;
+        }
+        index++;
+      }
+    }
+
+    // Check REST servers next
+    if (config.restServers) {
+      for (const server of config.restServers) {
+        if (server.identifier === serverIdentifier) {
+          return index;
+        }
+        index++;
+      }
+    }
+
+    return -1; // Not found
+  }
+
+  /**
+   * Get server identifier by index for function parsing
+   * Based on order of servers in providers.json (MCP servers first, then REST servers)
+   * @param serverIndex - The server index (0-based)
+   * @returns The server identifier or null if not found
+   */
+  async getServerIdentifier(serverIndex: number): Promise<string | null> {
+    const config = await this.configProvider.getProvidersConfig();
+    let currentIndex = 0;
+
+    // Check MCP servers first
+    if (config.mcpServers) {
+      for (const server of config.mcpServers) {
+        if (currentIndex === serverIndex) {
+          return server.identifier;
+        }
+        currentIndex++;
+      }
+    }
+
+    // Check REST servers next
+    if (config.restServers) {
+      for (const server of config.restServers) {
+        if (currentIndex === serverIndex) {
+          return server.identifier;
+        }
+        currentIndex++;
+      }
+    }
+
+    return null; // Not found
+  }
 }
 
 import providerMcpService from './provider-mcp-service.js';
 import providerRestService from './provider-rest-service.js';
 import configProvider from '../repository/provider-repository.js';
 
-// Export the class for dependency injection and a default instance for backward compatibility
+// Create the provider service instance
+const providerServiceInstance = new ProviderService(configProvider, [providerMcpService, providerRestService]);
+
+// Set up circular dependencies
+providerMcpService.setServersProvider(providerServiceInstance);
+providerRestService.setServersProvider(providerServiceInstance);
+
+// Export the class for dependency injection and the configured instance for backward compatibility
 export { ProviderService };
-export default new ProviderService(configProvider, [providerMcpService, providerRestService]);
+export default providerServiceInstance;

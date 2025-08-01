@@ -1,99 +1,107 @@
+import { createHash } from 'crypto';
 import { ToolCallParameters } from '../model/tools.js';
 import type { JSONValue } from '../model/types.js';
 
 /**
- * Convert snake_case or kebab-case string to camelCase
+ * Convert any naming convention to snake_case
+ * Handles: camelCase, PascalCase, kebab-case, spaced case, mixed cases
  * @param str - The string to convert
- * @returns camelCase string
- */
-export function toCamelCase(str: string): string {
-  return str
-    .replace(/[-_](.)/g, (_, char) => char.toUpperCase())
-    .replace(/^[A-Z]/, char => char.toLowerCase());
-}
-
-/**
- * Generate OpenAI-compatible function name using camelCase pattern
- * @param serverIdentifier - Server identifier (e.g., "weather_service")
- * @param functionName - Function name (e.g., "get_current_weather")
- * @returns OpenAI-compatible function name (e.g., "weatherService_getCurrentWeather")
- */
-export function generateFunctionName(serverIdentifier: string, functionName: string): string {
-  const camelCaseServer = toCamelCase(serverIdentifier);
-  const camelCaseFunction = toCamelCase(functionName);
-  return `${camelCaseServer}_${camelCaseFunction}`;
-}
-
-/**
- * Parse function name in the new camelCase format "serverCamelCase_functionCamelCase"
- * and map back to original server and function identifiers
- * @param functionName - The full function name
- * @returns Object with original server identifier and function name
- */
-export function parseFunctionName(functionName: string): {
-  serverIdentifier: string;
-  functionName: string;
-} {
-  const parts = functionName.split('_');
-  if (parts.length !== 2) {
-    throw new Error(
-      `Invalid function name format: ${functionName}. Expected format: serverCamelCase_functionCamelCase`
-    );
-  }
-
-  // For now, we need to map camelCase back to original format
-  // This is a simplified approach - in a real system you'd want a mapping table
-  const camelCaseServer = parts[0];
-  const camelCaseFunction = parts[1];
-  
-  if (!camelCaseServer || !camelCaseFunction) {
-    throw new Error(
-      `Invalid function name format: ${functionName}. Expected format: serverCamelCase_functionCamelCase`
-    );
-  }
-  
-  // Convert camelCase back to snake_case for internal system compatibility
-  const serverIdentifier = fromCamelCase(camelCaseServer);
-  const originalFunctionName = fromCamelCase(camelCaseFunction);
-  
-  return {
-    serverIdentifier,
-    functionName: originalFunctionName,
-  };
-}
-
-/**
- * Convert camelCase back to snake_case
- * @param str - The camelCase string to convert
  * @returns snake_case string
  */
-export function fromCamelCase(str: string): string {
+export function toSnakeCase(str: string): string {
+  if (!str || typeof str !== 'string') {
+    return str || '';
+  }
   return str
-    .replace(/([A-Z])/g, '_$1')
+    // Handle spaced case
+    .replace(/\s+/g, '_')
+    // Handle kebab-case
+    .replace(/-/g, '_')
+    // Handle camelCase and PascalCase
+    .replace(/([a-z])([A-Z])/g, '$1_$2')
+    // Handle consecutive uppercase letters (like XMLHttpRequest)
+    .replace(/([A-Z])([A-Z][a-z])/g, '$1_$2')
     .toLowerCase()
-    .replace(/^_/, ''); // Remove leading underscore
+    // Clean up multiple underscores
+    .replace(/_+/g, '_')
+    // Remove leading/trailing underscores
+    .replace(/^_|_$/g, '');
 }
 
 /**
- * Parse function name in the legacy dot format "server_identifier.function_name" (for backward compatibility)
- * @param functionName - The full function name
- * @returns Object with server identifier and function name
+ * Generate a collision-resistant hash for server identification
+ * Uses SHA-256 hash with base36 encoding for compact representation
+ * @param serverIdentifier - Server identifier from configuration
+ * @param serverUrl - Server URL from configuration
+ * @returns 6-character base36 encoded hash
  */
-export function parseLegacyFunctionName(functionName: string): {
-  serverIdentifier: string;
+export function generateServerHash(serverIdentifier: string, serverUrl: string): string {
+  // Create deterministic input by combining identifier and URL
+  const input = `${serverIdentifier}:${serverUrl}`;
+  
+  // Generate SHA-256 hash
+  const hash = createHash('sha256').update(input).digest('hex');
+  
+  // Convert first 32 bits (8 hex chars) to base36 for compact representation
+  const hashNum = parseInt(hash.substring(0, 8), 16);
+  const base36Hash = hashNum.toString(36);
+  
+  // Pad to 6 characters with leading zeros if needed
+  return base36Hash.padStart(6, '0');
+}
+
+/**
+ * Generate function name using server hash and snake_case pattern
+ * @param serverIdentifier - Server identifier from configuration
+ * @param serverUrl - Server URL from configuration
+ * @param functionName - Function name (will be converted to snake_case)
+ * @returns Function name in format "s{hash}_{snake_case_function}"
+ */
+export function generateFunctionName(serverIdentifier: string, serverUrl: string, functionName: string): string {
+  const serverHash = generateServerHash(serverIdentifier, serverUrl);
+  const snakeCaseFunction = toSnakeCase(functionName);
+  return `s${serverHash}_${snakeCaseFunction}`;
+}
+
+/**
+ * Parse function name in the hash-based format "s{hash}_{snake_case_function}"
+ * @param functionName - The full function name
+ * @returns Object with server hash and function name
+ */
+export function parseFunctionName(functionName: string): {
+  serverHash: string;
   functionName: string;
 } {
-  const parts = functionName.split('.');
-  if (parts.length !== 2 || !parts[0] || !parts[1]) {
+  const match = functionName.match(/^s([a-z0-9]{6})_(.+)$/);
+  if (!match) {
     throw new Error(
-      `Invalid function name format: ${functionName}. Expected format: server_identifier.function_name`
+      `Invalid function name format: ${functionName}. Expected format: s{hash}_{snake_case_function}`
     );
   }
 
+  const serverHash = match[1]!;
+  const snakeCaseFunction = match[2]!;
+  
+  if (!snakeCaseFunction) {
+    throw new Error(
+      `Invalid function name format: ${functionName}. Expected format: s{hash}_{snake_case_function}`
+    );
+  }
+  
   return {
-    serverIdentifier: parts[0],
-    functionName: parts[1],
+    serverHash,
+    functionName: snakeCaseFunction,
   };
+}
+
+/**
+ * Generate internal Cubicler function name
+ * @param functionName - Function name (will be converted to snake_case)
+ * @returns Function name in format "cubicler_{snake_case_function}"
+ */
+export function generateInternalFunctionName(functionName: string): string {
+  const snakeCaseFunction = toSnakeCase(functionName);
+  return `cubicler_${snakeCaseFunction}`;
 }
 
 /**

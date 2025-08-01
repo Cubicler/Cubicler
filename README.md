@@ -396,7 +396,13 @@ The AI agent uses built-in tools to discover available services:
 
 ### 3. Service Call
 
-AI agent calls: `weather_service.get_current_weather({"city": "Paris"})`
+AI agent calls: `s1r2dj4_get_current_weather({"city": "Paris"})`
+
+> **💡 Function Naming**: The function name `s1r2dj4_get_current_weather` follows Cubicler's hash-based naming convention. The `s1r2dj4` part is a 6-character hash derived from the server identifier and URL (`weather_service:http://localhost:4000/mcp`). This ensures function names are:
+>
+> - **Collision-resistant**: No conflicts between services
+> - **Config-order independent**: Same server always gets same hash
+> - **Deterministic**: Predictable and stable across deployments
 
 ### 4. Final Response
 

@@ -48,7 +48,7 @@ The `MCPService` aggregates tools from multiple `MCPCompatible` providers:
 - `ProviderMCPService` - Handles MCP server communication
 - `ProviderRESTService` - Handles REST API endpoints
 
-Tool names follow the pattern: `{server_identifier}.{function_name}`
+Tool names follow the pattern: `s{hash}_{snake_case_function}` where hash is a 6-character base36 hash derived from server identifier and URL
 
 ## � Configuration
 
@@ -156,9 +156,11 @@ CUBICLER_PORT=1503
   - Arrays of objects: JSON stringified
 
 ### Function Naming Convention
-- **MCP servers**: `serverCamelCase_functionCamelCase` (e.g., `weatherService_getCurrentWeather`)
-- **REST servers**: `serverCamelCase_endpointCamelCase` (e.g., `legacyApi_getUserInfo`)
+- **MCP servers**: `s{hash}_{snake_case_function}` (e.g., `s1r2dj4_get_current_weather`)
+- **REST servers**: `s{hash}_{snake_case_endpoint}` (e.g., `ssft7he_get_user_info`)
 - **Internal tools**: `cubicler_availableServers`, `cubicler_fetchServerTools`
+
+The hash is a 6-character base36 encoding derived from SHA-256 hash of `{server_identifier}:{server_url}`, ensuring collision-resistant and config-order-independent function names.
 
 ### Transport Support
 - **Current Phase**: HTTP transport only for both MCP servers and agents
@@ -281,7 +283,7 @@ Get tools from a specific MCP server managed by Cubicler.
 ```json
 { 
     "functions": [{
-        "name": "weather_service.get_current_weather",
+        "name": "s1r2dj4_get_current_weather",
         "description": "Get current weather for a location",
         "parameters": { 
             "type": "object",
@@ -352,8 +354,8 @@ console.error(`❌ [ServiceName] Error message`);
 
 ### Function Naming & Tool Resolution
 - **Internal tools**: `cubicler_availableServers`, `cubicler_fetchServerTools`
-- **MCP tools**: `serverCamelCase_functionCamelCase`
-- **REST tools**: `serverCamelCase_endpointCamelCase`
+- **MCP tools**: `s{hash}_{snake_case_function}`
+- **REST tools**: `s{hash}_{snake_case_endpoint}`
 
 The system routes tool calls by parsing the prefix and delegating to the appropriate service.
 

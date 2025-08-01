@@ -120,10 +120,15 @@ export function validateProvidersConfig(config: unknown): asserts config is Prov
         throw new Error(`Invalid MCP server at index ${i}: missing or invalid url`);
       }
 
-      // Validate identifier format (lowercase, no spaces, only - or _)
-      if (!/^[a-z0-9_-]+$/.test(server.identifier)) {
+      // Validate identifier format (alphanumeric, hyphens, underscores - no spaces, max 32 chars)
+      if (!/^[a-zA-Z0-9_-]+$/.test(server.identifier)) {
         throw new Error(
-          `Invalid MCP server at index ${i}: identifier "${server.identifier}" must be lowercase with only letters, numbers, hyphens, or underscores`
+          `Invalid MCP server at index ${i}: identifier "${server.identifier}" must contain only letters, numbers, hyphens, or underscores (no spaces)`
+        );
+      }
+      if (server.identifier.length > 32) {
+        throw new Error(
+          `Invalid MCP server at index ${i}: identifier "${server.identifier}" must be 32 characters or less (current: ${server.identifier.length})`
         );
       }
     }
@@ -148,10 +153,15 @@ export function validateProvidersConfig(config: unknown): asserts config is Prov
         throw new Error(`Invalid REST server at index ${i}: missing or invalid url`);
       }
 
-      // Validate identifier format (lowercase, no spaces, only - or _)
-      if (!/^[a-z0-9_-]+$/.test(server.identifier)) {
+      // Validate identifier format (alphanumeric, hyphens, underscores - no spaces, max 32 chars)
+      if (!/^[a-zA-Z0-9_-]+$/.test(server.identifier)) {
         throw new Error(
-          `Invalid REST server at index ${i}: identifier "${server.identifier}" must be lowercase with only letters, numbers, hyphens, or underscores`
+          `Invalid REST server at index ${i}: identifier "${server.identifier}" must contain only letters, numbers, hyphens, or underscores (no spaces)`
+        );
+      }
+      if (server.identifier.length > 32) {
+        throw new Error(
+          `Invalid REST server at index ${i}: identifier "${server.identifier}" must be 32 characters or less (current: ${server.identifier.length})`
         );
       }
     }
@@ -207,10 +217,15 @@ export function validateAgentsConfig(config: unknown): asserts config is AgentsC
       throw new Error(`Invalid agent at index ${i}: missing or invalid name`);
     }
 
-    // Validate identifier format (lowercase, no spaces, only - or _)
-    if (!/^[a-z0-9_-]+$/.test(agent.identifier)) {
+    // Validate identifier format (alphanumeric, hyphens, underscores - no spaces, max 32 chars)
+    if (!/^[a-zA-Z0-9_-]+$/.test(agent.identifier)) {
       throw new Error(
-        `Invalid agent at index ${i}: identifier "${agent.identifier}" must be lowercase with only letters, numbers, hyphens, or underscores`
+        `Invalid agent at index ${i}: identifier "${agent.identifier}" must contain only letters, numbers, hyphens, or underscores (no spaces)`
+      );
+    }
+    if (agent.identifier.length > 32) {
+      throw new Error(
+        `Invalid agent at index ${i}: identifier "${agent.identifier}" must be 32 characters or less (current: ${agent.identifier.length})`
       );
     }
   }

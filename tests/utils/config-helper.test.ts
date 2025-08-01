@@ -273,7 +273,7 @@ describe('Config Helper', () => {
           ],
         };
         expect(() => validateProvidersConfig(config)).toThrow(
-          'Invalid MCP server at index 0: identifier "Test Server" must be lowercase with only letters, numbers, hyphens, or underscores'
+          'Invalid MCP server at index 0: identifier "Test Server" must contain only letters, numbers, hyphens, or underscores (no spaces)'
         );
       });
 
@@ -298,6 +298,21 @@ describe('Config Helper', () => {
           };
           expect(() => validateProvidersConfig(config)).not.toThrow();
         });
+      });
+
+      it('should throw error for identifier length exceeding 32 characters', () => {
+        const config = {
+          mcpServers: [
+            {
+              identifier: 'this_is_a_very_long_identifier_that_exceeds_32_characters',
+              name: 'Test',
+              url: 'http://localhost:4000',
+            },
+          ],
+        };
+        expect(() => validateProvidersConfig(config)).toThrow(
+          'Invalid MCP server at index 0: identifier "this_is_a_very_long_identifier_that_exceeds_32_characters" must be 32 characters or less (current: 57)'
+        );
       });
     });
 
@@ -370,7 +385,22 @@ describe('Config Helper', () => {
           ],
         };
         expect(() => validateProvidersConfig(config)).toThrow(
-          'Invalid REST server at index 0: identifier "Test API" must be lowercase with only letters, numbers, hyphens, or underscores'
+          'Invalid REST server at index 0: identifier "Test API" must contain only letters, numbers, hyphens, or underscores (no spaces)'
+        );
+      });
+
+      it('should throw error for identifier length exceeding 32 characters', () => {
+        const config = {
+          restServers: [
+            {
+              identifier: 'this_is_a_very_long_identifier_that_exceeds_32_characters',
+              name: 'Test',
+              url: 'http://localhost:5000',
+            },
+          ],
+        };
+        expect(() => validateProvidersConfig(config)).toThrow(
+          'Invalid REST server at index 0: identifier "this_is_a_very_long_identifier_that_exceeds_32_characters" must be 32 characters or less (current: 57)'
         );
       });
     });
@@ -501,7 +531,7 @@ describe('Config Helper', () => {
         ],
       };
       expect(() => validateAgentsConfig(config)).toThrow(
-        'Invalid agent at index 0: identifier "Test Agent" must be lowercase with only letters, numbers, hyphens, or underscores'
+        'Invalid agent at index 0: identifier "Test Agent" must contain only letters, numbers, hyphens, or underscores (no spaces)'
       );
     });
 
@@ -521,6 +551,22 @@ describe('Config Helper', () => {
         };
         expect(() => validateAgentsConfig(config)).not.toThrow();
       });
+    });
+
+    it('should throw error for identifier length exceeding 32 characters', () => {
+      const config = {
+        agents: [
+          {
+            identifier: 'this_is_a_very_long_identifier_that_exceeds_32_characters',
+            name: 'Test Agent',
+            url: 'http://localhost:3000',
+            description: 'Test description',
+          },
+        ],
+      };
+      expect(() => validateAgentsConfig(config)).toThrow(
+        'Invalid agent at index 0: identifier "this_is_a_very_long_identifier_that_exceeds_32_characters" must be 32 characters or less (current: 57)'
+      );
     });
 
     it('should throw error for duplicate identifiers', () => {

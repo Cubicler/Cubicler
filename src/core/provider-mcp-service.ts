@@ -1,8 +1,9 @@
 import type { JSONObject, JSONValue, MCPRequest, MCPResponse } from '../model/types.js';
 import type { MCPTool, ToolDefinition } from '../model/tools.js';
 import { fetchWithDefaultTimeout } from '../utils/fetch-helper.js';
-import { generateFunctionName, parseFunctionName } from '../utils/parameter-helper.js';
+import { generateFunctionName, generateServerHash, parseFunctionName, toSnakeCase } from '../utils/parameter-helper.js';
 import type { ProvidersConfigProviding } from '../interface/providers-config-providing.js';
+import type { ServersProviding } from '../interface/servers-providing.js';
 import providersRepository from '../repository/provider-repository.js';
 import { MCPCompatible } from '../interface/mcp-compatible.js';
 
@@ -13,6 +14,7 @@ import { MCPCompatible } from '../interface/mcp-compatible.js';
 class ProviderMCPService implements MCPCompatible {
   readonly identifier = 'provider-mcp';
   private readonly providerConfig: ProvidersConfigProviding;
+  private serversProvider: ServersProviding | null = null;
 
   /**
    * Creates a new ProviderMCPService instance
@@ -20,6 +22,14 @@ class ProviderMCPService implements MCPCompatible {
    */
   constructor(providerConfig: ProvidersConfigProviding = providersRepository) {
     this.providerConfig = providerConfig;
+  }
+
+  /**
+   * Set the servers provider for index resolution (called during DI setup)
+   * @param serversProvider - The servers provider instance
+   */
+  setServersProvider(serversProvider: ServersProviding): void {
+    this.serversProvider = serversProvider;
   }
 
   /**
@@ -56,13 +66,22 @@ class ProviderMCPService implements MCPCompatible {
 
   /**
    * Check if this service can handle the given tool name
-   * @param toolName - Name of the tool to check (format: serverCamelCase_functionCamelCase)
+   * @param toolName - Name of the tool to check (format: s{hash}_{snake_case_function})
    * @returns true if this service can handle the tool, false otherwise
    */
   async canHandleRequest(toolName: string): Promise<boolean> {
     try {
-      const { serverIdentifier } = parseFunctionName(toolName);
-      return await this.isMCPServer(serverIdentifier);
+      const { serverHash } = parseFunctionName(toolName);
+      
+      const config = await this.providerConfig.getProvidersConfig();
+      const mcpServers = config.mcpServers || [];
+      
+      const server = mcpServers.find(s => {
+        const expectedHash = generateServerHash(s.identifier, s.url);
+        return expectedHash === serverHash;
+      });
+      
+      return server !== undefined;
     } catch {
       return false;
     }
@@ -87,6 +106,11 @@ class ProviderMCPService implements MCPCompatible {
     const mcpServers = config.mcpServers || [];
     const allMCPTools: ToolDefinition[] = [];
 
+    if (!this.serversProvider) {
+      console.warn('⚠️ [ProviderMCPService] ServersProvider not set, cannot generate tool names');
+      return allMCPTools;
+    }
+
     for (const server of mcpServers) {
       try {
         console.log(`🔧 [ProviderMCPService] Loading MCP tools from ${server.identifier}...`);
@@ -94,7 +118,7 @@ class ProviderMCPService implements MCPCompatible {
 
         // Convert MCP tools to Cubicler function definitions
         const tools: ToolDefinition[] = mcpTools.map((tool) => ({
-          name: generateFunctionName(server.identifier, tool.name),
+          name: generateFunctionName(server.identifier, server.url, toSnakeCase(tool.name)),
           description: tool.description || `MCP tool: ${tool.name}`,
           parameters: tool.inputSchema || { type: 'object', properties: {} },
         }));
@@ -116,16 +140,29 @@ class ProviderMCPService implements MCPCompatible {
   }
 
   /**
-   * Execute a tool by parsing the full function name serverCamelCase_functionCamelCase
+   * Execute a tool by parsing the full function name s{hash}_{snake_case_function}
    */
   private async executeToolByName(fullFunctionName: string, parameters: JSONObject): Promise<JSONValue> {
     console.log(`⚙️ [ProviderMCPService] Executing MCP tool: ${fullFunctionName}`);
 
     // Parse the function name using utility
-    const { serverIdentifier, functionName } = parseFunctionName(fullFunctionName);
+    const { serverHash, functionName } = parseFunctionName(fullFunctionName);
+    
+    // Find server by hash
+    const config = await this.providerConfig.getProvidersConfig();
+    const mcpServers = config.mcpServers || [];
+    
+    const server = mcpServers.find(s => {
+      const expectedHash = generateServerHash(s.identifier, s.url);
+      return expectedHash === serverHash;
+    });
+    
+    if (!server) {
+      throw new Error(`Server not found for hash: ${serverHash}`);
+    }
 
     // Execute MCP tool
-    const result = await this.executeMCPTool(serverIdentifier, functionName, parameters);
+    const result = await this.executeMCPTool(server.identifier, functionName, parameters);
     return result as JSONValue;
   }
 

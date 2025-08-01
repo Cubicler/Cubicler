@@ -1,6 +1,7 @@
 import { beforeEach, describe, it, expect, vi, type MockedFunction } from 'vitest';
 import { ProviderMCPService } from '../../src/core/provider-mcp-service.js';
 import type { ProvidersConfigProviding } from '../../src/interface/providers-config-providing.js';
+import type { ServersProviding } from '../../src/interface/servers-providing.js';
 import type { ProvidersConfig } from '../../src/model/providers.js';
 import type { AxiosResponse } from 'axios';
 import * as fetchHelper from '../../src/utils/fetch-helper.js';
@@ -21,6 +22,7 @@ const createMockAxiosResponse = <T>(data: T): AxiosResponse<T> => ({
 
 describe('ProviderMCPService', () => {
   let mockProviderConfig: ProvidersConfigProviding;
+  let mockServersProvider: ServersProviding;
   let providerMCPService: ProviderMCPService;
   let mockFetch: MockedFunction<typeof fetchHelper.fetchWithDefaultTimeout>;
 
@@ -83,11 +85,33 @@ describe('ProviderMCPService', () => {
       getProvidersConfig: vi.fn().mockResolvedValue(mockProvidersConfig),
     };
 
+    // Mock servers provider
+    mockServersProvider = {
+      getAvailableServers: vi.fn(),
+      getServerIndex: vi.fn().mockImplementation(async (identifier: string) => {
+        // Mock server ordering: MCP servers first, then REST servers
+        if (identifier === 'weather_service') return 0;
+        if (identifier === 'file_service') return 1;
+        if (identifier === 'user_api') return 2;
+        return -1;
+      }),
+      getServerIdentifier: vi.fn().mockImplementation(async (index: number) => {
+        // Mock server ordering: MCP servers first, then REST servers
+        if (index === 0) return 'weather_service';
+        if (index === 1) return 'file_service';
+        if (index === 2) return 'user_api';
+        return null;
+      }),
+    };
+
     // Mock fetch helper
     mockFetch = vi.mocked(fetchHelper.fetchWithDefaultTimeout);
 
     // Create service instance
     providerMCPService = new ProviderMCPService(mockProviderConfig);
+    
+    // Set the servers provider
+    providerMCPService.setServersProvider(mockServersProvider);
   });
 
   describe('initialization', () => {
@@ -142,8 +166,8 @@ describe('ProviderMCPService', () => {
 
   describe('canHandleRequest', () => {
     it('should return true for valid MCP server tool names', async () => {
-      expect(await providerMCPService.canHandleRequest('weatherService_getWeather')).toBe(true);
-      expect(await providerMCPService.canHandleRequest('fileService_readFile')).toBe(true);
+      expect(await providerMCPService.canHandleRequest('s1r2dj4_get_weather')).toBe(true);
+      expect(await providerMCPService.canHandleRequest('shdy86m_read_file')).toBe(true);
     });
 
     it('should return false for REST server tool names', async () => {
@@ -191,7 +215,7 @@ describe('ProviderMCPService', () => {
       const tools = await providerMCPService.toolsList();
 
       expect(tools).toHaveLength(2); // One from each server
-      expect(tools[0].name).toBe('weatherService_getWeather');
+      expect(tools[0].name).toBe('s1r2dj4_get_weather');
       expect(mockFetch).toHaveBeenCalledWith('http://localhost:4000/mcp', {
         method: 'POST',
         headers: {
@@ -285,8 +309,8 @@ describe('ProviderMCPService', () => {
       const tools = await providerMCPService.toolsList();
 
       expect(tools).toHaveLength(2);
-      expect(tools[0].name).toBe('weatherService_getWeather');
-      expect(tools[1].name).toBe('fileService_readFile');
+      expect(tools[0].name).toBe('s1r2dj4_get_weather');
+      expect(tools[1].name).toBe('shdy86m_read_file');
     });
 
     it('should continue with other servers if one fails', async () => {
@@ -313,7 +337,7 @@ describe('ProviderMCPService', () => {
       const tools = await providerMCPService.toolsList();
 
       expect(tools).toHaveLength(1);
-      expect(tools[0].name).toBe('fileService_readFile');
+      expect(tools[0].name).toBe('shdy86m_read_file');
     });
   });
 
@@ -338,8 +362,8 @@ describe('ProviderMCPService', () => {
       const tools = await providerMCPService.toolsList();
 
       expect(tools).toHaveLength(2); // One tool from each server
-      expect(tools[0].name).toBe('weatherService_testTool');
-      expect(tools[1].name).toBe('fileService_testTool');
+      expect(tools[0].name).toBe('s1r2dj4_test_tool');
+      expect(tools[1].name).toBe('shdy86m_test_tool');
     });
   });
 
@@ -355,7 +379,7 @@ describe('ProviderMCPService', () => {
         })
       );
 
-      const result = await providerMCPService.toolsCall('weatherService_getWeather', {
+      const result = await providerMCPService.toolsCall('s1r2dj4_get_weather', {
         city: 'Jakarta',
       });
 
@@ -391,21 +415,21 @@ describe('ProviderMCPService', () => {
       );
 
       await expect(
-        providerMCPService.toolsCall('weatherService_getWeather', { city: 'Jakarta' })
+        providerMCPService.toolsCall('s1r2dj4_get_weather', { city: 'Jakarta' })
       ).rejects.toThrow('MCP tool execution failed: Invalid params');
     });
 
     it('should reject invalid tool name formats', async () => {
       await expect(providerMCPService.toolsCall('invalid', {})).rejects.toThrow(
-        'Invalid function name format: invalid. Expected format: serverCamelCase_functionCamelCase'
+        'Invalid function name format: invalid. Expected format: s{hash}_{snake_case_function}'
       );
 
       await expect(providerMCPService.toolsCall('too_many_parts_here', {})).rejects.toThrow(
-        'Invalid function name format: too_many_parts_here. Expected format: serverCamelCase_functionCamelCase'
+        'Invalid function name format: too_many_parts_here. Expected format: s{hash}_{snake_case_function}'
       );
 
       await expect(providerMCPService.toolsCall('server_', {})).rejects.toThrow(
-        'Invalid function name format: server_. Expected format: serverCamelCase_functionCamelCase'
+        'Invalid function name format: server_. Expected format: s{hash}_{snake_case_function}'
       );
     });
   });
@@ -422,7 +446,7 @@ describe('ProviderMCPService', () => {
         })
       );
 
-      const result = await providerMCPService.toolsCall('weatherService_getWeather', {
+      const result = await providerMCPService.toolsCall('s1r2dj4_get_weather', {
         city: 'Jakarta',
       });
 
@@ -469,7 +493,7 @@ describe('ProviderMCPService', () => {
       const tools = await providerMCPService.toolsList();
 
       expect(tools[0]).toEqual({
-        name: 'weatherService_simpleTool',
+        name: 's1r2dj4_simple_tool',
         description: 'MCP tool: simple_tool',
         parameters: { type: 'object', properties: {} },
       });
