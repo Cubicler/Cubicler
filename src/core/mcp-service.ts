@@ -47,37 +47,52 @@ export class MCPService {
     console.log(`📡 [MCPService] Handling MCP request: ${request.method}`);
 
     try {
-      switch (request.method) {
-        case 'initialize':
-          return await this.handleInitialize(request);
-
-        case 'tools/list':
-          return await this.handleToolsList(request);
-
-        case 'tools/call':
-          return await this.handleToolsCall(request);
-
-        default:
-          return {
-            jsonrpc: '2.0',
-            id: request.id,
-            error: {
-              code: -32601, // Method not found
-              message: `Method not supported: ${request.method}. Supported methods: initialize, tools/list, tools/call`,
-            },
-          };
-      }
+      return await this.routeRequest(request);
     } catch (error) {
       console.error(`❌ [MCPService] Error handling MCP request:`, error);
-      return {
-        jsonrpc: '2.0',
-        id: request.id,
-        error: {
-          code: -32603, // Internal error
-          message: `Internal error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        },
-      };
+      return this.createErrorResponse(request.id, -32603, `Internal error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
+  }
+
+  /**
+   * Route MCP request to appropriate handler
+   * @param request - MCP request object
+   * @returns MCP response object
+   * @throws Error if method is not supported
+   */
+  private async routeRequest(request: MCPRequest): Promise<MCPResponse> {
+    switch (request.method) {
+      case 'initialize':
+        return await this.handleInitialize(request);
+
+      case 'tools/list':
+        return await this.handleToolsList(request);
+
+      case 'tools/call':
+        return await this.handleToolsCall(request);
+
+      default:
+        return this.createErrorResponse(
+          request.id, 
+          -32601, 
+          `Method not supported: ${request.method}. Supported methods: initialize, tools/list, tools/call`
+        );
+    }
+  }
+
+  /**
+   * Create standardized error response
+   * @param id - Request ID
+   * @param code - Error code
+   * @param message - Error message
+   * @returns MCP error response
+   */
+  private createErrorResponse(id: string | number | null, code: number, message: string): MCPResponse {
+    return {
+      jsonrpc: '2.0',
+      id: id ?? 'unknown',
+      error: { code, message },
+    };
   }
 
   /**
@@ -115,40 +130,44 @@ export class MCPService {
     console.log('🔧 [MCPService] Handling tools/list request');
 
     try {
-      // Get tools from all providers
-      const allTools: MCPFormattedTool[] = [];
-
-      for (const provider of this.providers) {
-        const providerTools = await provider.toolsList();
-        const mcpFormattedTools = providerTools.map((tool) => ({
-          name: tool.name,
-          description: tool.description,
-          inputSchema: tool.parameters,
-        }));
-        allTools.push(...mcpFormattedTools);
-      }
-
-      console.log(
-        `✅ [MCPService] Returning ${allTools.length} tools from ${this.providers.length} providers`
-      );
+      const allTools = await this.aggregateToolsFromProviders();
+      
+      console.log(`✅ [MCPService] Returning ${allTools.length} tools from ${this.providers.length} providers`);
 
       return {
         jsonrpc: '2.0',
         id: request.id,
         result: {
-          tools: allTools as unknown as JSONValue, // MCP protocol expects this structure
+          tools: allTools as unknown as JSONValue,
         },
       };
     } catch (error) {
-      return {
-        jsonrpc: '2.0',
-        id: request.id,
-        error: {
-          code: -32603,
-          message: `Failed to list tools: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        },
-      };
+      return this.createErrorResponse(
+        request.id,
+        -32603,
+        `Failed to list tools: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
+  }
+
+  /**
+   * Aggregate tools from all providers
+   * @returns Array of MCP formatted tools
+   */
+  private async aggregateToolsFromProviders(): Promise<MCPFormattedTool[]> {
+    const allTools: MCPFormattedTool[] = [];
+
+    for (const provider of this.providers) {
+      const providerTools = await provider.toolsList();
+      const mcpFormattedTools = providerTools.map((tool) => ({
+        name: tool.name,
+        description: tool.description,
+        inputSchema: tool.parameters,
+      }));
+      allTools.push(...mcpFormattedTools);
+    }
+
+    return allTools;
   }
 
   /**
@@ -158,53 +177,67 @@ export class MCPService {
     console.log('⚙️ [MCPService] Handling tools/call request');
 
     const params = request.params as JSONObject;
-    if (!params || !params.name) {
-      return {
-        jsonrpc: '2.0',
-        id: request.id,
-        error: {
-          code: -32602, // Invalid params
-          message: 'Missing required parameter: name',
-        },
-      };
+    const toolCallParams = this.validateToolCallParams(params);
+    
+    if (!toolCallParams) {
+      return this.createErrorResponse(request.id, -32602, 'Missing required parameter: name');
     }
-
-    const toolName = params.name as string;
-    const arguments_ = (params.arguments as JSONObject) || {};
 
     try {
-      // Find the provider that can handle this tool
-      for (const provider of this.providers) {
-        if (await provider.canHandleRequest(toolName)) {
-          const result = await provider.toolsCall(toolName, arguments_);
-
-          return {
-            jsonrpc: '2.0',
-            id: request.id,
-            result: {
-              content: [
-                {
-                  type: 'text',
-                  text: typeof result === 'string' ? result : JSON.stringify(result, null, 2),
-                },
-              ],
-            },
-          };
-        }
-      }
-
-      // No provider can handle this tool
-      throw new Error(`No provider found for tool: ${toolName}`);
-    } catch (error) {
+      const result = await this.executeToolCall(toolCallParams.toolName, toolCallParams.arguments);
+      
       return {
         jsonrpc: '2.0',
         id: request.id,
-        error: {
-          code: -32603,
-          message: `Tool execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        result: {
+          content: [
+            {
+              type: 'text',
+              text: typeof result === 'string' ? result : JSON.stringify(result, null, 2),
+            },
+          ],
         },
       };
+    } catch (error) {
+      return this.createErrorResponse(
+        request.id,
+        -32603,
+        `Tool execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
+  }
+
+  /**
+   * Validate tool call parameters
+   * @param params - Request parameters
+   * @returns Validated parameters or null if invalid
+   */
+  private validateToolCallParams(params: JSONObject | null): { toolName: string; arguments: JSONObject } | null {
+    if (!params || !params.name) {
+      return null;
+    }
+
+    return {
+      toolName: params.name as string,
+      arguments: (params.arguments as JSONObject) || {},
+    };
+  }
+
+  /**
+   * Execute tool call by finding appropriate provider
+   * @param toolName - Name of the tool to execute
+   * @param arguments_ - Arguments to pass to the tool
+   * @returns Tool execution result
+   * @throws Error if no provider can handle the tool or execution fails
+   */
+  private async executeToolCall(toolName: string, arguments_: JSONObject): Promise<JSONValue> {
+    for (const provider of this.providers) {
+      if (await provider.canHandleRequest(toolName)) {
+        return await provider.toolsCall(toolName, arguments_);
+      }
+    }
+
+    throw new Error(`No provider found for tool: ${toolName}`);
   }
 }
 

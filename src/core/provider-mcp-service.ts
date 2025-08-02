@@ -78,24 +78,11 @@ class ProviderMCPService implements MCPCompatible {
     for (const server of mcpServers) {
       try {
         console.log(`🔧 [ProviderMCPService] Loading MCP tools from ${server.identifier}...`);
-        const mcpTools = await this.getMCPTools(server.identifier);
-
-        // Convert MCP tools to Cubicler function definitions
-        const tools: ToolDefinition[] = mcpTools.map((tool) => ({
-          name: generateFunctionName(server.identifier, server.url, toSnakeCase(tool.name)),
-          description: tool.description || `MCP tool: ${tool.name}`,
-          parameters: tool.inputSchema || { type: 'object', properties: {} },
-        }));
-
+        const tools = await this.loadToolsFromServer(server);
         allMCPTools.push(...tools);
-        console.log(
-          `✅ [ProviderMCPService] Loaded ${tools.length} tools from MCP server ${server.identifier}`
-        );
+        console.log(`✅ [ProviderMCPService] Loaded ${tools.length} tools from MCP server ${server.identifier}`);
       } catch (error) {
-        console.warn(
-          `⚠️ [ProviderMCPService] Failed to get MCP tools from ${server.identifier}:`,
-          error
-        );
+        console.warn(`⚠️ [ProviderMCPService] Failed to get MCP tools from ${server.identifier}:`, error);
         // Continue with other servers
       }
     }
@@ -104,22 +91,29 @@ class ProviderMCPService implements MCPCompatible {
   }
 
   /**
+   * Load tools from a specific MCP server
+   * @param server - Server configuration
+   * @returns Array of tool definitions
+   */
+  private async loadToolsFromServer(server: any): Promise<ToolDefinition[]> {
+    const mcpTools = await this.getMCPTools(server.identifier);
+    
+    return mcpTools.map((tool) => ({
+      name: generateFunctionName(server.identifier, server.url, toSnakeCase(tool.name)),
+      description: tool.description || `MCP tool: ${tool.name}`,
+      parameters: tool.inputSchema || { type: 'object', properties: {} },
+    }));
+  }
+
+  /**
    * Check if this service can handle the given tool name
-   * @param toolName - Name of the tool to check (format: s{hash}_{snake_case_function})
+   * @param toolName - Name of the tool to check (format: {hash}_{snake_case_function})
    * @returns true if this service can handle the tool, false otherwise
    */
   async canHandleRequest(toolName: string): Promise<boolean> {
     try {
       const { serverHash } = parseFunctionName(toolName);
-
-      const config = await this.providerConfig.getProvidersConfig();
-      const mcpServers = config.mcpServers || [];
-
-      const server = mcpServers.find((s) => {
-        const expectedHash = generateServerHash(s.identifier, s.url);
-        return expectedHash === serverHash;
-      });
-
+      const server = await this.findServerByHash(serverHash);
       return server !== undefined;
     } catch {
       return false;
@@ -136,25 +130,30 @@ class ProviderMCPService implements MCPCompatible {
   async toolsCall(toolName: string, parameters: JSONObject): Promise<JSONValue> {
     console.log(`⚙️ [ProviderMCPService] Executing MCP tool: ${toolName}`);
 
-    // Parse the function name using utility
     const { serverHash, functionName } = parseFunctionName(toolName);
-
-    // Find server by hash
-    const config = await this.providerConfig.getProvidersConfig();
-    const mcpServers = config.mcpServers || [];
-
-    const server = mcpServers.find((s) => {
-      const expectedHash = generateServerHash(s.identifier, s.url);
-      return expectedHash === serverHash;
-    });
-
+    const server = await this.findServerByHash(serverHash);
+    
     if (!server) {
       throw new Error(`Server not found for hash: ${serverHash}`);
     }
 
-    // Execute MCP tool
     const result = await this.executeMCPTool(server.identifier, functionName, parameters);
     return result as JSONValue;
+  }
+
+  /**
+   * Find server configuration by hash
+   * @param serverHash - Server hash to find
+   * @returns Server configuration or undefined if not found
+   */
+  private async findServerByHash(serverHash: string): Promise<any> {
+    const config = await this.providerConfig.getProvidersConfig();
+    const mcpServers = config.mcpServers || [];
+
+    return mcpServers.find((s: any) => {
+      const expectedHash = generateServerHash(s.identifier, s.url);
+      return expectedHash === serverHash;
+    });
   }
 
   /**
@@ -164,50 +163,83 @@ class ProviderMCPService implements MCPCompatible {
     serverIdentifier: string,
     request: MCPRequest
   ): Promise<MCPResponse> {
-    console.log(
-      `📡 [ProviderMCPService] Sending MCP request to ${serverIdentifier}:`,
-      request.method
-    );
+    console.log(`📡 [ProviderMCPService] Sending MCP request to ${serverIdentifier}:`, request.method);
 
-    // Get the MCP server configuration
+    const mcpServer = await this.getMCPServerConfig(serverIdentifier);
+    this.validateMCPServerTransport(mcpServer);
+
+    try {
+      const response = await this.executeMCPRequest(mcpServer, request);
+      console.log(`✅ [ProviderMCPService] MCP request to ${serverIdentifier} successful`);
+      return response.data as MCPResponse;
+    } catch (error) {
+      console.error(`❌ [ProviderMCPService] MCP request to ${serverIdentifier} failed:`, error);
+      return this.createMCPErrorResponse(request, error);
+    }
+  }
+
+  /**
+   * Get MCP server configuration
+   * @param serverIdentifier - Server identifier
+   * @returns Server configuration
+   * @throws Error if server not found
+   */
+  private async getMCPServerConfig(serverIdentifier: string): Promise<any> {
     const config = await this.providerConfig.getProvidersConfig();
-    const mcpServer = config.mcpServers?.find((s) => s.identifier === serverIdentifier);
+    const mcpServer = config.mcpServers?.find((s: any) => s.identifier === serverIdentifier);
 
     if (!mcpServer) {
       throw new Error(`MCP server not found: ${serverIdentifier}`);
     }
 
+    return mcpServer;
+  }
+
+  /**
+   * Validate MCP server transport
+   * @param mcpServer - Server configuration
+   * @throws Error if transport is not supported
+   */
+  private validateMCPServerTransport(mcpServer: any): void {
     if (mcpServer.transport !== 'http') {
       throw new Error(
         `Transport ${mcpServer.transport} not yet supported. Currently only HTTP transport is supported.`
       );
     }
+  }
 
-    try {
-      const response = await fetchWithDefaultTimeout(mcpServer.url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...mcpServer.headers,
-        },
-        data: request,
-      });
+  /**
+   * Execute MCP request via HTTP
+   * @param mcpServer - Server configuration
+   * @param request - MCP request
+   * @returns HTTP response
+   */
+  private async executeMCPRequest(mcpServer: any, request: MCPRequest): Promise<any> {
+    return await fetchWithDefaultTimeout(mcpServer.url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...mcpServer.headers,
+      },
+      data: request,
+    });
+  }
 
-      console.log(`✅ [ProviderMCPService] MCP request to ${serverIdentifier} successful`);
-      return response.data as MCPResponse;
-    } catch (error) {
-      console.error(`❌ [ProviderMCPService] MCP request to ${serverIdentifier} failed:`, error);
-
-      // Return MCP error response
-      return {
-        jsonrpc: '2.0',
-        id: request.id,
-        error: {
-          code: -32603, // Internal error
-          message: `MCP request failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        },
-      };
-    }
+  /**
+   * Create MCP error response
+   * @param request - Original request
+   * @param error - Error that occurred
+   * @returns MCP error response
+   */
+  private createMCPErrorResponse(request: MCPRequest, error: unknown): MCPResponse {
+    return {
+      jsonrpc: '2.0',
+      id: request.id,
+      error: {
+        code: -32603, // Internal error
+        message: `MCP request failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      },
+    };
   }
 
   /**

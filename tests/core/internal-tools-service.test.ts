@@ -136,9 +136,10 @@ describe('Internal Tools Service', () => {
     });
 
     it('should return tools for a specific server', async () => {
+      // Use proper 6-character hash like the real system would generate
       vi.mocked(mockToolsProviders[0].toolsList).mockResolvedValue([
         {
-          name: 's0_get_weather',
+          name: '1r2dj4_get_weather',
           description: 'Get weather',
           parameters: { type: 'object', properties: {} },
         },
@@ -147,8 +148,8 @@ describe('Internal Tools Service', () => {
       // Mock servers provider to resolve server hash
       vi.mocked(mockServersProvider.getServerHash).mockImplementation(
         async (identifier: string) => {
-          if (identifier === 'weather_service') return '0';
-          if (identifier === 'search_service') return '1';
+          if (identifier === 'weather_service') return '1r2dj4';
+          if (identifier === 'search_service') return 'abc123';
           return null;
         }
       );
@@ -160,7 +161,7 @@ describe('Internal Tools Service', () => {
       expect(result).toEqual({
         tools: [
           {
-            name: 's0_get_weather',
+            name: '1r2dj4_get_weather',
             description: 'Get weather',
             parameters: { type: 'object', properties: {} },
           },
@@ -211,11 +212,11 @@ describe('Internal Tools Service', () => {
     });
 
     it('should handle provider errors gracefully in fetch_server_tools', async () => {
-      // Mock servers provider to return server hash
+      // Mock servers provider to return server hash (use proper 6-character hashes)
       vi.mocked(mockServersProvider.getServerHash).mockImplementation(
         async (identifier: string) => {
-          if (identifier === 'weather_service') return '0';
-          if (identifier === 'search_service') return '1';
+          if (identifier === 'weather_service') return '1r2dj4';
+          if (identifier === 'search_service') return 'abc123';
           return null;
         }
       );
@@ -223,7 +224,7 @@ describe('Internal Tools Service', () => {
       vi.mocked(mockToolsProviders[0].toolsList).mockRejectedValue(new Error('Provider error'));
       vi.mocked(mockToolsProviders[1].toolsList).mockResolvedValue([
         {
-          name: 's1_search',
+          name: 'abc123_search',
           description: 'Search',
           parameters: { type: 'object', properties: {} },
         },
@@ -236,7 +237,7 @@ describe('Internal Tools Service', () => {
       expect(result).toEqual({
         tools: [
           {
-            name: 's1_search',
+            name: 'abc123_search',
             description: 'Search',
             parameters: { type: 'object', properties: {} },
           },

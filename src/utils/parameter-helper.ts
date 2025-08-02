@@ -57,7 +57,7 @@ export function generateServerHash(serverIdentifier: string, serverUrl: string):
  * @param serverIdentifier - Server identifier from configuration
  * @param serverUrl - Server URL from configuration
  * @param functionName - Function name (will be converted to snake_case)
- * @returns Function name in format "s{hash}_{snake_case_function}"
+ * @returns Function name in format "{hash}_{snake_case_function}"
  */
 export function generateFunctionName(
   serverIdentifier: string,
@@ -66,33 +66,29 @@ export function generateFunctionName(
 ): string {
   const serverHash = generateServerHash(serverIdentifier, serverUrl);
   const snakeCaseFunction = toSnakeCase(functionName);
-  return `s${serverHash}_${snakeCaseFunction}`;
+  return `${serverHash}_${snakeCaseFunction}`;
 }
 
 /**
- * Parse function name in the hash-based format "s{hash}_{snake_case_function}"
- * @param functionName - The full function name
- * @returns Object with server hash and function name
+ * Parse a function name to extract server hash and function name
+ * @param functionName - The function name in format {hash}_{snake_case_function}
+ * @returns Object with serverHash and functionName
+ * @throws Error if function name format is invalid
  */
 export function parseFunctionName(functionName: string): {
   serverHash: string;
   functionName: string;
 } {
-  const match = functionName.match(/^s([a-z0-9]{6})_(.+)$/);
-  if (!match) {
+  // Hash can be 1-7 base36 characters (from 32-bit number), function should be snake_case
+  const match = functionName.match(/^([a-z0-9]{1,7})(_[a-z0-9]+)+$/);
+  if (!match || !match[1] || !match[2]) {
     throw new Error(
-      `Invalid function name format: ${functionName}. Expected format: s{hash}_{snake_case_function}`
+      `Invalid function name format: ${functionName}. Expected format: {hash}_{snake_case_function}`
     );
   }
 
   const serverHash = match[1];
   const snakeCaseFunction = match[2];
-
-  if (!serverHash || !snakeCaseFunction) {
-    throw new Error(
-      `Invalid function name format: ${functionName}. Expected format: s{hash}_{snake_case_function}`
-    );
-  }
 
   return {
     serverHash,

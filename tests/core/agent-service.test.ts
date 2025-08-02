@@ -206,8 +206,8 @@ describe('Agent Service', () => {
 
       expect(result).toContain('You are a helpful AI assistant.');
       expect(result).toContain('You are specialized in analysis.');
-      expect(result).toContain('## Available Services');
-      expect(result).toContain('Weather Service (weather_service)');
+      expect(result).toContain('## Currently Available Servers');
+      expect(result).toContain('**Weather Service** (`weather_service`)');
     });
 
     it('should compose prompt with base + default prompt when agent has no specific prompt', async () => {
@@ -231,7 +231,7 @@ describe('Agent Service', () => {
 
       expect(result).toContain('You are a helpful AI assistant.');
       expect(result).toContain('You have access to tools.');
-      expect(result).toContain('## Available Services');
+      expect(result).toContain('## Currently Available Servers');
     });
 
     it('should use default agent when no agent identifier provided', async () => {

@@ -220,10 +220,49 @@ This tells Cubicler which external services AI agents can use. You can use `{{en
       "endPoints": [
         {
           "name": "get_user",
-          "description": "Get user by ID",
+          "description": "Get user by ID with optional profile data",
           "path": "/users/{userId}",
           "method": "GET",
-          "userId": {"type": "string"}
+          "userId": {"type": "string"},
+          "query": {
+            "type": "object",
+            "properties": {
+              "include_profile": {"type": "boolean"},
+              "fields": {"type": "string", "description": "Comma-separated field names"}
+            }
+          }
+        },
+        {
+          "name": "create_user",
+          "description": "Create a new user",
+          "path": "/users",
+          "method": "POST",
+          "payload": {
+            "type": "object",
+            "properties": {
+              "name": {"type": "string", "description": "Full name"},
+              "email": {"type": "string", "description": "Email address"},
+              "role": {"type": "string", "enum": ["admin", "user"]}
+            },
+            "required": ["name", "email"]
+          }
+        },
+        {
+          "name": "update_user",
+          "description": "Update user information",
+          "path": "/users/{userId}",
+          "method": "PATCH",
+          "headers": {
+            "X-Update-Source": "cubicler"
+          },
+          "userId": {"type": "string"},
+          "payload": {
+            "type": "object",
+            "properties": {
+              "name": {"type": "string"},
+              "email": {"type": "string"}
+            }
+          }
         }
       ]
     }
@@ -232,6 +271,118 @@ This tells Cubicler which external services AI agents can use. You can use `{{en
 ```
 
 > **💡 Environment Variables**: Use `{{env.VARIABLE_NAME}}` syntax in any string value to substitute environment variables. For example, `{{env.API_KEY}}` will be replaced with the value of the `API_KEY` environment variable.
+
+#### 📋 REST Endpoint Configuration Explained
+
+**REST servers** allow you to integrate existing APIs with Cubicler. Here's how each parameter works:
+
+##### **Path Parameters** (`{variableName}`)
+
+Parameters in curly braces are extracted from the path and replaced with actual values:
+
+```json
+{
+  "path": "/users/{userId}/posts/{postId}",
+  "userId": {"type": "string"},
+  "postId": {"type": "string"}
+}
+```
+
+**Result**: `/users/123/posts/456` when called with `userId: "123"` and `postId: "456"`
+
+##### **Query Parameters** (`query` object)
+
+Remaining parameters become URL query parameters:
+
+```json
+{
+  "path": "/users",
+  "query": {
+    "type": "object",
+    "properties": {
+      "role": {"type": "string"},
+      "limit": {"type": "number"},
+      "tags": {"type": "array", "items": {"type": "string"}}
+    }
+  }
+}
+```
+
+**Result**: `/users?role=admin&limit=10&tags=vip,premium`
+
+**Query Parameter Conversion**:
+
+- **Strings/Numbers/Booleans**: Direct values (`role=admin`)
+- **Arrays of primitives**: Comma-separated (`tags=vip,premium`)  
+- **Objects/Complex arrays**: JSON stringified (`filter={"active":true}`)
+
+##### **Request Body** (`payload` object)
+
+Used as JSON request body for POST/PUT/PATCH requests:
+
+```json
+{
+  "method": "POST",
+  "payload": {
+    "type": "object",
+    "properties": {
+      "name": {"type": "string"},
+      "email": {"type": "string"},
+      "metadata": {"type": "object"}
+    },
+    "required": ["name", "email"]
+  }
+}
+```
+
+**Result**: JSON body `{"name": "John", "email": "john@example.com", "metadata": {...}}`
+
+##### **Headers** (endpoint-specific)
+
+Override or add to `defaultHeaders` for specific endpoints:
+
+```json
+{
+  "defaultHeaders": {
+    "Authorization": "Bearer {{env.API_TOKEN}}"
+  },
+  "endPoints": [
+    {
+      "headers": {
+        "X-Custom-Header": "special-value",
+        "Content-Type": "application/json"
+      }
+    }
+  ]
+}
+```
+
+##### **Complete Example**
+
+```json
+{
+  "name": "get_user_posts",
+  "description": "Get posts for a user with filtering",
+  "path": "/users/{userId}/posts",
+  "method": "GET",
+  "headers": {
+    "X-Source": "cubicler"
+  },
+  "userId": {"type": "string"},
+  "query": {
+    "type": "object", 
+    "properties": {
+      "status": {"type": "string", "enum": ["published", "draft"]},
+      "limit": {"type": "number", "minimum": 1, "maximum": 100},
+      "tags": {"type": "array", "items": {"type": "string"}}
+    }
+  }
+}
+```
+
+**AI Agent Call**: `get_user_posts({"userId": "123", "status": "published", "limit": 10, "tags": ["tech", "ai"]})`
+
+**HTTP Request**: `GET /users/123/posts?status=published&limit=10&tags=tech,ai`
 
 ### Environment Variable Substitution
 
@@ -434,9 +585,9 @@ The AI agent uses built-in tools to discover available services:
 
 ### 3. Service Call
 
-AI agent calls: `s1r2dj4_get_current_weather({"city": "Paris"})`
+AI agent calls: `1r2dj4_get_current_weather({"city": "Paris"})`
 
-> **💡 Function Naming**: The function name `s1r2dj4_get_current_weather` follows Cubicler's hash-based naming convention. The `s1r2dj4` part is a 6-character hash derived from the server identifier and URL (`weather_service:http://localhost:4000/mcp`). This ensures function names are:
+> **💡 Function Naming**: The function name `1r2dj4_get_current_weather` follows Cubicler's hash-based naming convention. The `1r2dj4` part is a 6-character hash derived from the server identifier and URL (`weather_service:http://localhost:4000/mcp`). This ensures function names are:
 >
 > - **Collision-resistant**: No conflicts between services
 > - **Config-order independent**: Same server always gets same hash

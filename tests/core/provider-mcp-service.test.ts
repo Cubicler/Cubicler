@@ -157,8 +157,8 @@ describe('ProviderMCPService', () => {
 
   describe('canHandleRequest', () => {
     it('should return true for valid MCP server tool names', async () => {
-      expect(await providerMCPService.canHandleRequest('s1r2dj4_get_weather')).toBe(true);
-      expect(await providerMCPService.canHandleRequest('shdy86m_read_file')).toBe(true);
+      expect(await providerMCPService.canHandleRequest('1r2dj4_get_weather')).toBe(true);
+      expect(await providerMCPService.canHandleRequest('hdy86m_read_file')).toBe(true);
     });
 
     it('should return false for REST server tool names', async () => {
@@ -206,7 +206,7 @@ describe('ProviderMCPService', () => {
       const tools = await providerMCPService.toolsList();
 
       expect(tools).toHaveLength(2); // One from each server
-      expect(tools[0].name).toBe('s1r2dj4_get_weather');
+      expect(tools[0].name).toBe('1r2dj4_get_weather');
       expect(mockFetch).toHaveBeenCalledWith('http://localhost:4000/mcp', {
         method: 'POST',
         headers: {
@@ -300,8 +300,8 @@ describe('ProviderMCPService', () => {
       const tools = await providerMCPService.toolsList();
 
       expect(tools).toHaveLength(2);
-      expect(tools[0].name).toBe('s1r2dj4_get_weather');
-      expect(tools[1].name).toBe('shdy86m_read_file');
+      expect(tools[0].name).toBe('1r2dj4_get_weather');
+      expect(tools[1].name).toBe('hdy86m_read_file');
     });
 
     it('should continue with other servers if one fails', async () => {
@@ -328,7 +328,7 @@ describe('ProviderMCPService', () => {
       const tools = await providerMCPService.toolsList();
 
       expect(tools).toHaveLength(1);
-      expect(tools[0].name).toBe('shdy86m_read_file');
+      expect(tools[0].name).toBe('hdy86m_read_file');
     });
   });
 
@@ -353,8 +353,8 @@ describe('ProviderMCPService', () => {
       const tools = await providerMCPService.toolsList();
 
       expect(tools).toHaveLength(2); // One tool from each server
-      expect(tools[0].name).toBe('s1r2dj4_test_tool');
-      expect(tools[1].name).toBe('shdy86m_test_tool');
+      expect(tools[0].name).toBe('1r2dj4_test_tool');
+      expect(tools[1].name).toBe('hdy86m_test_tool');
     });
   });
 
@@ -370,7 +370,7 @@ describe('ProviderMCPService', () => {
         })
       );
 
-      const result = await providerMCPService.toolsCall('s1r2dj4_get_weather', {
+      const result = await providerMCPService.toolsCall('1r2dj4_get_weather', {
         city: 'Jakarta',
       });
 
@@ -406,21 +406,21 @@ describe('ProviderMCPService', () => {
       );
 
       await expect(
-        providerMCPService.toolsCall('s1r2dj4_get_weather', { city: 'Jakarta' })
+        providerMCPService.toolsCall('1r2dj4_get_weather', { city: 'Jakarta' })
       ).rejects.toThrow('MCP tool execution failed: Invalid params');
     });
 
     it('should reject invalid tool name formats', async () => {
       await expect(providerMCPService.toolsCall('invalid', {})).rejects.toThrow(
-        'Invalid function name format: invalid. Expected format: s{hash}_{snake_case_function}'
+        'Invalid function name format: invalid. Expected format: {hash}_{snake_case_function}'
       );
 
       await expect(providerMCPService.toolsCall('too_many_parts_here', {})).rejects.toThrow(
-        'Invalid function name format: too_many_parts_here. Expected format: s{hash}_{snake_case_function}'
+        'Server not found for hash: too'
       );
 
       await expect(providerMCPService.toolsCall('server_', {})).rejects.toThrow(
-        'Invalid function name format: server_. Expected format: s{hash}_{snake_case_function}'
+        'Invalid function name format: server_. Expected format: {hash}_{snake_case_function}'
       );
     });
   });
@@ -437,7 +437,7 @@ describe('ProviderMCPService', () => {
         })
       );
 
-      const result = await providerMCPService.toolsCall('s1r2dj4_get_weather', {
+      const result = await providerMCPService.toolsCall('1r2dj4_get_weather', {
         city: 'Jakarta',
       });
 
@@ -484,7 +484,7 @@ describe('ProviderMCPService', () => {
       const tools = await providerMCPService.toolsList();
 
       expect(tools[0]).toEqual({
-        name: 's1r2dj4_simple_tool',
+        name: '1r2dj4_simple_tool',
         description: 'MCP tool: simple_tool',
         parameters: { type: 'object', properties: {} },
       });

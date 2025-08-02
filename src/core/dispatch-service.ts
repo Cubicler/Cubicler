@@ -15,10 +15,6 @@ import {
  * Uses dependency injection for both tools list provider and agent provider
  */
 export class DispatchService {
-  private toolsProvider: ToolsListProviding;
-  private agentProvider: AgentsProviding;
-  private serverProvider: ServersProviding;
-
   /**
    * Creates a new DispatchService instance
    * @param toolsProvider - Tools list provider for Cubicler internal tools
@@ -26,13 +22,10 @@ export class DispatchService {
    * @param serverProvider - Servers list provider for server information
    */
   constructor(
-    toolsProvider: ToolsListProviding,
-    agentProvider: AgentsProviding,
-    serverProvider: ServersProviding
+    private readonly toolsProvider: ToolsListProviding,
+    private readonly agentProvider: AgentsProviding,
+    private readonly serverProvider: ServersProviding
   ) {
-    this.toolsProvider = toolsProvider;
-    this.agentProvider = agentProvider;
-    this.serverProvider = serverProvider;
     console.log(
       `🔧 [DispatchService] Created with tools list provider, agent provider, and servers provider`
     );
@@ -47,26 +40,84 @@ export class DispatchService {
   async dispatch(agentId: string | undefined, request: DispatchRequest): Promise<DispatchResponse> {
     console.log(`📨 [DispatchService] Dispatching to agent: ${agentId || 'default'}`);
 
-    // Basic validation
+    this.validateDispatchRequest(request);
+
+    // Gather all required data for the agent request
+    const [agentInfo, agentUrl, prompt, serversInfo, cubiclerTools] = await this.gatherAgentData(agentId);
+    
+    // Create sender object once for reuse
+    const sender = { id: agentInfo.identifier, name: agentInfo.name };
+
+    // Prepare and send request to agent
+    const agentRequest = this.buildAgentRequest(agentInfo, prompt, serversInfo, cubiclerTools, request.messages);
+    
+    console.log(`🚀 [DispatchService] Calling agent ${agentInfo.name} at ${agentUrl}`);
+
+    try {
+      const response = await this.callAgent(agentUrl, agentRequest);
+      return await this.handleAgentResponse(response, sender, agentInfo.name);
+    } catch (error) {
+      console.error(`❌ [DispatchService] Agent call failed:`, error);
+      return this.createErrorResponse(sender, error);
+    }
+  }
+
+  /**
+   * Validate dispatch request
+   * @param request - Dispatch request to validate
+   * @throws Error if request is invalid
+   */
+  private validateDispatchRequest(request: DispatchRequest): void {
     if (!request.messages || !Array.isArray(request.messages) || request.messages.length === 0) {
       throw new Error('Messages array is required and must not be empty');
     }
+  }
 
-    // Get agent information
-    const agentInfo = await this.agentProvider.getAgentInfo(agentId);
-    const agentUrl = await this.agentProvider.getAgentUrl(agentId);
+  /**
+   * Call the agent with the prepared request
+   * @param agentUrl - Agent URL endpoint
+   * @param agentRequest - Prepared agent request
+   * @returns Agent response
+   */
+  private async callAgent(agentUrl: string, agentRequest: AgentRequest): Promise<any> {
+    return await fetchWithAgentTimeout(agentUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      data: agentRequest,
+    });
+  }
 
-    // Compose prompt for the agent
-    const prompt = await this.agentProvider.getAgentPrompt(agentId);
+  /**
+   * Gather all agent-related data in parallel for optimal performance
+   */
+  private async gatherAgentData(agentId: string | undefined) {
+    return Promise.all([
+      this.agentProvider.getAgentInfo(agentId),
+      this.agentProvider.getAgentUrl(agentId),
+      this.agentProvider.getAgentPrompt(agentId),
+      // Inline servers info retrieval
+      this.serverProvider.getAvailableServers().then(serversInfo => 
+        serversInfo.servers.map(server => ({
+          identifier: server.identifier,
+          name: server.name,
+          description: server.description,
+        }))
+      ),
+      this.toolsProvider.toolsList(),
+    ]);
+  }
 
-    // Get servers information for the agent
-    const serversInfo = await this.getServersInfo();
-
-    // Get Cubicler internal tools
-    const cubiclerTools = await this.toolsProvider.toolsList();
-
-    // Prepare agent request payload according to new specification
-    const agentRequest: AgentRequest = {
+  /**
+   * Build the agent request payload according to specification
+   */
+  private buildAgentRequest(
+    agentInfo: any, 
+    prompt: string, 
+    serversInfo: any[], 
+    cubiclerTools: any[], 
+    messages: any[]
+  ): AgentRequest {
+    return {
       agent: {
         identifier: agentInfo.identifier,
         name: agentInfo.name,
@@ -75,87 +126,73 @@ export class DispatchService {
       },
       tools: cubiclerTools,
       servers: serversInfo,
-      messages: request.messages, // Pass messages as-is without enhancement
+      messages, // Pass messages as-is without enhancement
     };
+  }
 
-    console.log(`🚀 [DispatchService] Calling agent ${agentInfo.name} at ${agentUrl}`);
+  /**
+   * Handle the agent response, validate it, and convert to dispatch response format
+   */
+  private async handleAgentResponse(response: any, sender: any, agentName: string): Promise<DispatchResponse> {
+    this.validateAgentResponseStatus(response);
+    
+    const agentResponse: AgentResponse = response.data;
+    this.validateAgentResponseFormat(agentResponse);
 
-    try {
-      // Call the agent
-      const response = await fetchWithAgentTimeout(agentUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        data: agentRequest,
-      });
+    console.log(`✅ [DispatchService] Agent ${agentName} responded successfully`);
+    
+    return {
+      sender,
+      timestamp: agentResponse.timestamp,
+      type: agentResponse.type,
+      content: agentResponse.content,
+      metadata: agentResponse.metadata,
+    };
+  }
 
-      if (response.status < 200 || response.status >= 300) {
-        throw new Error(`Agent responded with status ${response.status}: ${response.statusText}`);
-      }
-
-      // Parse agent response
-      const agentResponse: AgentResponse = response.data;
-
-      // Validate agent response format
-      if (
-        !agentResponse.timestamp ||
-        !agentResponse.type ||
-        agentResponse.content === undefined ||
-        !agentResponse.metadata
-      ) {
-        throw new Error(
-          'Invalid agent response format: missing required fields (timestamp, type, content, metadata)'
-        );
-      }
-
-      // Create dispatch response using agent's data
-      const dispatchResponse: DispatchResponse = {
-        sender: {
-          id: agentInfo.identifier,
-          name: agentInfo.name,
-        },
-        timestamp: agentResponse.timestamp,
-        type: agentResponse.type,
-        content: agentResponse.content,
-        metadata: agentResponse.metadata,
-      };
-
-      console.log(`✅ [DispatchService] Agent ${agentInfo.name} responded successfully`);
-      return dispatchResponse;
-    } catch (error) {
-      console.error(`❌ [DispatchService] Agent call failed:`, error);
-
-      // Return error response in proper format
-      return {
-        sender: {
-          id: agentInfo.identifier,
-          name: agentInfo.name,
-        },
-        timestamp: new Date().toISOString(),
-        type: 'text',
-        content: `Sorry, I encountered an error while processing your request: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        metadata: {
-          usedToken: 0,
-          usedTools: 0,
-        },
-      };
+  /**
+   * Validate agent response HTTP status
+   * @param response - HTTP response from agent
+   * @throws Error if status indicates failure
+   */
+  private validateAgentResponseStatus(response: any): void {
+    if (response.status < 200 || response.status >= 300) {
+      throw new Error(`Agent responded with status ${response.status}: ${response.statusText}`);
     }
   }
 
   /**
-   * Get servers information for agents
-   * Returns simplified server info for agent context
+   * Validate agent response format
+   * @param agentResponse - Agent response to validate
+   * @throws Error if response format is invalid
    */
-  private async getServersInfo(): Promise<
-    Array<{ identifier: string; name: string; description: string }>
-  > {
-    const serversInfo = await this.serverProvider.getAvailableServers();
-    return serversInfo.servers.map((server) => ({
-      identifier: server.identifier,
-      name: server.name,
-      description: server.description,
-    }));
+  private validateAgentResponseFormat(agentResponse: AgentResponse): void {
+    if (
+      !agentResponse.timestamp ||
+      !agentResponse.type ||
+      agentResponse.content === undefined ||
+      !agentResponse.metadata
+    ) {
+      throw new Error(
+        'Invalid agent response format: missing required fields (timestamp, type, content, metadata)'
+      );
+    }
+  }
+
+  /**
+   * Create error response in proper dispatch format
+   */
+  private createErrorResponse(sender: any, error: unknown): DispatchResponse {
+    return {
+      sender,
+      timestamp: new Date().toISOString(),
+      type: 'text',
+      content: `Sorry, I encountered an error while processing your request: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      metadata: {
+        usedToken: 0,
+        usedTools: 0,
+      },
+    };
   }
 }
 

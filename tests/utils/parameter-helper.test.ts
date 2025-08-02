@@ -10,7 +10,7 @@ import {
 describe('Parameter Helper', () => {
   describe('parseFunctionName', () => {
     it('should parse valid function name', () => {
-      const result = parseFunctionName('s1r2dj4_get_current_weather');
+      const result = parseFunctionName('1r2dj4_get_current_weather');
 
       expect(result.serverHash).toBe('1r2dj4');
       expect(result.functionName).toBe('get_current_weather');

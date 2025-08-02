@@ -242,7 +242,7 @@ Content-Type: application/json
     "content": [
       {
         "type": "text", 
-        "text": "{\"functions\": [{\"name\": \"s1r2dj4_get_current_weather\", \"description\": \"Get current weather for a location\", \"parameters\": {\"type\": \"object\", \"properties\": {\"city\": {\"type\": \"string\"}, \"country\": {\"type\": \"string\"}}, \"required\": [\"city\"]}}]}"
+        "text": "{\"functions\": [{\"name\": \"1r2dj4_get_current_weather\", \"description\": \"Get current weather for a location\", \"parameters\": {\"type\": \"object\", \"properties\": {\"city\": {\"type\": \"string\"}, \"country\": {\"type\": \"string\"}}, \"required\": [\"city\"]}}]}"
       }
     ]
   }
@@ -286,7 +286,7 @@ app.post('/agent', async (req, res) => {
     // Step 4: If needed, call external functions via MCP
     if (response.needsWeather) {
       const weatherData = await callExternalFunction(
-        's1r2dj4_get_current_weather',
+        '1r2dj4_get_current_weather',
         { city: 'Paris', country: 'France' }
       );
       response.content = `The weather in Paris is ${weatherData.temperature}°C and ${weatherData.conditions}.`;
@@ -555,10 +555,10 @@ curl -X POST http://localhost:1503/dispatch/my_custom_agent \
 
 ### Function Naming Convention
 
-External functions follow the pattern: `s{hash}_{snake_case_function}` where hash is a 6-character base36 hash derived from server identifier and URL.
+External functions follow the pattern: `{hash}_{snake_case_function}` where hash is a 6-character base36 hash derived from server identifier and URL.
 
-- MCP servers: `s1r2dj4_get_current_weather`
-- REST servers: `ssft7he_get_user_info`
+- MCP servers: `1r2dj4_get_current_weather`
+- REST servers: `sft7he_get_user_info`
 
 The hash ensures collision-resistant and config-order-independent function names.
 

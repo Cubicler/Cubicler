@@ -137,68 +137,96 @@ export class InternalToolsService implements MCPCompatible {
    * Get tools from a specific server managed by Cubicler
    */
   private async fetchServerTools(serverIdentifier: string): Promise<ServerToolsResponse> {
-    if (!serverIdentifier || typeof serverIdentifier !== 'string') {
-      throw new Error('serverIdentifier parameter is required and must be a string');
-    }
+    this.validateServerIdentifier(serverIdentifier);
 
     try {
-      // Check if it's internal tools
+      // Handle internal tools separately
       if (serverIdentifier === 'cubicler') {
-        return {
-          tools: await this.toolsList(),
-        };
+        return { tools: await this.toolsList() };
       }
 
       if (!this.serversProvider) {
         throw new Error('Servers provider not set. Cannot get server tools.');
       }
 
-      // Get server hash from repository (single source of truth)
-      const serverHash = await this.serversProvider.getServerHash(serverIdentifier);
-      if (!serverHash) {
-        throw new Error(`Server not found: ${serverIdentifier}`);
-      }
+      const serverHash = await this.getServerHash(serverIdentifier);
+      const matchingTools = await this.findToolsByServerHash(serverHash);
 
-      // Find tools that start with the server hash prefix
-      const targetPrefix = `s${serverHash}_`;
-      const matchingTools: ToolDefinition[] = [];
-
-      // Search through all provider services for tools with matching hash prefix
-      for (const service of this.toolsProviders) {
-        try {
-          const tools = await service.toolsList();
-
-          for (const tool of tools) {
-            if (tool.name.startsWith(targetPrefix)) {
-              matchingTools.push({
-                name: tool.name,
-                description: tool.description,
-                parameters: tool.parameters || tool.inputSchema,
-              });
-            }
-          }
-        } catch (error) {
-          console.warn(
-            `⚠️ [InternalToolsService] Failed to get tools from service ${service.identifier}:`,
-            error
-          );
-          // Continue to next provider instead of throwing immediately
-        }
-      }
-
-      console.log(
-        `✅ [InternalToolsService] Found ${matchingTools.length} tools for server: ${serverIdentifier}`
-      );
+      console.log(`✅ [InternalToolsService] Found ${matchingTools.length} tools for server: ${serverIdentifier}`);
       return { tools: matchingTools };
     } catch (error) {
-      console.error(
-        `❌ [InternalToolsService] Error getting tools for server ${serverIdentifier}:`,
-        error
-      );
+      console.error(`❌ [InternalToolsService] Error getting tools for server ${serverIdentifier}:`, error);
       throw new Error(
         `Failed to get tools for server ${serverIdentifier}: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
+  }
+
+  /**
+   * Validate server identifier parameter
+   * @param serverIdentifier - Server identifier to validate
+   * @throws Error if invalid
+   */
+  private validateServerIdentifier(serverIdentifier: string): void {
+    if (!serverIdentifier || typeof serverIdentifier !== 'string') {
+      throw new Error('serverIdentifier parameter is required and must be a string');
+    }
+  }
+
+  /**
+   * Get server hash from servers provider
+   * @param serverIdentifier - Server identifier
+   * @returns Server hash
+   * @throws Error if server not found
+   */
+  private async getServerHash(serverIdentifier: string): Promise<string> {
+    const serverHash = await this.serversProvider!.getServerHash(serverIdentifier);
+    if (!serverHash) {
+      throw new Error(`Server not found: ${serverIdentifier}`);
+    }
+    return serverHash;
+  }
+
+  /**
+   * Find tools matching the server hash prefix
+   * @param serverHash - Hash prefix to match
+   * @returns Array of matching tools
+   */
+  private async findToolsByServerHash(serverHash: string): Promise<ToolDefinition[]> {
+    const targetPrefix = `${serverHash}_`;
+    const matchingTools: ToolDefinition[] = [];
+
+    for (const service of this.toolsProviders) {
+      try {
+        const tools = await service.toolsList();
+        const serviceMachingTools = this.filterToolsByPrefix(tools, targetPrefix);
+        matchingTools.push(...serviceMachingTools);
+      } catch (error) {
+        console.warn(
+          `⚠️ [InternalToolsService] Failed to get tools from service ${service.identifier}:`,
+          error
+        );
+        // Continue to next provider instead of throwing immediately
+      }
+    }
+
+    return matchingTools;
+  }
+
+  /**
+   * Filter tools by prefix and normalize format
+   * @param tools - Tools to filter
+   * @param prefix - Prefix to match
+   * @returns Filtered and normalized tools
+   */
+  private filterToolsByPrefix(tools: ToolDefinition[], prefix: string): ToolDefinition[] {
+    return tools
+      .filter(tool => tool.name.startsWith(prefix))
+      .map(tool => ({
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.parameters || tool.inputSchema,
+      }));
   }
 }
 

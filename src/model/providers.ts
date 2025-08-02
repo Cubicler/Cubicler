@@ -24,11 +24,18 @@ export interface RESTEndpoint {
     properties: Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any -- OpenAI schema supports complex nested structures
     required?: string[];
   };
+  query?: {
+    type: 'object';
+    properties: Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any -- OpenAI schema supports complex nested structures
+    required?: string[];
+  };
   payload?: {
     type: 'object';
     properties: Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any -- OpenAI schema supports complex nested structures
     required?: string[];
   };
+  // Support for individual path parameter definitions (e.g., userId: {type: "string"})
+  [parameterName: string]: any; // eslint-disable-line @typescript-eslint/no-explicit-any -- Allows dynamic path parameter definitions
 }
 
 /**

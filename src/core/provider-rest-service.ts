@@ -54,7 +54,6 @@ class ProviderRESTService implements MCPCompatible {
    * @returns Array of tool definitions from all REST servers
    */
   async toolsList(): Promise<ToolDefinition[]> {
-    // Return all tools from all REST servers
     const config = await this.configProvider.getProvidersConfig();
     const restServers = config.restServers || [];
     const allTools: ToolDefinition[] = [];
@@ -69,10 +68,7 @@ class ProviderRESTService implements MCPCompatible {
         const serverTools = await this.getRESTTools(server.identifier);
         allTools.push(...serverTools);
       } catch (error) {
-        console.warn(
-          `⚠️ [RESTService] Failed to get tools from REST server ${server.identifier}:`,
-          error
-        );
+        console.warn(`⚠️ [RESTService] Failed to get tools from REST server ${server.identifier}:`, error);
         // Continue with other servers
       }
     }
@@ -82,22 +78,14 @@ class ProviderRESTService implements MCPCompatible {
 
   /**
    * Execute a REST tool by parsing function name and delegating to executeRESTTool
-   * @param toolName - Name of the tool to execute (format: s{hash}_{snake_case_function})
+   * @param toolName - Name of the tool to execute (format: {hash}_{snake_case_function})
    * @param parameters - Parameters for the tool execution
    * @returns Result of the tool execution
    * @throws Error if tool name format is invalid or execution fails
    */
   async toolsCall(toolName: string, parameters: JSONObject): Promise<JSONValue> {
     const { serverHash, functionName } = parseFunctionName(toolName);
-
-    // Find server by hash
-    const config = await this.configProvider.getProvidersConfig();
-    const restServers = config.restServers || [];
-
-    const server = restServers.find((s) => {
-      const expectedHash = generateServerHash(s.identifier, s.url);
-      return expectedHash === serverHash;
-    });
+    const server = await this.findRestServerByHash(serverHash);
 
     if (!server) {
       throw new Error(`REST server not found for hash: ${serverHash}`);
@@ -108,25 +96,36 @@ class ProviderRESTService implements MCPCompatible {
 
   /**
    * Check if this service can handle the given tool name
-   * @param toolName - Name of the tool to check (format: s{hash}_{snake_case_function})
+   * @param toolName - Name of the tool to check (format: {hash}_{snake_case_function})
    * @returns true if this service can handle the tool, false otherwise
    */
   async canHandleRequest(toolName: string): Promise<boolean> {
     try {
+      console.log(`🔍 [ProviderRESTService] Checking if can handle: ${toolName}`);
       const { serverHash } = parseFunctionName(toolName);
-
-      const config = await this.configProvider.getProvidersConfig();
-      const restServers = config.restServers || [];
-
-      const server = restServers.find((s) => {
-        const expectedHash = generateServerHash(s.identifier, s.url);
-        return expectedHash === serverHash;
-      });
-
-      return server !== undefined;
-    } catch {
+      const server = await this.findRestServerByHash(serverHash);
+      const canHandle = server !== undefined;
+      console.log(`🔍 [ProviderRESTService] Can handle ${toolName}: ${canHandle}`);
+      return canHandle;
+    } catch (error) {
+      console.log(`🔍 [ProviderRESTService] Error checking ${toolName}: ${error}`);
       return false;
     }
+  }
+
+  /**
+   * Find REST server configuration by hash
+   * @param serverHash - Server hash to find
+   * @returns Server configuration or undefined if not found
+   */
+  private async findRestServerByHash(serverHash: string): Promise<any> {
+    const config = await this.configProvider.getProvidersConfig();
+    const restServers = config.restServers || [];
+
+    return restServers.find((s: any) => {
+      const expectedHash = generateServerHash(s.identifier, s.url);
+      return expectedHash === serverHash;
+    });
   }
 
   /**
@@ -146,17 +145,35 @@ class ProviderRESTService implements MCPCompatible {
       const properties: Record<string, JSONValue> = {};
       const required: string[] = [];
 
-      // Extract path parameters from the path template
+      // Extract path parameters from the path template and handle individual parameter definitions
       const pathParamMatches = endpoint.path.match(/\{(\w+)\}/g);
       if (pathParamMatches) {
         for (const match of pathParamMatches) {
           const paramName = match.slice(1, -1); // Remove { and }
-          properties[paramName] = { type: 'string' };
+          
+          // Check if this path parameter has a specific definition in the endpoint
+          const paramDefinition = (endpoint as any)[paramName];
+          if (paramDefinition && typeof paramDefinition === 'object') {
+            properties[paramName] = paramDefinition;
+          } else {
+            // Default to string type if no specific definition
+            properties[paramName] = { type: 'string' };
+          }
           required.push(paramName);
         }
       }
 
-      // Add query parameters as an object if endpoint has parameters
+      // Add query parameters as an object if endpoint has query
+      if (endpoint.query?.properties) {
+        properties.query = {
+          type: 'object',
+          properties: endpoint.query.properties,
+          required: endpoint.query.required || [],
+        };
+      }
+
+      // Add general parameters as query object if endpoint has parameters field
+      // This is for backward compatibility and simpler endpoint definitions
       if (endpoint.parameters?.properties) {
         properties.query = {
           type: 'object',
