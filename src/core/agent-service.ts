@@ -129,7 +129,7 @@ export class AgentService implements AgentsProviding {
   private async buildTechnicalSection(): Promise<string> {
     const baseSections = this.createBaseTechnicalSections();
     const serverSections = await this.createServerSpecificSections();
-    
+
     return [...baseSections, ...serverSections].join('\n');
   }
 
@@ -141,7 +141,7 @@ export class AgentService implements AgentsProviding {
     return [
       '## How You Operate as an AI Agent in Cubicler',
       '',
-      'You\'re an AI agent running in **Cubicler**, a smart orchestration system. Cubicler connects you to external services (weather, databases, etc.) via **function calls** — **never** through direct API requests.',
+      "You're an AI agent running in **Cubicler**, a smart orchestration system. Cubicler connects you to external services (weather, databases, etc.) via **function calls** — **never** through direct API requests.",
       '',
       '### ✅ Capabilities',
       '',
@@ -173,7 +173,7 @@ export class AgentService implements AgentsProviding {
       '- Copy function names and parameters exactly',
       '- Keep responses clear and non-technical',
       '',
-      '**❌ DON\'T:**',
+      "**❌ DON'T:**",
       '',
       '- Guess or make up tool names',
       '- Modify function names or params',
@@ -245,8 +245,10 @@ export class AgentService implements AgentsProviding {
       sections.push('');
     });
 
-    sections.push('Remember: Use `cubicler_fetch_server_tools({"serverIdentifier": "service_identifier"})` to see exactly what functions each service provides.');
-    
+    sections.push(
+      'Remember: Use `cubicler_fetch_server_tools({"serverIdentifier": "service_identifier"})` to see exactly what functions each service provides.'
+    );
+
     return sections;
   }
 
@@ -259,7 +261,7 @@ export class AgentService implements AgentsProviding {
       '',
       '## No External Services Currently Available',
       '',
-      'No external services are currently configured. You can still help users with questions that don\'t require external data.',
+      "No external services are currently configured. You can still help users with questions that don't require external data.",
     ];
   }
 

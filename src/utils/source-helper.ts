@@ -8,16 +8,7 @@ export function isRemoteUrl(value: string): boolean {
     return false;
   }
 
-  // Robust regex for HTTP/HTTPS URLs
-  // Matches:
-  // - http:// or https:// protocol
-  // - Domain with at least one dot or localhost
-  // - Optional port number
-  // - Optional path, query parameters, and fragments
-  const urlRegex =
-    /^https?:\/\/(?:(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}|localhost)(?::\d+)?(?:\/[^\s]*)?$/i;
-
-  return urlRegex.test(value.trim());
+  return validateUrlPattern(value.trim());
 }
 
 /**
@@ -37,25 +28,7 @@ export function isFilePath(value: string): boolean {
     return false;
   }
 
-  // Robust file path detection patterns
-  const filePathPatterns = [
-    // Absolute paths (Unix-like: /path/to/file, Windows: C:\path\to\file, D:/path/to/file)
-    /^(?:[a-zA-Z]:)?[/\\](?:[^/\\:*?"<>|]+[/\\])*[^/\\:*?"<>|]*$/,
-
-    // Relative paths starting with ./ or ../
-    /^\.{1,2}[/\\](?:[^/\\:*?"<>|]+[/\\])*[^/\\:*?"<>|]*$/,
-
-    // Home directory paths starting with ~/
-    /^~[/\\](?:[^/\\:*?"<>|]+[/\\])*[^/\\:*?"<>|]*$/,
-
-    // Files with common text extensions anywhere in the path
-    /^(?:[^/\\:*?"<>|]+[/\\])*[^/\\:*?"<>|]+\.(txt|md|markdown|text|json|yaml|yml|toml|ini|conf|config|log|readme)$/i,
-
-    // Paths containing directory separators (at least one slash or backslash, with characters on both sides)
-    /^[^/\\:*?"<>|]+[/\\]+[^/\\:*?"<>|]+.*$/,
-  ];
-
-  return filePathPatterns.some((pattern) => pattern.test(trimmedValue));
+  return matchesFilePathPattern(trimmedValue);
 }
 
 /**
@@ -82,6 +55,10 @@ export function isInline(value: string): boolean {
  * @returns The detected source type: 'remote-url', 'file-path', or 'inline'
  */
 export function detectSourceType(value: string): 'remote-url' | 'file-path' | 'inline' {
+  if (!value || typeof value !== 'string') {
+    return 'inline'; // Treat invalid inputs as inline content
+  }
+
   if (isRemoteUrl(value)) {
     return 'remote-url';
   }
@@ -91,4 +68,49 @@ export function detectSourceType(value: string): 'remote-url' | 'file-path' | 'i
   }
 
   return 'inline';
+}
+
+/**
+ * Validate URL pattern using regex
+ * @param trimmedValue - Trimmed value to validate
+ * @returns true if value matches URL pattern
+ */
+function validateUrlPattern(trimmedValue: string): boolean {
+  // Robust regex for HTTP/HTTPS URLs
+  // Matches:
+  // - http:// or https:// protocol
+  // - Domain with at least one dot or localhost
+  // - Optional port number
+  // - Optional path, query parameters, and fragments
+  const urlRegex =
+    /^https?:\/\/(?:(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}|localhost)(?::\d+)?(?:\/[^\s]*)?$/i;
+
+  return urlRegex.test(trimmedValue);
+}
+
+/**
+ * Check if value matches file path patterns
+ * @param trimmedValue - Trimmed value to check
+ * @returns true if value matches file path patterns
+ */
+function matchesFilePathPattern(trimmedValue: string): boolean {
+  // Robust file path detection patterns
+  const filePathPatterns = [
+    // Absolute paths (Unix-like: /path/to/file, Windows: C:\path\to\file, D:/path/to/file)
+    /^(?:[a-zA-Z]:)?[/\\](?:[^/\\:*?"<>|]+[/\\])*[^/\\:*?"<>|]*$/,
+
+    // Relative paths starting with ./ or ../
+    /^\.{1,2}[/\\](?:[^/\\:*?"<>|]+[/\\])*[^/\\:*?"<>|]*$/,
+
+    // Home directory paths starting with ~/
+    /^~[/\\](?:[^/\\:*?"<>|]+[/\\])*[^/\\:*?"<>|]*$/,
+
+    // Files with common text extensions anywhere in the path
+    /^(?:[^/\\:*?"<>|]+[/\\])*[^/\\:*?"<>|]+\.(txt|md|markdown|text|json|yaml|yml|toml|ini|conf|config|log|readme)$/i,
+
+    // Paths containing directory separators (at least one slash or backslash, with characters on both sides)
+    /^[^/\\:*?"<>|]+[/\\]+[^/\\:*?"<>|]+.*$/,
+  ];
+
+  return filePathPatterns.some((pattern) => pattern.test(trimmedValue));
 }

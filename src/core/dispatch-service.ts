@@ -43,14 +43,21 @@ export class DispatchService {
     this.validateDispatchRequest(request);
 
     // Gather all required data for the agent request
-    const [agentInfo, agentUrl, prompt, serversInfo, cubiclerTools] = await this.gatherAgentData(agentId);
-    
+    const [agentInfo, agentUrl, prompt, serversInfo, cubiclerTools] =
+      await this.gatherAgentData(agentId);
+
     // Create sender object once for reuse
     const sender = { id: agentInfo.identifier, name: agentInfo.name };
 
     // Prepare and send request to agent
-    const agentRequest = this.buildAgentRequest(agentInfo, prompt, serversInfo, cubiclerTools, request.messages);
-    
+    const agentRequest = this.buildAgentRequest(
+      agentInfo,
+      prompt,
+      serversInfo,
+      cubiclerTools,
+      request.messages
+    );
+
     console.log(`🚀 [DispatchService] Calling agent ${agentInfo.name} at ${agentUrl}`);
 
     try {
@@ -96,8 +103,8 @@ export class DispatchService {
       this.agentProvider.getAgentUrl(agentId),
       this.agentProvider.getAgentPrompt(agentId),
       // Inline servers info retrieval
-      this.serverProvider.getAvailableServers().then(serversInfo => 
-        serversInfo.servers.map(server => ({
+      this.serverProvider.getAvailableServers().then((serversInfo) =>
+        serversInfo.servers.map((server) => ({
           identifier: server.identifier,
           name: server.name,
           description: server.description,
@@ -111,10 +118,10 @@ export class DispatchService {
    * Build the agent request payload according to specification
    */
   private buildAgentRequest(
-    agentInfo: any, 
-    prompt: string, 
-    serversInfo: any[], 
-    cubiclerTools: any[], 
+    agentInfo: any,
+    prompt: string,
+    serversInfo: any[],
+    cubiclerTools: any[],
     messages: any[]
   ): AgentRequest {
     return {
@@ -133,14 +140,18 @@ export class DispatchService {
   /**
    * Handle the agent response, validate it, and convert to dispatch response format
    */
-  private async handleAgentResponse(response: any, sender: any, agentName: string): Promise<DispatchResponse> {
+  private async handleAgentResponse(
+    response: any,
+    sender: any,
+    agentName: string
+  ): Promise<DispatchResponse> {
     this.validateAgentResponseStatus(response);
-    
+
     const agentResponse: AgentResponse = response.data;
     this.validateAgentResponseFormat(agentResponse);
 
     console.log(`✅ [DispatchService] Agent ${agentName} responded successfully`);
-    
+
     return {
       sender,
       timestamp: agentResponse.timestamp,

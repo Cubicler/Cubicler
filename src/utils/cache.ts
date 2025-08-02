@@ -22,8 +22,11 @@ export class Cache<T> {
    * Get an item from cache
    * @param key - The cache key
    * @returns The cached item or undefined if not found/expired
+   * @throws Error if key is invalid
    */
   get(key: string): T | undefined {
+    this.validateKey(key);
+
     if (!this.enabled) {
       return undefined;
     }
@@ -33,9 +36,7 @@ export class Cache<T> {
       return undefined;
     }
 
-    const now = Date.now();
-
-    if (now - item.timestamp > this.defaultTtl) {
+    if (this.isExpired(item)) {
       this.cache.delete(key);
       return undefined;
     }
@@ -48,8 +49,15 @@ export class Cache<T> {
    * @param key - The cache key
    * @param value - The value to cache
    * @returns void
+   * @throws Error if inputs are invalid
    */
   set(key: string, value: T): void {
+    this.validateKey(key);
+
+    if (value === undefined) {
+      throw new Error('Cannot cache undefined values');
+    }
+
     if (!this.enabled) {
       return;
     }
@@ -58,6 +66,27 @@ export class Cache<T> {
       value,
       timestamp: Date.now(),
     });
+  }
+
+  /**
+   * Validate cache key
+   * @param key - Key to validate
+   * @throws Error if key is invalid
+   */
+  private validateKey(key: string): void {
+    if (!key || typeof key !== 'string') {
+      throw new Error('Cache key must be a non-empty string');
+    }
+  }
+
+  /**
+   * Check if cache item is expired
+   * @param item - Cache item to check
+   * @returns true if expired
+   */
+  private isExpired(item: CacheItem<T>): boolean {
+    const now = Date.now();
+    return now - item.timestamp > this.defaultTtl;
   }
 
   /**
@@ -145,18 +174,72 @@ export class Cache<T> {
  * @param envPrefix - Environment variable prefix (e.g., "PROVIDER_SPEC" for PROVIDER_SPEC_CACHE_ENABLED)
  * @param defaultTtlSeconds - Default TTL in seconds
  * @returns Configured cache instance
+ * @throws Error if inputs are invalid
  */
 export function createEnvCache<T>(envPrefix: string, defaultTtlSeconds: number = 600): Cache<T> {
-  const enabledValue = process.env[`${envPrefix}_CACHE_ENABLED`];
-  const enabled = enabledValue !== 'false' && enabledValue !== '0';
-  const timeoutEnv = process.env[`${envPrefix}_CACHE_TIMEOUT`];
-  const ttlSeconds = timeoutEnv ? parseInt(timeoutEnv) : defaultTtlSeconds;
+  validateEnvCacheInputs(envPrefix, defaultTtlSeconds);
 
-  // Use default TTL if parsing failed (NaN)
-  const finalTtlSeconds = isNaN(ttlSeconds) ? defaultTtlSeconds : ttlSeconds;
+  const enabled = determineEnabledState(envPrefix);
+  const ttlSeconds = determineTtlSeconds(envPrefix, defaultTtlSeconds);
 
   // Convert seconds to milliseconds for internal use
-  const ttlMs = finalTtlSeconds * 1000;
+  const ttlMs = ttlSeconds * 1000;
 
   return new Cache<T>(ttlMs, enabled);
+}
+
+/**
+ * Validate inputs for createEnvCache
+ * @param envPrefix - Environment prefix to validate
+ * @param defaultTtlSeconds - Default TTL to validate
+ * @throws Error if inputs are invalid
+ */
+function validateEnvCacheInputs(envPrefix: string, defaultTtlSeconds: number): void {
+  if (!envPrefix || typeof envPrefix !== 'string') {
+    throw new Error('Environment prefix must be a non-empty string');
+  }
+
+  if (
+    typeof defaultTtlSeconds !== 'number' ||
+    defaultTtlSeconds <= 0 ||
+    !isFinite(defaultTtlSeconds)
+  ) {
+    throw new Error('Default TTL seconds must be a positive finite number');
+  }
+}
+
+/**
+ * Determine if cache should be enabled based on environment variable
+ * @param envPrefix - Environment prefix
+ * @returns true if cache should be enabled
+ */
+function determineEnabledState(envPrefix: string): boolean {
+  const enabledValue = process.env[`${envPrefix}_CACHE_ENABLED`];
+  return enabledValue !== 'false' && enabledValue !== '0';
+}
+
+/**
+ * Determine TTL seconds from environment or use default
+ * @param envPrefix - Environment prefix
+ * @param defaultTtlSeconds - Default TTL seconds
+ * @returns TTL seconds to use
+ */
+function determineTtlSeconds(envPrefix: string, defaultTtlSeconds: number): number {
+  const timeoutEnv = process.env[`${envPrefix}_CACHE_TIMEOUT`];
+
+  if (!timeoutEnv) {
+    return defaultTtlSeconds;
+  }
+
+  const parsed = parseInt(timeoutEnv, 10);
+
+  // Use default TTL if parsing failed (NaN) or value is invalid
+  if (isNaN(parsed) || parsed <= 0) {
+    console.warn(
+      `⚠️ [Cache] Invalid cache timeout for ${envPrefix}: ${timeoutEnv}. Using default: ${defaultTtlSeconds}s`
+    );
+    return defaultTtlSeconds;
+  }
+
+  return parsed;
 }

@@ -50,7 +50,11 @@ export class MCPService {
       return await this.routeRequest(request);
     } catch (error) {
       console.error(`❌ [MCPService] Error handling MCP request:`, error);
-      return this.createErrorResponse(request.id, -32603, `Internal error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return this.createErrorResponse(
+        request.id,
+        -32603,
+        `Internal error: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -73,8 +77,8 @@ export class MCPService {
 
       default:
         return this.createErrorResponse(
-          request.id, 
-          -32601, 
+          request.id,
+          -32601,
           `Method not supported: ${request.method}. Supported methods: initialize, tools/list, tools/call`
         );
     }
@@ -87,7 +91,11 @@ export class MCPService {
    * @param message - Error message
    * @returns MCP error response
    */
-  private createErrorResponse(id: string | number | null, code: number, message: string): MCPResponse {
+  private createErrorResponse(
+    id: string | number | null,
+    code: number,
+    message: string
+  ): MCPResponse {
     return {
       jsonrpc: '2.0',
       id: id ?? 'unknown',
@@ -131,8 +139,10 @@ export class MCPService {
 
     try {
       const allTools = await this.aggregateToolsFromProviders();
-      
-      console.log(`✅ [MCPService] Returning ${allTools.length} tools from ${this.providers.length} providers`);
+
+      console.log(
+        `✅ [MCPService] Returning ${allTools.length} tools from ${this.providers.length} providers`
+      );
 
       return {
         jsonrpc: '2.0',
@@ -178,14 +188,14 @@ export class MCPService {
 
     const params = request.params as JSONObject;
     const toolCallParams = this.validateToolCallParams(params);
-    
+
     if (!toolCallParams) {
       return this.createErrorResponse(request.id, -32602, 'Missing required parameter: name');
     }
 
     try {
       const result = await this.executeToolCall(toolCallParams.toolName, toolCallParams.arguments);
-      
+
       return {
         jsonrpc: '2.0',
         id: request.id,
@@ -212,7 +222,9 @@ export class MCPService {
    * @param params - Request parameters
    * @returns Validated parameters or null if invalid
    */
-  private validateToolCallParams(params: JSONObject | null): { toolName: string; arguments: JSONObject } | null {
+  private validateToolCallParams(
+    params: JSONObject | null
+  ): { toolName: string; arguments: JSONObject } | null {
     if (!params || !params.name) {
       return null;
     }

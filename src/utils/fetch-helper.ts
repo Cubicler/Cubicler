@@ -16,6 +16,7 @@ export async function fetchWithProviderTimeout(
   url: string,
   options: AxiosRequestConfig = {}
 ): Promise<AxiosResponse> {
+  validateUrl(url);
   const timeoutMs = getProviderCallTimeout();
   return axiosWithTimeout(url, options, timeoutMs);
 }
@@ -31,6 +32,7 @@ export async function fetchWithAgentTimeout(
   url: string,
   options: AxiosRequestConfig = {}
 ): Promise<AxiosResponse> {
+  validateUrl(url);
   const timeoutMs = getAgentCallTimeout();
   return axiosWithTimeout(url, options, timeoutMs);
 }
@@ -46,8 +48,24 @@ export async function fetchWithDefaultTimeout(
   url: string,
   options: AxiosRequestConfig = {}
 ): Promise<AxiosResponse> {
+  validateUrl(url);
   const timeoutMs = getDefaultCallTimeout();
   return axiosWithTimeout(url, options, timeoutMs);
+}
+
+/**
+ * Validate URL parameter
+ * @param url - URL to validate
+ * @throws Error if URL is invalid
+ */
+function validateUrl(url: string): void {
+  if (!url || typeof url !== 'string') {
+    throw new Error('URL must be a non-empty string');
+  }
+
+  if (url.trim() === '') {
+    throw new Error('URL cannot be empty or whitespace only');
+  }
 }
 
 /**
@@ -63,6 +81,9 @@ export async function axiosWithTimeout(
   options: AxiosRequestConfig = {},
   timeoutMs: number
 ): Promise<AxiosResponse> {
+  validateUrl(url);
+  validateTimeout(timeoutMs);
+
   const mergedOptions: AxiosRequestConfig = {
     ...options,
     timeout: timeoutMs,
@@ -70,23 +91,37 @@ export async function axiosWithTimeout(
   };
 
   try {
-    const response = await axios(mergedOptions);
-    return response;
+    return await axios(mergedOptions);
   } catch (error) {
-    // Check if axios.isAxiosError exists and the error is an axios error
-    if (axios.isAxiosError && axios.isAxiosError(error)) {
-      if (error.code === 'ECONNABORTED') {
-        throw new Error(`Request timeout after ${timeoutMs}ms`);
-      }
-      // Re-throw the axios error to be handled by the calling code
-      throw error;
-    }
-    throw error;
+    throw handleAxiosError(error, timeoutMs);
   }
 }
 
 /**
- * Legacy alias for backward compatibility
- * @deprecated Use axiosWithTimeout instead
+ * Validate timeout parameter
+ * @param timeoutMs - Timeout to validate
+ * @throws Error if timeout is invalid
  */
-export const fetchWithTimeout = axiosWithTimeout;
+function validateTimeout(timeoutMs: number): void {
+  if (typeof timeoutMs !== 'number' || timeoutMs <= 0 || !isFinite(timeoutMs)) {
+    throw new Error('Timeout must be a positive finite number');
+  }
+}
+
+/**
+ * Handle axios errors and convert to meaningful error messages
+ * @param error - Error from axios
+ * @param timeoutMs - Timeout value for error message
+ * @returns Error to throw
+ */
+function handleAxiosError(error: unknown, timeoutMs: number): Error {
+  if (axios.isAxiosError && axios.isAxiosError(error)) {
+    if (error.code === 'ECONNABORTED') {
+      return new Error(`Request timeout after ${timeoutMs}ms`);
+    }
+    // Re-throw the axios error to be handled by the calling code
+    return error;
+  }
+
+  return error instanceof Error ? error : new Error('Unknown request error');
+}

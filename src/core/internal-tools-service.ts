@@ -152,10 +152,15 @@ export class InternalToolsService implements MCPCompatible {
       const serverHash = await this.getServerHash(serverIdentifier);
       const matchingTools = await this.findToolsByServerHash(serverHash);
 
-      console.log(`✅ [InternalToolsService] Found ${matchingTools.length} tools for server: ${serverIdentifier}`);
+      console.log(
+        `✅ [InternalToolsService] Found ${matchingTools.length} tools for server: ${serverIdentifier}`
+      );
       return { tools: matchingTools };
     } catch (error) {
-      console.error(`❌ [InternalToolsService] Error getting tools for server ${serverIdentifier}:`, error);
+      console.error(
+        `❌ [InternalToolsService] Error getting tools for server ${serverIdentifier}:`,
+        error
+      );
       throw new Error(
         `Failed to get tools for server ${serverIdentifier}: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
@@ -221,8 +226,8 @@ export class InternalToolsService implements MCPCompatible {
    */
   private filterToolsByPrefix(tools: ToolDefinition[], prefix: string): ToolDefinition[] {
     return tools
-      .filter(tool => tool.name.startsWith(prefix))
-      .map(tool => ({
+      .filter((tool) => tool.name.startsWith(prefix))
+      .map((tool) => ({
         name: tool.name,
         description: tool.description,
         parameters: tool.parameters || tool.inputSchema,

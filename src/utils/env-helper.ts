@@ -2,31 +2,50 @@ import type { JSONObject, JSONValue } from '../model/types.js';
 
 /**
  * Helper function to substitute environment variables in strings
+ * Supports {{env.VARIABLE_NAME}} syntax
  * @param str - The string that may contain environment variable placeholders
  * @returns The string with environment variables substituted
  */
 export function substituteEnvVars(_str: string): string;
 export function substituteEnvVars(_str: JSONValue | undefined | null): JSONValue | undefined | null;
 export function substituteEnvVars(str: JSONValue | undefined | null): JSONValue | undefined | null {
-  if (typeof str !== 'string') return str;
+  if (typeof str !== 'string') {
+    return str;
+  }
+
   return str.replace(/\{\{env\.(\w+)\}\}/g, (match: string, envVar: string) => {
-    return process.env[envVar] || match;
+    const envValue = process.env[envVar];
+    return envValue !== undefined ? envValue : match;
   });
 }
 
 /**
- * Helper function to get timeout value from environment variable
+ * Helper function to get timeout value from environment variable with validation
  * @param envVar - The environment variable name
  * @param defaultValue - The default timeout value in milliseconds
  * @returns The timeout value in milliseconds
+ * @throws Error if inputs are invalid
  */
 export function getEnvTimeout(envVar: string, defaultValue: number): number {
+  // Validate inputs early
+  if (!envVar || typeof envVar !== 'string') {
+    throw new Error('Environment variable name must be a non-empty string');
+  }
+
+  if (typeof defaultValue !== 'number' || defaultValue <= 0 || !isFinite(defaultValue)) {
+    throw new Error('Default timeout value must be a positive finite number');
+  }
+
   const value = process.env[envVar];
-  if (!value) return defaultValue;
+  if (!value) {
+    return defaultValue;
+  }
 
   const parsed = parseInt(value, 10);
   if (isNaN(parsed) || parsed <= 0) {
-    console.warn(`Invalid timeout value for ${envVar}: ${value}. Using default: ${defaultValue}ms`);
+    console.warn(
+      `⚠️ [EnvHelper] Invalid timeout value for ${envVar}: ${value}. Using default: ${defaultValue}ms`
+    );
     return defaultValue;
   }
 
@@ -64,15 +83,25 @@ export function getDefaultCallTimeout(): number {
  * @param envVar - The environment variable name
  * @param description - Description of what this configuration is for
  * @returns The configuration source (URL or file path)
- * @throws Error if the environment variable is not set
+ * @throws Error if the environment variable is not set or inputs are invalid
  */
 export function getConfigurationSource(envVar: string, description: string): string {
+  // Validate inputs early
+  if (!envVar || typeof envVar !== 'string') {
+    throw new Error('Environment variable name must be a non-empty string');
+  }
+
+  if (!description || typeof description !== 'string') {
+    throw new Error('Description must be a non-empty string');
+  }
+
   const source = process.env[envVar];
   if (!source || source.trim() === '') {
     throw new Error(
       `${envVar} environment variable is not defined. Please set it to a file path or URL for ${description}.`
     );
   }
+
   return source.trim();
 }
 
@@ -88,34 +117,73 @@ export function getConfigLoadTimeout(): number {
  * Helper function to substitute environment variables in an object
  * @param obj - The object containing values that may have environment variable placeholders
  * @returns A new object with environment variables substituted
+ * @throws Error if input is invalid
  */
 export function substituteEnvVarsInObject<T extends JSONObject>(_obj: T): T;
 export function substituteEnvVarsInObject(_obj: undefined): undefined;
 export function substituteEnvVarsInObject<T extends JSONObject>(_obj: T | undefined): T | undefined;
 export function substituteEnvVarsInObject<T extends JSONObject>(obj: T | undefined): T | undefined {
-  if (!obj) return obj;
-
-  const result: JSONObject = {};
-  for (const [key, value] of Object.entries(obj)) {
-    if (value === null || value === undefined) {
-      result[key] = value;
-    } else if (Array.isArray(value)) {
-      // Recursively process arrays
-      result[key] = value.map((item) => {
-        if (item && typeof item === 'object' && !Array.isArray(item)) {
-          return substituteEnvVarsInObject(item as JSONObject);
-        }
-        const substituted = substituteEnvVars(item);
-        return substituted !== undefined ? substituted : item;
-      });
-    } else if (typeof value === 'object') {
-      // Recursively process nested objects
-      result[key] = substituteEnvVarsInObject(value as JSONObject);
-    } else {
-      // Process primitive values (strings, numbers, booleans)
-      const substituted = substituteEnvVars(value);
-      result[key] = substituted !== undefined ? substituted : value;
-    }
+  if (!obj) {
+    return obj;
   }
+
+  if (typeof obj !== 'object' || Array.isArray(obj)) {
+    throw new Error('Input must be a non-array object');
+  }
+
+  return processObjectProperties(obj);
+}
+
+/**
+ * Process all properties of an object recursively
+ * @param obj - Object to process
+ * @returns New object with processed properties
+ */
+function processObjectProperties<T extends JSONObject>(obj: T): T {
+  const result: JSONObject = {};
+
+  for (const [key, value] of Object.entries(obj)) {
+    result[key] = processValue(value);
+  }
+
   return result as T;
+}
+
+/**
+ * Process individual values recursively
+ * @param value - Value to process
+ * @returns Processed value
+ */
+function processValue(value: JSONValue): JSONValue {
+  if (value === null || value === undefined) {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return processArray(value);
+  }
+
+  if (typeof value === 'object') {
+    return substituteEnvVarsInObject(value as JSONObject);
+  }
+
+  // Process primitive values (strings, numbers, booleans)
+  const substituted = substituteEnvVars(value);
+  return substituted !== undefined ? substituted : value;
+}
+
+/**
+ * Process array values recursively
+ * @param array - Array to process
+ * @returns New array with processed values
+ */
+function processArray(array: JSONValue[]): JSONValue[] {
+  return array.map((item) => {
+    if (item && typeof item === 'object' && !Array.isArray(item)) {
+      return substituteEnvVarsInObject(item as JSONObject);
+    }
+
+    const substituted = substituteEnvVars(item);
+    return substituted !== undefined ? substituted : item;
+  });
 }

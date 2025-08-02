@@ -80,29 +80,19 @@ class ProviderMCPService implements MCPCompatible {
         console.log(`🔧 [ProviderMCPService] Loading MCP tools from ${server.identifier}...`);
         const tools = await this.loadToolsFromServer(server);
         allMCPTools.push(...tools);
-        console.log(`✅ [ProviderMCPService] Loaded ${tools.length} tools from MCP server ${server.identifier}`);
+        console.log(
+          `✅ [ProviderMCPService] Loaded ${tools.length} tools from MCP server ${server.identifier}`
+        );
       } catch (error) {
-        console.warn(`⚠️ [ProviderMCPService] Failed to get MCP tools from ${server.identifier}:`, error);
+        console.warn(
+          `⚠️ [ProviderMCPService] Failed to get MCP tools from ${server.identifier}:`,
+          error
+        );
         // Continue with other servers
       }
     }
 
     return allMCPTools;
-  }
-
-  /**
-   * Load tools from a specific MCP server
-   * @param server - Server configuration
-   * @returns Array of tool definitions
-   */
-  private async loadToolsFromServer(server: any): Promise<ToolDefinition[]> {
-    const mcpTools = await this.getMCPTools(server.identifier);
-    
-    return mcpTools.map((tool) => ({
-      name: generateFunctionName(server.identifier, server.url, toSnakeCase(tool.name)),
-      description: tool.description || `MCP tool: ${tool.name}`,
-      parameters: tool.inputSchema || { type: 'object', properties: {} },
-    }));
   }
 
   /**
@@ -132,13 +122,28 @@ class ProviderMCPService implements MCPCompatible {
 
     const { serverHash, functionName } = parseFunctionName(toolName);
     const server = await this.findServerByHash(serverHash);
-    
+
     if (!server) {
       throw new Error(`Server not found for hash: ${serverHash}`);
     }
 
     const result = await this.executeMCPTool(server.identifier, functionName, parameters);
     return result as JSONValue;
+  }
+
+  /**
+   * Load tools from a specific MCP server
+   * @param server - Server configuration
+   * @returns Array of tool definitions
+   */
+  private async loadToolsFromServer(server: any): Promise<ToolDefinition[]> {
+    const mcpTools = await this.getMCPTools(server.identifier);
+
+    return mcpTools.map((tool) => ({
+      name: generateFunctionName(server.identifier, server.url, toSnakeCase(tool.name)),
+      description: tool.description || `MCP tool: ${tool.name}`,
+      parameters: tool.inputSchema || { type: 'object', properties: {} },
+    }));
   }
 
   /**
@@ -163,7 +168,10 @@ class ProviderMCPService implements MCPCompatible {
     serverIdentifier: string,
     request: MCPRequest
   ): Promise<MCPResponse> {
-    console.log(`📡 [ProviderMCPService] Sending MCP request to ${serverIdentifier}:`, request.method);
+    console.log(
+      `📡 [ProviderMCPService] Sending MCP request to ${serverIdentifier}:`,
+      request.method
+    );
 
     const mcpServer = await this.getMCPServerConfig(serverIdentifier);
     this.validateMCPServerTransport(mcpServer);

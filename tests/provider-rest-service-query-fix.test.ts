@@ -12,7 +12,7 @@ const mockConfig = {
       description: 'Free weather API service - no API key required',
       url: 'https://api.open-meteo.com/v1',
       defaultHeaders: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
       endPoints: [
         {
@@ -25,27 +25,28 @@ const mockConfig = {
             properties: {
               latitude: {
                 type: 'number',
-                description: 'Latitude coordinate'
+                description: 'Latitude coordinate',
               },
               longitude: {
                 type: 'number',
-                description: 'Longitude coordinate'
+                description: 'Longitude coordinate',
               },
               current: {
                 type: 'string',
                 description: 'Current weather parameters',
-                default: 'temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,wind_direction_10m'
+                default:
+                  'temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,wind_direction_10m',
               },
               timezone: {
                 type: 'string',
                 description: 'Timezone',
-                default: 'auto'
-              }
+                default: 'auto',
+              },
             },
-            required: ['latitude', 'longitude']
-          }
-        }
-      ]
+            required: ['latitude', 'longitude'],
+          },
+        },
+      ],
     },
     {
       identifier: 'jsonplaceholder_api',
@@ -53,7 +54,7 @@ const mockConfig = {
       description: 'Free fake REST API for testing and prototyping',
       url: 'https://jsonplaceholder.typicode.com',
       defaultHeaders: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
       endPoints: [
         {
@@ -63,12 +64,12 @@ const mockConfig = {
           method: 'GET',
           postId: {
             type: 'number',
-            description: 'Post ID'
-          }
-        }
-      ]
-    }
-  ]
+            description: 'Post ID',
+          },
+        },
+      ],
+    },
+  ],
 };
 
 describe('ProviderRESTService Query Field Fix', () => {
@@ -82,12 +83,12 @@ describe('ProviderRESTService Query Field Fix', () => {
       clearCache: vi.fn(),
       getAvailableServers: vi.fn(),
       getServerHash: vi.fn(),
-      updateServerToolCount: vi.fn()
+      updateServerToolCount: vi.fn(),
     } as ProvidersConfigProviding;
 
     mockServersProvider = {
       getAvailableServers: vi.fn(),
-      getServerHash: vi.fn()
+      getServerHash: vi.fn(),
     } as ServersProviding;
 
     service = new ProviderRESTService(mockConfigProvider);
@@ -101,7 +102,7 @@ describe('ProviderRESTService Query Field Fix', () => {
       expect(tools).toHaveLength(2);
 
       // Check the weather API tool that has query parameters
-      const weatherTool = tools.find(t => t.name.includes('get_current_weather'));
+      const weatherTool = tools.find((t) => t.name.includes('get_current_weather'));
       expect(weatherTool).toBeDefined();
       expect(weatherTool?.parameters.properties).toHaveProperty('query');
       expect(weatherTool?.parameters.properties.query).toEqual({
@@ -109,33 +110,34 @@ describe('ProviderRESTService Query Field Fix', () => {
         properties: {
           latitude: {
             type: 'number',
-            description: 'Latitude coordinate'
+            description: 'Latitude coordinate',
           },
           longitude: {
             type: 'number',
-            description: 'Longitude coordinate'
+            description: 'Longitude coordinate',
           },
           current: {
             type: 'string',
             description: 'Current weather parameters',
-            default: 'temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,wind_direction_10m'
+            default:
+              'temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,wind_direction_10m',
           },
           timezone: {
             type: 'string',
             description: 'Timezone',
-            default: 'auto'
-          }
+            default: 'auto',
+          },
         },
-        required: ['latitude', 'longitude']
+        required: ['latitude', 'longitude'],
       });
 
       // Check the post API tool that has path parameters with individual definitions
-      const postTool = tools.find(t => t.name.includes('get_post_by_id'));
+      const postTool = tools.find((t) => t.name.includes('get_post_by_id'));
       expect(postTool).toBeDefined();
       expect(postTool?.parameters.properties).toHaveProperty('postId');
       expect(postTool?.parameters.properties.postId).toEqual({
         type: 'number',
-        description: 'Post ID'
+        description: 'Post ID',
       });
       expect(postTool?.parameters.required).toContain('postId');
     });
@@ -146,7 +148,7 @@ describe('ProviderRESTService Query Field Fix', () => {
       // This would use the hash generation, so we need to compute expected hashes
       const canHandle1 = await service.canHandleRequest('1r2dj4_get_current_weather');
       const canHandle2 = await service.canHandleRequest('s9x8y7z_get_post_by_id');
-      
+
       // At least one should be true if our hash generation is working
       expect(typeof canHandle1).toBe('boolean');
       expect(typeof canHandle2).toBe('boolean');
