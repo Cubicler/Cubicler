@@ -611,4 +611,17 @@ When I ask you for code, your job is to:
  - Do not sacrifice type safety for convenience
  - Do not make the system too rigid - ensure extensibility for future features
 
+## 🔧 Linting and Code Quality Rules
+
+When fixing linting issues or working with code quality tools:
+
+- **If the linter is wrong** (like when they said something unused, but it's actually used) just disable the linter on that particular warning or error with explanatory comments
+- **If you need to add an import**, add it to the top of the file with other imports
+- **Import that are allowed in middle of the file** are only the imports used for singleton instances (at the bottom of service files)
+- **Always use proper TypeScript types** instead of `any` - create new type definitions when needed
+- **For constructor parameters flagged as unused** but are actually used as dependency injection, use `// eslint-disable-next-line no-unused-vars` 
+- **For safe non-null assertions** where you've verified the value exists, use `// eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Safe: reason`
+- **Remove truly unused imports** rather than disabling the warning
+- **Fix formatting issues** automatically with `--fix` flag when possible
+
 When working on Cubicler, focus on maintaining the modular architecture, consistent error handling, and type safety throughout the system.

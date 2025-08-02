@@ -1,5 +1,6 @@
 import type { JSONObject, JSONValue, MCPRequest, MCPResponse } from '../model/types.js';
 import type { MCPTool, ToolDefinition } from '../model/tools.js';
+import type { MCPServer } from '../model/providers.js';
 import { fetchWithDefaultTimeout } from '../utils/fetch-helper.js';
 import {
   generateFunctionName,
@@ -136,7 +137,7 @@ class ProviderMCPService implements MCPCompatible {
    * @param server - Server configuration
    * @returns Array of tool definitions
    */
-  private async loadToolsFromServer(server: any): Promise<ToolDefinition[]> {
+  private async loadToolsFromServer(server: MCPServer): Promise<ToolDefinition[]> {
     const mcpTools = await this.getMCPTools(server.identifier);
 
     return mcpTools.map((tool) => ({
@@ -151,11 +152,11 @@ class ProviderMCPService implements MCPCompatible {
    * @param serverHash - Server hash to find
    * @returns Server configuration or undefined if not found
    */
-  private async findServerByHash(serverHash: string): Promise<any> {
+  private async findServerByHash(serverHash: string): Promise<MCPServer | undefined> {
     const config = await this.providerConfig.getProvidersConfig();
     const mcpServers = config.mcpServers || [];
 
-    return mcpServers.find((s: any) => {
+    return mcpServers.find((s: MCPServer) => {
       const expectedHash = generateServerHash(s.identifier, s.url);
       return expectedHash === serverHash;
     });
@@ -192,9 +193,9 @@ class ProviderMCPService implements MCPCompatible {
    * @returns Server configuration
    * @throws Error if server not found
    */
-  private async getMCPServerConfig(serverIdentifier: string): Promise<any> {
+  private async getMCPServerConfig(serverIdentifier: string): Promise<MCPServer> {
     const config = await this.providerConfig.getProvidersConfig();
-    const mcpServer = config.mcpServers?.find((s: any) => s.identifier === serverIdentifier);
+    const mcpServer = config.mcpServers?.find((s: MCPServer) => s.identifier === serverIdentifier);
 
     if (!mcpServer) {
       throw new Error(`MCP server not found: ${serverIdentifier}`);
@@ -208,7 +209,7 @@ class ProviderMCPService implements MCPCompatible {
    * @param mcpServer - Server configuration
    * @throws Error if transport is not supported
    */
-  private validateMCPServerTransport(mcpServer: any): void {
+  private validateMCPServerTransport(mcpServer: MCPServer): void {
     if (mcpServer.transport !== 'http') {
       throw new Error(
         `Transport ${mcpServer.transport} not yet supported. Currently only HTTP transport is supported.`
@@ -222,7 +223,10 @@ class ProviderMCPService implements MCPCompatible {
    * @param request - MCP request
    * @returns HTTP response
    */
-  private async executeMCPRequest(mcpServer: any, request: MCPRequest): Promise<any> {
+  private async executeMCPRequest(
+    mcpServer: MCPServer,
+    request: MCPRequest
+  ): Promise<{ data: MCPResponse; status: number }> {
     return await fetchWithDefaultTimeout(mcpServer.url, {
       method: 'POST',
       headers: {

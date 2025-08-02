@@ -1,8 +1,9 @@
 import { config } from 'dotenv';
-import type { Agent, AgentInfo } from '../model/agents.js';
+import type { Agent, AgentInfo, AgentsConfig } from '../model/agents.js';
 import type { AgentsProviding } from '../interface/agents-providing.js';
 import type { ServersProviding } from '../interface/servers-providing.js';
 import type { AgentsConfigProviding } from '../interface/agents-config-providing.js';
+import type { AvailableServersResponse, ServerInfo } from '../model/server.js';
 import { loadPrompt } from '../utils/prompt-helper.js';
 
 config();
@@ -229,7 +230,7 @@ export class AgentService implements AgentsProviding {
    * @param serversResponse - Response containing available servers
    * @returns Array of section strings
    */
-  private createAvailableServersSection(serversResponse: any): string[] {
+  private createAvailableServersSection(serversResponse: AvailableServersResponse): string[] {
     const sections = [
       '',
       '## Currently Available Servers',
@@ -238,7 +239,7 @@ export class AgentService implements AgentsProviding {
       '',
     ];
 
-    serversResponse.servers.forEach((server: any) => {
+    serversResponse.servers.forEach((server: ServerInfo) => {
       sections.push(`**${server.name}** (\`${server.identifier}\`)`);
       sections.push(`- ${server.description}`);
       sections.push(`- Available tools: ${server.toolsCount}`);
@@ -272,7 +273,10 @@ export class AgentService implements AgentsProviding {
    * @param config - Agents configuration (passed to avoid multiple fetches)
    * @returns The resolved agent
    */
-  private async resolveAgent(agentIdentifier: string | undefined, config: any): Promise<Agent> {
+  private async resolveAgent(
+    agentIdentifier: string | undefined,
+    config: AgentsConfig
+  ): Promise<Agent> {
     if (agentIdentifier) {
       const agent = config.agents.find((a: Agent) => a.identifier === agentIdentifier);
       if (!agent) {
@@ -286,7 +290,8 @@ export class AgentService implements AgentsProviding {
       throw new Error('No agents available');
     }
 
-    return config.agents[0];
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Safe: we just checked length > 0
+    return config.agents[0]!;
   }
 }
 

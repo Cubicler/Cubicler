@@ -1,5 +1,5 @@
 import type { ProvidersConfig } from '../cubicler';
-import type { AvailableServersResponse } from '../model/tools.js';
+import type { AvailableServersResponse } from '../model/server.js';
 
 /**
  * Protocol for providing provider configuration and server metadata

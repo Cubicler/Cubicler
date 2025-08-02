@@ -4,7 +4,8 @@ import type { AgentsProviding } from '../../src/interface/agents-providing.js';
 import type { ToolsListProviding } from '../../src/interface/tools-list-providing.js';
 import type { ServersProviding } from '../../src/interface/servers-providing.js';
 import type { AgentInfo } from '../../src/model/agents.js';
-import type { ToolDefinition, AvailableServersResponse } from '../../src/model/tools.js';
+import type { ToolDefinition } from '../../src/model/tools.js';
+import type { AvailableServersResponse } from '../../src/model/server.js';
 import type { AxiosResponse } from 'axios';
 
 // Mock the fetch helper

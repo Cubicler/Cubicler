@@ -2,7 +2,7 @@ import { config } from 'dotenv';
 import type { ServersProviding } from '../interface/servers-providing.js';
 import type { ProvidersConfigProviding } from '../interface/providers-config-providing.js';
 import { ToolsListProviding } from '../interface/tools-list-providing.js';
-import { AvailableServersResponse } from '../model/tools.js';
+import { AvailableServersResponse } from '../model/server.js';
 
 config();
 

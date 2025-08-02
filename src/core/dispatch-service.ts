@@ -2,11 +2,16 @@ import type { ServersProviding } from '../interface/servers-providing.js';
 import { fetchWithAgentTimeout } from '../utils/fetch-helper.js';
 import { AgentsProviding } from '../interface/agents-providing.js';
 import { ToolsListProviding } from '../interface/tools-list-providing.js';
+import type { AgentInfo } from '../model/agents.js';
+import type { AgentServerInfo } from '../model/server.js';
+import type { ToolDefinition } from '../model/tools.js';
 import {
   AgentRequest,
   AgentResponse,
   DispatchRequest,
   DispatchResponse,
+  Message,
+  MessageSender,
 } from '../model/dispatch.js';
 
 /**
@@ -22,8 +27,11 @@ export class DispatchService {
    * @param serverProvider - Servers list provider for server information
    */
   constructor(
+    // eslint-disable-next-line no-unused-vars
     private readonly toolsProvider: ToolsListProviding,
+    // eslint-disable-next-line no-unused-vars
     private readonly agentProvider: AgentsProviding,
+    // eslint-disable-next-line no-unused-vars
     private readonly serverProvider: ServersProviding
   ) {
     console.log(
@@ -86,7 +94,10 @@ export class DispatchService {
    * @param agentRequest - Prepared agent request
    * @returns Agent response
    */
-  private async callAgent(agentUrl: string, agentRequest: AgentRequest): Promise<any> {
+  private async callAgent(
+    agentUrl: string,
+    agentRequest: AgentRequest
+  ): Promise<{ data: AgentResponse; status: number; statusText?: string }> {
     return await fetchWithAgentTimeout(agentUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -118,11 +129,11 @@ export class DispatchService {
    * Build the agent request payload according to specification
    */
   private buildAgentRequest(
-    agentInfo: any,
+    agentInfo: AgentInfo,
     prompt: string,
-    serversInfo: any[],
-    cubiclerTools: any[],
-    messages: any[]
+    serversInfo: AgentServerInfo[],
+    cubiclerTools: ToolDefinition[],
+    messages: Message[]
   ): AgentRequest {
     return {
       agent: {
@@ -141,8 +152,8 @@ export class DispatchService {
    * Handle the agent response, validate it, and convert to dispatch response format
    */
   private async handleAgentResponse(
-    response: any,
-    sender: any,
+    response: { data: AgentResponse; status: number; statusText?: string },
+    sender: MessageSender,
     agentName: string
   ): Promise<DispatchResponse> {
     this.validateAgentResponseStatus(response);
@@ -166,9 +177,11 @@ export class DispatchService {
    * @param response - HTTP response from agent
    * @throws Error if status indicates failure
    */
-  private validateAgentResponseStatus(response: any): void {
+  private validateAgentResponseStatus(response: { status: number; statusText?: string }): void {
     if (response.status < 200 || response.status >= 300) {
-      throw new Error(`Agent responded with status ${response.status}: ${response.statusText}`);
+      throw new Error(
+        `Agent responded with status ${response.status}: ${response.statusText || 'Unknown error'}`
+      );
     }
   }
 
@@ -193,7 +206,7 @@ export class DispatchService {
   /**
    * Create error response in proper dispatch format
    */
-  private createErrorResponse(sender: any, error: unknown): DispatchResponse {
+  private createErrorResponse(sender: MessageSender, error: unknown): DispatchResponse {
     return {
       sender,
       timestamp: new Date().toISOString(),

@@ -3,7 +3,7 @@ import { AgentService } from '../../src/core/agent-service.js';
 import type { AgentsConfigProviding } from '../../src/interface/agents-config-providing.js';
 import type { ServersProviding } from '../../src/interface/servers-providing.js';
 import type { AgentsConfig } from '../../src/model/agents.js';
-import type { AvailableServersResponse } from '../../src/model/tools.js';
+import type { AvailableServersResponse } from '../../src/model/server.js';
 
 describe('Agent Service', () => {
   let agentService: AgentService;

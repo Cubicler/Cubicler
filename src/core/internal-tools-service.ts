@@ -2,7 +2,8 @@ import { JSONObject, JSONValue } from '../cubicler.js';
 import { MCPCompatible } from '../interface/mcp-compatible.js';
 import { ToolsListProviding } from '../interface/tools-list-providing.js';
 import { ServersProviding } from '../interface/servers-providing.js';
-import { AvailableServersResponse, ServerToolsResponse, ToolDefinition } from '../model/tools.js';
+import { AvailableServersResponse } from '../model/server.js';
+import { ServerToolsResponse, ToolDefinition } from '../model/tools.js';
 
 /**
  * Internal Functions Service for Cubicler
@@ -185,7 +186,7 @@ export class InternalToolsService implements MCPCompatible {
    * @throws Error if server not found
    */
   private async getServerHash(serverIdentifier: string): Promise<string> {
-    const serverHash = await this.serversProvider!.getServerHash(serverIdentifier);
+    const serverHash = await this.serversProvider?.getServerHash(serverIdentifier);
     if (!serverHash) {
       throw new Error(`Server not found: ${serverIdentifier}`);
     }

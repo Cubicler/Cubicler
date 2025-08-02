@@ -1,6 +1,6 @@
 import { config } from 'dotenv';
-import type { ProvidersConfig } from '../model/providers.js';
-import { AvailableServersResponse } from '../model/tools.js';
+import { ProvidersConfig } from '../model/providers.js';
+import { AvailableServersResponse } from '../model/server.js';
 import { Cache, createEnvCache } from '../utils/cache.js';
 import { ProvidersConfigProviding } from '../interface/providers-config-providing.js';
 import { loadConfigFromSource, validateProvidersConfig } from '../utils/config-helper.js';

@@ -57,21 +57,3 @@ export interface MCPFormattedTool {
     required?: string[];
   };
 }
-
-/**
- * Available servers response for cubicler_available_servers
- */
-export interface AvailableServersResponse extends JSONObject {
-  total: number;
-  servers: ServerInfo[];
-}
-
-/**
- * Server information
- */
-export interface ServerInfo extends JSONObject {
-  identifier: string;
-  name: string;
-  description: string;
-  toolsCount: number;
-}
