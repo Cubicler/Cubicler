@@ -82,8 +82,9 @@ class ProviderRepository implements ProvidersConfigProviding {
     // Check if we need to update cached metadata
     if (this.lastConfigHash !== configHash) {
       console.log('🔄 [ProviderRepository] Config changed, updating server metadata...');
-      await this.updateServerMetadata(config);
+      const freshMetadata = await this.updateServerMetadata(config);
       this.lastConfigHash = configHash;
+      return freshMetadata;
     }
 
     const cached = this.metadataCache.get('metadata');
@@ -91,8 +92,11 @@ class ProviderRepository implements ProvidersConfigProviding {
       return cached;
     }
 
-    // This shouldn't happen if updateServerMetadata worked correctly
-    throw new Error('Failed to get server metadata after update');
+    // If cache is empty but config hasn't changed, regenerate metadata
+    console.log('⚠️ [ProviderRepository] Cache miss, regenerating server metadata...');
+    const freshMetadata = await this.updateServerMetadata(config);
+    this.lastConfigHash = configHash;
+    return freshMetadata;
   }
 
   /**
@@ -134,7 +138,7 @@ class ProviderRepository implements ProvidersConfigProviding {
   /**
    * Update server metadata cache based on current configuration
    */
-  private async updateServerMetadata(config: ProvidersConfig): Promise<void> {
+  private async updateServerMetadata(config: ProvidersConfig): Promise<ServerMetadata[]> {
     const metadata: ServerMetadata[] = [];
     let index = 0;
 
@@ -181,6 +185,8 @@ class ProviderRepository implements ProvidersConfigProviding {
     // Cache the processed metadata
     this.metadataCache.set('metadata', metadata);
     console.log(`✅ [ProviderRepository] Updated metadata for ${metadata.length} servers`);
+    
+    return metadata;
   }
 
   /**

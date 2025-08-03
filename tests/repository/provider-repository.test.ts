@@ -356,4 +356,76 @@ describe('ProviderRepository', () => {
       expect(resolvedResult).toHaveProperty('restServers');
     });
   });
+
+  describe('getServerMetadata', () => {
+    it('should return fresh metadata when cache is empty and not throw error', async () => {
+      // Arrange
+      mockCache.get.mockReturnValue(null); // No cached data (neither config nor metadata)
+      mockLoadConfigFromSource.mockResolvedValue(mockProvidersConfig);
+      mockValidateProvidersConfig.mockReturnValue(undefined);
+
+      // Act & Assert - Should not throw "Failed to get server metadata after update"
+      const result = await ProviderRepository.getServerMetadata();
+
+      // Assert
+      expect(result).toBeInstanceOf(Array);
+      expect(result).toHaveLength(3); // 2 MCP + 1 REST
+      expect(result[0]).toHaveProperty('identifier', 'weather_service');
+      expect(result[0]).toHaveProperty('type', 'mcp');
+      expect(result[1]).toHaveProperty('identifier', 'file_service');
+      expect(result[1]).toHaveProperty('type', 'mcp');
+      expect(result[2]).toHaveProperty('identifier', 'user_api');
+      expect(result[2]).toHaveProperty('type', 'rest');
+    });
+
+    it('should return cached metadata when available', async () => {
+      // Arrange
+      const cachedMetadata = [
+        {
+          identifier: 'weather_service',
+          name: 'Weather Service',
+          description: 'Provides weather information via MCP',
+          url: 'http://localhost:4000/mcp',
+          hash: 'abc123',
+          toolsCount: 5,
+          type: 'mcp',
+          index: 0,
+        },
+      ];
+
+      mockCache.get.mockImplementation((key: string) => {
+        if (key === 'config') return mockProvidersConfig;
+        if (key === 'metadata') return cachedMetadata;
+        return null;
+      });
+      mockValidateProvidersConfig.mockReturnValue(undefined);
+
+      // First call to establish the config hash
+      await ProviderRepository.getServerMetadata();
+
+      // Act - Second call should use cache
+      const result = await ProviderRepository.getServerMetadata();
+
+      // Assert
+      expect(result).toBe(cachedMetadata);
+    });
+
+    it('should handle cache miss gracefully by regenerating metadata', async () => {
+      // Arrange - Cache returns config but not metadata (simulating the original issue)
+      mockCache.get.mockImplementation((key: string) => {
+        if (key === 'config') return mockProvidersConfig;
+        if (key === 'metadata') return null; // Cache miss for metadata
+        return null;
+      });
+      mockValidateProvidersConfig.mockReturnValue(undefined);
+
+      // Act & Assert - Should not throw error, should regenerate
+      const result = await ProviderRepository.getServerMetadata();
+
+      // Assert
+      expect(result).toBeInstanceOf(Array);
+      expect(result).toHaveLength(3); // 2 MCP + 1 REST
+      expect(mockCache.set).toHaveBeenCalledWith('metadata', result);
+    });
+  });
 });
