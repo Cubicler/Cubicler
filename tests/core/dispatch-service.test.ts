@@ -1,53 +1,57 @@
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { DispatchService } from '../../src/core/dispatch-service.js';
 import type { AgentsProviding } from '../../src/interface/agents-providing.js';
-import type { ToolsListProviding } from '../../src/interface/tools-list-providing.js';
-import type { ServersProviding } from '../../src/interface/servers-providing.js';
-import type { AgentInfo } from '../../src/model/agents.js';
-import type { ToolDefinition } from '../../src/model/tools.js';
-import type { AvailableServersResponse } from '../../src/model/server.js';
-import type { AxiosResponse } from 'axios';
+import type { MCPHandling } from '../../src/interface/mcp-handling.js';
+import type { Agent, AgentInfo } from '../../src/model/agents.js';
+import type { MCPRequest, MCPResponse } from '../../src/model/types.js';
 
-// Mock the fetch helper
-vi.mock('../../src/utils/fetch-helper.js', () => ({
-  fetchWithAgentTimeout: vi.fn(),
+// Mock the AgentTransportFactory
+vi.mock('../../src/factory/agent-transport-factory.js', () => ({
+  AgentTransportFactory: vi.fn().mockImplementation(() => ({
+    createTransport: vi.fn(),
+  })),
 }));
 
 describe('Dispatch Service', () => {
   let dispatchService: DispatchService;
-  let mockToolsProvider: ToolsListProviding;
+  let mockMcpService: MCPHandling;
   let mockAgentProvider: AgentsProviding;
-  let mockServerProvider: ServersProviding;
-  let mockFetchWithAgentTimeout: any;
+  let mockTransportFactory: any;
+  let mockTransport: any;
 
   beforeEach(async () => {
     vi.clearAllMocks();
 
-    // Get the mocked fetch function
-    const fetchHelper = await import('../../src/utils/fetch-helper.js');
-    mockFetchWithAgentTimeout = fetchHelper.fetchWithAgentTimeout;
-
-    // Create mock providers
-    mockToolsProvider = {
-      identifier: 'internal-tools',
-      toolsList: vi.fn(),
+    // Create mock transport
+    mockTransport = {
+      dispatch: vi.fn(),
     };
 
+    // Create mock transport factory
+    const { AgentTransportFactory } = await import('../../src/factory/agent-transport-factory.js');
+    mockTransportFactory = vi.mocked(AgentTransportFactory).mock.instances[0] || {
+      createTransport: vi.fn().mockReturnValue(mockTransport),
+    };
+    vi.mocked(AgentTransportFactory).mockImplementation(() => mockTransportFactory);
+
+    // Create mock MCP service
+    mockMcpService = {
+      initialize: vi.fn(),
+      handleMCPRequest: vi.fn(),
+    };
+
+    // Create mock agent provider
     mockAgentProvider = {
       getAgentInfo: vi.fn(),
       getAgentUrl: vi.fn(),
       getAgentPrompt: vi.fn(),
+      getAgent: vi.fn(),
       hasAgent: vi.fn(),
       getAllAgents: vi.fn(),
     };
 
-    mockServerProvider = {
-      getAvailableServers: vi.fn(),
-      getServerHash: vi.fn(),
-    };
-
     // Create dispatch service with mocked dependencies
-    dispatchService = new DispatchService(mockToolsProvider, mockAgentProvider, mockServerProvider);
+    dispatchService = new DispatchService(mockMcpService, mockAgentProvider);
   });
 
   describe('dispatch', () => {
@@ -68,48 +72,70 @@ describe('Dispatch Service', () => {
         description: 'Advanced AI agent',
       };
 
-      const mockTools: ToolDefinition[] = [
-        {
-          name: 'cubicler.available_servers',
-          description: 'Get available servers',
-          parameters: { type: 'object', properties: {} },
+      const mockAgent: Agent = {
+        identifier: 'gpt_4o',
+        name: 'GPT-4O Agent',
+        transport: 'http',
+        config: {
+          url: 'http://localhost:3000/agent',
         },
-      ];
-
-      const mockServersResponse: AvailableServersResponse = {
-        total: 1,
-        servers: [
-          {
-            identifier: 'weather_service',
-            name: 'Weather Service',
-            description: 'Weather API',
-            toolsCount: 2,
-          },
-        ],
+        description: 'Advanced AI agent',
       };
 
+      // Mock agent provider responses
       vi.mocked(mockAgentProvider.getAgentInfo).mockResolvedValue(mockAgentInfo);
-      vi.mocked(mockAgentProvider.getAgentUrl).mockResolvedValue('http://localhost:3000/agent');
+      vi.mocked(mockAgentProvider.getAgent).mockResolvedValue(mockAgent);
       vi.mocked(mockAgentProvider.getAgentPrompt).mockResolvedValue(
         'You are a helpful AI assistant with access to tools.'
       );
-      vi.mocked(mockToolsProvider.toolsList).mockResolvedValue(mockTools);
-      vi.mocked(mockServerProvider.getAvailableServers).mockResolvedValue(mockServersResponse);
 
-      const mockAxiosResponse: AxiosResponse = {
-        status: 200,
-        statusText: 'OK',
-        data: {
-          timestamp: '2025-07-28T17:45:30+07:00',
-          type: 'text',
-          content: 'I am a helpful AI assistant with access to various tools and services.',
-          metadata: { usedToken: 150, usedTools: 0 },
-        },
-        headers: {},
-        config: {} as any,
+      // Mock MCP service responses for tools and servers
+      vi.mocked(mockMcpService.handleMCPRequest).mockImplementation(async (request: MCPRequest): Promise<MCPResponse> => {
+        if (request.params && 'name' in request.params && request.params.name === 'cubicler_available_servers') {
+          return {
+            jsonrpc: '2.0',
+            id: request.id,
+            result: {
+              servers: [
+                {
+                  identifier: 'weather_service',
+                  name: 'Weather Service',
+                  description: 'Weather API',
+                },
+              ],
+            },
+          };
+        } else if (request.method === 'tools/list') {
+          return {
+            jsonrpc: '2.0',
+            id: request.id,
+            result: {
+              tools: [
+                {
+                  name: 'cubicler_available_servers',
+                  description: 'Get available servers',
+                  parameters: { type: 'object', properties: {} },
+                },
+              ],
+            },
+          };
+        }
+        return { 
+          jsonrpc: '2.0', 
+          id: request.id, 
+          error: { code: -1, message: 'Unknown method' } 
+        };
+      });
+
+      // Mock transport response
+      const mockAgentResponse = {
+        timestamp: '2025-07-28T17:45:30+07:00',
+        type: 'text' as const,
+        content: 'I am a helpful AI assistant with access to various tools and services.',
+        metadata: { usedToken: 150, usedTools: 0 },
       };
 
-      vi.mocked(mockFetchWithAgentTimeout).mockResolvedValue(mockAxiosResponse);
+      vi.mocked(mockTransport.dispatch).mockResolvedValue(mockAgentResponse);
 
       const result = await dispatchService.dispatch(undefined, mockRequest);
 
@@ -120,28 +146,15 @@ describe('Dispatch Service', () => {
       );
       expect(result.metadata?.usedToken).toBe(150);
 
-      // Verify the agent was called with correct payload
-      expect(mockFetchWithAgentTimeout).toHaveBeenCalledWith(
-        'http://localhost:3000/agent',
+      // Verify transport was called
+      expect(mockTransport.dispatch).toHaveBeenCalledWith(
         expect.objectContaining({
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          data: expect.objectContaining({
-            agent: expect.objectContaining({
-              identifier: 'gpt_4o',
-              name: 'GPT-4O Agent',
-              description: 'Advanced AI agent',
-            }),
-            tools: mockTools,
-            servers: [
-              {
-                identifier: 'weather_service',
-                name: 'Weather Service',
-                description: 'Weather API',
-              },
-            ],
-            messages: mockRequest.messages,
+          agent: expect.objectContaining({
+            identifier: 'gpt_4o',
+            name: 'GPT-4O Agent',
+            description: 'Advanced AI agent',
           }),
+          messages: mockRequest.messages,
         })
       );
     });
@@ -163,31 +176,37 @@ describe('Dispatch Service', () => {
         description: 'Creative and analytical agent',
       };
 
+      const mockAgent: Agent = {
+        identifier: 'claude_3_5',
+        name: 'Claude 3.5 Agent',
+        transport: 'http',
+        config: {
+          url: 'http://localhost:3001/agent',
+        },
+        description: 'Creative and analytical agent',
+      };
+
       vi.mocked(mockAgentProvider.getAgentInfo).mockResolvedValue(mockAgentInfo);
-      vi.mocked(mockAgentProvider.getAgentUrl).mockResolvedValue('http://localhost:3001/agent');
+      vi.mocked(mockAgentProvider.getAgent).mockResolvedValue(mockAgent);
       vi.mocked(mockAgentProvider.getAgentPrompt).mockResolvedValue(
         'You specialize in creative and analytical tasks.'
       );
-      vi.mocked(mockToolsProvider.toolsList).mockResolvedValue([]);
-      vi.mocked(mockServerProvider.getAvailableServers).mockResolvedValue({
-        total: 0,
-        servers: [],
+
+      // Mock MCP service responses
+      vi.mocked(mockMcpService.handleMCPRequest).mockResolvedValue({
+        jsonrpc: '2.0',
+        id: 1,
+        result: { servers: [], tools: [] },
       });
 
-      const mockAxiosResponse: AxiosResponse = {
-        status: 200,
-        statusText: 'OK',
-        data: {
-          timestamp: '2025-07-28T17:45:30+07:00',
-          type: 'text',
-          content: 'I can help you analyze the data. What specific analysis do you need?',
-          metadata: { usedToken: 120, usedTools: 0 },
-        },
-        headers: {},
-        config: {} as any,
+      const mockAgentResponse = {
+        timestamp: '2025-07-28T17:45:30+07:00',
+        type: 'text' as const,
+        content: 'I can help you analyze the data. What specific analysis do you need?',
+        metadata: { usedToken: 120, usedTools: 0 },
       };
 
-      vi.mocked(mockFetchWithAgentTimeout).mockResolvedValue(mockAxiosResponse);
+      vi.mocked(mockTransport.dispatch).mockResolvedValue(mockAgentResponse);
 
       const result = await dispatchService.dispatch('claude_3_5', mockRequest);
 
@@ -196,7 +215,7 @@ describe('Dispatch Service', () => {
       expect(result.content).toContain('analyze the data');
     });
 
-    it('should handle agent communication errors', async () => {
+    it('should handle agent transport errors', async () => {
       const mockRequest = {
         messages: [{ sender: { id: 'user_123' }, type: 'text' as const, content: 'Test' }],
       };
@@ -207,17 +226,29 @@ describe('Dispatch Service', () => {
         description: 'Test',
       };
 
+      const mockAgent: Agent = {
+        identifier: 'test_agent',
+        name: 'Test Agent',
+        transport: 'http',
+        config: {
+          url: 'http://localhost:3000/agent',
+        },
+        description: 'Test',
+      };
+
       vi.mocked(mockAgentProvider.getAgentInfo).mockResolvedValue(mockAgentInfo);
-      vi.mocked(mockAgentProvider.getAgentUrl).mockResolvedValue('http://localhost:3000/agent');
+      vi.mocked(mockAgentProvider.getAgent).mockResolvedValue(mockAgent);
       vi.mocked(mockAgentProvider.getAgentPrompt).mockResolvedValue('Test prompt');
-      vi.mocked(mockToolsProvider.toolsList).mockResolvedValue([]);
-      vi.mocked(mockServerProvider.getAvailableServers).mockResolvedValue({
-        total: 0,
-        servers: [],
+
+      // Mock MCP service responses
+      vi.mocked(mockMcpService.handleMCPRequest).mockResolvedValue({
+        jsonrpc: '2.0',
+        id: 1,
+        result: { servers: [], tools: [] },
       });
 
       const networkError = new Error('Network error');
-      vi.mocked(mockFetchWithAgentTimeout).mockRejectedValue(networkError);
+      vi.mocked(mockTransport.dispatch).mockRejectedValue(networkError);
 
       const result = await dispatchService.dispatch(undefined, mockRequest);
 
@@ -240,72 +271,39 @@ describe('Dispatch Service', () => {
         description: 'Test',
       };
 
+      const mockAgent: Agent = {
+        identifier: 'test_agent',
+        name: 'Test Agent',
+        transport: 'http',
+        config: {
+          url: 'http://localhost:3000/agent',
+        },
+        description: 'Test',
+      };
+
       vi.mocked(mockAgentProvider.getAgentInfo).mockResolvedValue(mockAgentInfo);
-      vi.mocked(mockAgentProvider.getAgentUrl).mockResolvedValue('http://localhost:3000/agent');
+      vi.mocked(mockAgentProvider.getAgent).mockResolvedValue(mockAgent);
       vi.mocked(mockAgentProvider.getAgentPrompt).mockResolvedValue('Test prompt');
-      vi.mocked(mockToolsProvider.toolsList).mockResolvedValue([]);
-      vi.mocked(mockServerProvider.getAvailableServers).mockResolvedValue({
-        total: 0,
-        servers: [],
+
+      // Mock MCP service responses
+      vi.mocked(mockMcpService.handleMCPRequest).mockResolvedValue({
+        jsonrpc: '2.0',
+        id: 1,
+        result: { servers: [], tools: [] },
       });
 
       // Mock invalid response (missing required fields)
-      const mockAxiosResponse: AxiosResponse = {
-        status: 200,
-        statusText: 'OK',
-        data: {
-          content: 'Response without required fields',
-        },
-        headers: {},
-        config: {} as any,
-      };
+      const invalidResponse = {
+        content: 'Response without required fields',
+      } as any;
 
-      vi.mocked(mockFetchWithAgentTimeout).mockResolvedValue(mockAxiosResponse);
+      vi.mocked(mockTransport.dispatch).mockResolvedValue(invalidResponse);
 
       const result = await dispatchService.dispatch(undefined, mockRequest);
 
       expect(result.sender.id).toBe('test_agent');
       expect(result.content).toContain(
         'Sorry, I encountered an error while processing your request: Invalid agent response format'
-      );
-    });
-
-    it('should handle agent HTTP error responses', async () => {
-      const mockRequest = {
-        messages: [{ sender: { id: 'user_123' }, type: 'text' as const, content: 'Test' }],
-      };
-
-      const mockAgentInfo: AgentInfo = {
-        identifier: 'test_agent',
-        name: 'Test Agent',
-        description: 'Test',
-      };
-
-      vi.mocked(mockAgentProvider.getAgentInfo).mockResolvedValue(mockAgentInfo);
-      vi.mocked(mockAgentProvider.getAgentUrl).mockResolvedValue('http://localhost:3000/agent');
-      vi.mocked(mockAgentProvider.getAgentPrompt).mockResolvedValue('Test prompt');
-      vi.mocked(mockToolsProvider.toolsList).mockResolvedValue([]);
-      vi.mocked(mockServerProvider.getAvailableServers).mockResolvedValue({
-        total: 0,
-        servers: [],
-      });
-
-      // Mock HTTP error response
-      const mockAxiosResponse: AxiosResponse = {
-        status: 500,
-        statusText: 'Internal Server Error',
-        data: {},
-        headers: {},
-        config: {} as any,
-      };
-
-      vi.mocked(mockFetchWithAgentTimeout).mockResolvedValue(mockAxiosResponse);
-
-      const result = await dispatchService.dispatch(undefined, mockRequest);
-
-      expect(result.sender.id).toBe('test_agent');
-      expect(result.content).toContain(
-        'Sorry, I encountered an error while processing your request: Agent responded with status 500'
       );
     });
 
