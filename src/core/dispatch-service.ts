@@ -1,8 +1,6 @@
-import type { ServersProviding } from '../interface/servers-providing.js';
-import { fetchWithAgentTimeout } from '../utils/fetch-helper.js';
+import type { MCPHandling } from '../interface/mcp-handling.js';
 import { AgentsProviding } from '../interface/agents-providing.js';
-import { ToolsListProviding } from '../interface/tools-list-providing.js';
-import type { AgentInfo } from '../model/agents.js';
+import type { Agent, AgentInfo } from '../model/agents.js';
 import type { AgentServerInfo } from '../model/server.js';
 import type { ToolDefinition } from '../model/tools.js';
 import {
@@ -13,29 +11,30 @@ import {
   Message,
   MessageSender,
 } from '../model/dispatch.js';
+import { AgentTransportFactory } from '../factory/agent-transport-factory.js';
 
 /**
  * Dispatch Service for Cubicler
  * Handles message dispatching to agents with enhanced message format
- * Uses dependency injection for both tools list provider and agent provider
+ * Uses dependency injection for MCP service and agent provider
  */
 export class DispatchService {
+  private readonly transportFactory: AgentTransportFactory;
+
   /**
    * Creates a new DispatchService instance
-   * @param toolsProvider - Tools list provider for Cubicler internal tools
+   * @param mcpService - MCP service for handling tools and servers
    * @param agentProvider - Agent provider for agent operations
-   * @param serverProvider - Servers list provider for server information
    */
   constructor(
     // eslint-disable-next-line no-unused-vars
-    private readonly toolsProvider: ToolsListProviding,
+    private readonly mcpService: MCPHandling,
     // eslint-disable-next-line no-unused-vars
-    private readonly agentProvider: AgentsProviding,
-    // eslint-disable-next-line no-unused-vars
-    private readonly serverProvider: ServersProviding
+    private readonly agentProvider: AgentsProviding
   ) {
+    this.transportFactory = new AgentTransportFactory(this.mcpService);
     console.log(
-      `🔧 [DispatchService] Created with tools list provider, agent provider, and servers provider`
+      `🔧 [DispatchService] Created with MCP service and agent provider`
     );
   }
 
@@ -51,7 +50,7 @@ export class DispatchService {
     this.validateDispatchRequest(request);
 
     // Gather all required data for the agent request
-    const [agentInfo, agentUrl, prompt, serversInfo, cubiclerTools] =
+    const [agentInfo, agent, prompt, serversInfo, cubiclerTools] =
       await this.gatherAgentData(agentId);
 
     // Create sender object once for reuse
@@ -66,10 +65,10 @@ export class DispatchService {
       request.messages
     );
 
-    console.log(`🚀 [DispatchService] Calling agent ${agentInfo.name} at ${agentUrl}`);
+    console.log(`🚀 [DispatchService] Calling agent ${agentInfo.name} via ${agent.transport}`);
 
     try {
-      const response = await this.callAgent(agentUrl, agentRequest);
+      const response = await this.callAgent(agent, agentRequest);
       return await this.handleAgentResponse(response, sender, agentInfo.name);
     } catch (error) {
       console.error(`❌ [DispatchService] Agent call failed:`, error);
@@ -89,20 +88,14 @@ export class DispatchService {
   }
 
   /**
-   * Call the agent with the prepared request
-   * @param agentUrl - Agent URL endpoint
+   * Call the agent with the prepared request using appropriate transport
+   * @param agent - Agent configuration containing transport type
    * @param agentRequest - Prepared agent request
    * @returns Agent response
    */
-  private async callAgent(
-    agentUrl: string,
-    agentRequest: AgentRequest
-  ): Promise<{ data: AgentResponse; status: number; statusText?: string }> {
-    return await fetchWithAgentTimeout(agentUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      data: agentRequest,
-    });
+  private async callAgent(agent: Agent, agentRequest: AgentRequest): Promise<AgentResponse> {
+    const transport = this.transportFactory.createTransport(agent);
+    return await transport.dispatch(agentRequest);
   }
 
   /**
@@ -111,17 +104,37 @@ export class DispatchService {
   private async gatherAgentData(agentId: string | undefined) {
     return Promise.all([
       this.agentProvider.getAgentInfo(agentId),
-      this.agentProvider.getAgentUrl(agentId),
+      this.agentProvider.getAgent(agentId),
       this.agentProvider.getAgentPrompt(agentId),
-      // Inline servers info retrieval
-      this.serverProvider.getAvailableServers().then((serversInfo) =>
-        serversInfo.servers.map((server) => ({
-          identifier: server.identifier,
-          name: server.name,
-          description: server.description,
-        }))
-      ),
-      this.toolsProvider.toolsList(),
+      // Inline servers info retrieval via MCP service
+      this.mcpService.handleMCPRequest({
+        jsonrpc: '2.0',
+        id: Date.now(),
+        method: 'tools/call',
+        params: {
+          name: 'cubicler_available_servers',
+          arguments: {},
+        },
+      }).then((response) => {
+        if (response.error) {
+          throw new Error(`MCP Error: ${response.error.message}`);
+        }
+        const result = response.result as any;
+        return result.servers || [];
+      }),
+      // Tools list retrieval via MCP service
+      this.mcpService.handleMCPRequest({
+        jsonrpc: '2.0',
+        id: Date.now() + 1,
+        method: 'tools/list',
+        params: {},
+      }).then((response) => {
+        if (response.error) {
+          throw new Error(`MCP Error: ${response.error.message}`);
+        }
+        const result = response.result as any;
+        return result.tools || [];
+      }),
     ]);
   }
 
@@ -152,13 +165,10 @@ export class DispatchService {
    * Handle the agent response, validate it, and convert to dispatch response format
    */
   private async handleAgentResponse(
-    response: { data: AgentResponse; status: number; statusText?: string },
+    agentResponse: AgentResponse,
     sender: MessageSender,
     agentName: string
   ): Promise<DispatchResponse> {
-    this.validateAgentResponseStatus(response);
-
-    const agentResponse: AgentResponse = response.data;
     this.validateAgentResponseFormat(agentResponse);
 
     console.log(`✅ [DispatchService] Agent ${agentName} responded successfully`);
@@ -170,19 +180,6 @@ export class DispatchService {
       content: agentResponse.content,
       metadata: agentResponse.metadata,
     };
-  }
-
-  /**
-   * Validate agent response HTTP status
-   * @param response - HTTP response from agent
-   * @throws Error if status indicates failure
-   */
-  private validateAgentResponseStatus(response: { status: number; statusText?: string }): void {
-    if (response.status < 200 || response.status >= 300) {
-      throw new Error(
-        `Agent responded with status ${response.status}: ${response.statusText || 'Unknown error'}`
-      );
-    }
   }
 
   /**
@@ -220,9 +217,8 @@ export class DispatchService {
   }
 }
 
-import internalToolsService from './internal-tools-service.js';
+import mcpService from './mcp-service.js';
 import agentService from './agent-service.js';
-import providerService from './provider-service.js';
 
 // Export the class for dependency injection
-export default new DispatchService(internalToolsService, agentService, providerService);
+export default new DispatchService(mcpService, agentService);
