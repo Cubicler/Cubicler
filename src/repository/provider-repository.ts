@@ -185,7 +185,7 @@ class ProviderRepository implements ProvidersConfigProviding {
     // Cache the processed metadata
     this.metadataCache.set('metadata', metadata);
     console.log(`✅ [ProviderRepository] Updated metadata for ${metadata.length} servers`);
-    
+
     return metadata;
   }
 
