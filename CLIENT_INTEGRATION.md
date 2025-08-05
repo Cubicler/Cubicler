@@ -37,6 +37,187 @@ console.log(result.content); // AI agent's response
 
 ---
 
+## 🔐 JWT Authentication
+
+If your Cubicler instance has JWT authentication enabled, you'll need to include a valid JWT token in your requests.
+
+### Basic JWT Authentication
+
+```javascript
+// Include JWT token in Authorization header
+const response = await fetch('http://localhost:1503/dispatch', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+  },
+  body: JSON.stringify({
+    messages: [
+      {
+        sender: { id: 'user_123', name: 'John Doe' },
+        type: 'text',
+        content: 'Hello, I have a valid JWT token!'
+      }
+    ]
+  })
+});
+```
+
+### JWT Token Management
+
+```javascript
+class CubiclerClient {
+  constructor(baseUrl, getTokenFunc) {
+    this.baseUrl = baseUrl;
+    this.getToken = getTokenFunc; // Function that returns current JWT token
+  }
+
+  async dispatch(messages, agentId = null) {
+    const token = await this.getToken();
+    const url = agentId 
+      ? `${this.baseUrl}/dispatch/${agentId}`
+      : `${this.baseUrl}/dispatch`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ messages })
+    });
+
+    if (response.status === 401) {
+      throw new Error('JWT token invalid or expired');
+    }
+
+    return response.json();
+  }
+}
+
+// Usage with token refresh
+const client = new CubiclerClient('http://localhost:1503', async () => {
+  // Your token refresh logic here
+  return await refreshJWTToken();
+});
+```
+
+### Error Handling for JWT
+
+```javascript
+async function sendMessage(message) {
+  try {
+    const response = await fetch('http://localhost:1503/dispatch', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${jwt_token}`
+      },
+      body: JSON.stringify({ messages: [message] })
+    });
+
+    if (response.status === 401) {
+      const error = await response.json();
+      
+      switch (error.code) {
+        case 'MISSING_AUTH_HEADER':
+          console.error('JWT token required');
+          break;
+        case 'TOKEN_EXPIRED':
+          console.error('JWT token expired, refreshing...');
+          // Trigger token refresh
+          break;
+        case 'TOKEN_INVALID':
+          console.error('JWT token invalid');
+          break;
+        default:
+          console.error('Authentication failed:', error.error);
+      }
+      
+      return null;
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Request failed:', error);
+    return null;
+  }
+}
+```
+
+### Platform-Specific JWT Examples
+
+**Node.js with Express:**
+```javascript
+const express = require('express');
+const app = express();
+
+// Middleware to get JWT from request
+app.use((req, res, next) => {
+  req.userToken = req.headers.authorization?.replace('Bearer ', '');
+  next();
+});
+
+app.post('/chat', async (req, res) => {
+  const response = await fetch('http://localhost:1503/dispatch', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${req.userToken}`
+    },
+    body: JSON.stringify({
+      messages: [{
+        sender: { id: req.body.userId },
+        type: 'text',
+        content: req.body.message
+      }]
+    })
+  });
+
+  const result = await response.json();
+  res.json(result);
+});
+```
+
+**Python with requests:**
+```python
+import requests
+import jwt
+from datetime import datetime, timedelta
+
+class CubiclerClient:
+    def __init__(self, base_url, jwt_token):
+        self.base_url = base_url
+        self.jwt_token = jwt_token
+    
+    def dispatch(self, messages, agent_id=None):
+        url = f"{self.base_url}/dispatch"
+        if agent_id:
+            url += f"/{agent_id}"
+            
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.jwt_token}'
+        }
+        
+        response = requests.post(url, json={'messages': messages}, headers=headers)
+        
+        if response.status_code == 401:
+            raise Exception(f"Authentication failed: {response.json()}")
+            
+        return response.json()
+
+# Usage
+client = CubiclerClient('http://localhost:1503', 'your-jwt-token')
+result = client.dispatch([{
+    'sender': {'id': 'user_123'},
+    'type': 'text', 
+    'content': 'Hello from Python!'
+}])
+```
+
+---
+
 ## 📘 API Reference
 
 ### Core Endpoints for Client Integration

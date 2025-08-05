@@ -42,6 +42,42 @@
       "prompt": "https://raw.githubusercontent.com/your-org/prompts/main/claude-specialist.md"
     },
     {
+      "identifier": "secure-agent-jwt",
+      "name": "JWT Secured Agent",
+      "transport": "http",
+      "config": {
+        "url": "https://api.example.com/agent",
+        "auth": {
+          "type": "jwt",
+          "config": {
+            "token": "${JWT_TOKEN}"
+          }
+        }
+      },
+      "description": "Agent service protected with JWT authentication (static token)",
+      "prompt": "You are a secure AI assistant running behind JWT authentication. You have access to sensitive operations and should handle them with appropriate care."
+    },
+    {
+      "identifier": "oauth-agent",
+      "name": "OAuth2 JWT Agent",
+      "transport": "http",
+      "config": {
+        "url": "https://secure-api.example.com/agent",
+        "auth": {
+          "type": "jwt",
+          "config": {
+            "tokenUrl": "https://auth.example.com/oauth/token",
+            "clientId": "${OAUTH_CLIENT_ID}",
+            "clientSecret": "${OAUTH_CLIENT_SECRET}",
+            "audience": "agent-api",
+            "refreshThreshold": 10
+          }
+        }
+      },
+      "description": "Agent using OAuth2 client credentials flow for JWT authentication",
+      "prompt": "You are an enterprise AI assistant with OAuth2 authentication. You can access corporate systems and should follow security best practices."
+    },
+    {
       "identifier": "custom-specialist",
       "name": "Domain Specialist",
       "transport": "http",

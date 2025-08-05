@@ -8,6 +8,10 @@ import providerService from './core/provider-service.js';
 import dispatchService from './core/dispatch-service.js';
 import mcpService from './core/mcp-service.js';
 import internalToolsService from './core/internal-tools-service.js';
+import serverConfigService from './core/server-config-service.js';
+
+// Import JWT middleware
+import { createJWTMiddleware, type AuthenticatedRequest } from './middleware/jwt-auth.js';
 
 // Create Express app
 const app = express();
@@ -38,6 +42,17 @@ if (process.env.ENABLE_CORS === 'true') {
 
     next();
   });
+}
+
+// Function to create JWT middleware for an endpoint
+async function createEndpointJWTMiddleware(endpoint: string) {
+  const jwtConfig = serverConfigService.getEndpointJWTConfig(endpoint);
+  if (!jwtConfig) {
+    return null;
+  }
+
+  console.log(`🔐 [Server] JWT authentication enabled for /${endpoint} endpoint`);
+  return createJWTMiddleware(jwtConfig);
 }
 
 // ===== Health Check Endpoint =====
@@ -110,7 +125,20 @@ app.get('/agents', async (req: Request, res: Response) => {
 // ===== Dispatch Endpoints =====
 
 // POST /dispatch - dispatch to default agent
-app.post('/dispatch', async (req: Request, res: Response) => {
+app.post('/dispatch', async (req: AuthenticatedRequest, res: Response) => {
+  // Apply JWT middleware if configured
+  const jwtMiddleware = await createEndpointJWTMiddleware('dispatch');
+  if (jwtMiddleware) {
+    return jwtMiddleware(req, res, async () => {
+      return handleDispatchRequest(req, res);
+    });
+  }
+  
+  return handleDispatchRequest(req, res);
+});
+
+// Helper function to handle dispatch logic
+async function handleDispatchRequest(req: AuthenticatedRequest, res: Response) {
   try {
     const request: DispatchRequest = req.body;
 
@@ -121,8 +149,9 @@ app.post('/dispatch', async (req: Request, res: Response) => {
       return;
     }
 
+    const userInfo = req.user ? ` (user: ${req.user.id})` : '';
     console.log(
-      `📨 [Server] POST /dispatch - Default agent dispatch with ${request.messages?.length || 0} messages`
+      `📨 [Server] POST /dispatch - Default agent dispatch with ${request.messages?.length || 0} messages${userInfo}`
     );
 
     // Validate request
@@ -158,15 +187,29 @@ app.post('/dispatch', async (req: Request, res: Response) => {
     console.error(`❌ [Server] POST /dispatch - Error: ${errorMessage}`);
     res.status(500).json({ error: errorMessage });
   }
-});
+}
 
 // POST /dispatch/:agentId - dispatch to specific agent
-app.post('/dispatch/:agentId', async (req: Request, res: Response) => {
+app.post('/dispatch/:agentId', async (req: AuthenticatedRequest, res: Response) => {
+  // Apply JWT middleware if configured
+  const jwtMiddleware = await createEndpointJWTMiddleware('dispatch');
+  if (jwtMiddleware) {
+    return jwtMiddleware(req, res, async () => {
+      return handleSpecificAgentDispatchRequest(req, res);
+    });
+  }
+  
+  return handleSpecificAgentDispatchRequest(req, res);
+});
+
+// Helper function to handle specific agent dispatch logic
+async function handleSpecificAgentDispatchRequest(req: AuthenticatedRequest, res: Response) {
   const { agentId } = req.params;
   const request: DispatchRequest = req.body;
 
+  const userInfo = req.user ? ` (user: ${req.user.id})` : '';
   console.log(
-    `📨 [Server] POST /dispatch/${agentId} - Specific agent dispatch with ${request.messages?.length || 0} messages`
+    `📨 [Server] POST /dispatch/${agentId} - Specific agent dispatch with ${request.messages?.length || 0} messages${userInfo}`
   );
 
   if (!agentId) {
@@ -209,13 +252,27 @@ app.post('/dispatch/:agentId', async (req: Request, res: Response) => {
     console.error(`❌ [Server] POST /dispatch/${agentId} - Error: ${errorMessage}`);
     res.status(500).json({ error: errorMessage });
   }
-});
+}
 
 // ===== MCP Endpoint =====
-app.post('/mcp', async (req: Request, res: Response) => {
+app.post('/mcp', async (req: AuthenticatedRequest, res: Response) => {
+  // Apply JWT middleware if configured
+  const jwtMiddleware = await createEndpointJWTMiddleware('mcp');
+  if (jwtMiddleware) {
+    return jwtMiddleware(req, res, async () => {
+      return handleMCPRequest(req, res);
+    });
+  }
+  
+  return handleMCPRequest(req, res);
+});
+
+// Helper function to handle MCP request logic
+async function handleMCPRequest(req: AuthenticatedRequest, res: Response) {
   const mcpRequest: MCPRequest = req.body;
 
-  console.log(`📡 [Server] POST /mcp - MCP request: ${mcpRequest.method}`);
+  const userInfo = req.user ? ` (user: ${req.user.id})` : '';
+  console.log(`📡 [Server] POST /mcp - MCP request: ${mcpRequest.method}${userInfo}`);
 
   if (!mcpRequest.jsonrpc || mcpRequest.jsonrpc !== '2.0') {
     res.status(400).json({
@@ -239,7 +296,7 @@ app.post('/mcp', async (req: Request, res: Response) => {
       error: { code: -32603, message: `Internal error: ${errorMessage}` },
     });
   }
-});
+}
 
 // Global error handler for JSON parsing and other errors
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -267,16 +324,39 @@ export { app };
 // Start the server only if this file is run directly
 const isMainModule = import.meta.url === `file://${process.argv[1]}`;
 if (isMainModule) {
-  const port = process.env.CUBICLER_PORT || 1503;
+  startServer();
+}
 
+async function startServer() {
   console.log(`🚀 [Server] Starting Cubicler server...`);
-  console.log(`📋 [Server] Environment configuration:`);
+  
+  // Load server configuration
+  let serverConfig;
+  try {
+    serverConfig = await serverConfigService.loadConfig();
+  } catch (error) {
+    console.error(`❌ [Server] Failed to load server configuration: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    process.exit(1);
+  }
+
+  const port = serverConfig.port || 1503;
+  const host = serverConfig.host || '0.0.0.0';
+
+  console.log(`📋 [Server] Configuration:`);
   console.log(`   - Port: ${port}`);
+  console.log(`   - Host: ${host}`);
   console.log(`   - CORS enabled: ${process.env.ENABLE_CORS === 'true' ? 'Yes' : 'No'}`);
   console.log(`   - Providers list: ${process.env.CUBICLER_PROVIDERS_LIST || 'Not configured'}`);
   console.log(`   - Agents list: ${process.env.CUBICLER_AGENTS_LIST || 'Not configured'}`);
+  console.log(`   - Server config: ${process.env.CUBICLER_SERVER_CONFIG || 'Not configured'}`);
+  
+  // Show JWT authentication status
+  const dispatchJWT = serverConfigService.isJWTEnabled('dispatch');
+  const mcpJWT = serverConfigService.isJWTEnabled('mcp');
+  console.log(`   - JWT Auth (dispatch): ${dispatchJWT ? 'Enabled' : 'Disabled'}`);
+  console.log(`   - JWT Auth (mcp): ${mcpJWT ? 'Enabled' : 'Disabled'}`);
 
-  app.listen(port, async () => {
+  app.listen(port, host, async () => {
     console.log(`✅ [Server] Cubicler server is running on port ${port}`);
     console.log(`🔗 [Server] Available endpoints:`);
     console.log(`   GET  /health`);

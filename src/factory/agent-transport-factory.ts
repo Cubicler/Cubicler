@@ -33,7 +33,7 @@ export class AgentTransportFactory {
     switch (agent.transport) {
       case 'http': {
         const httpAgent = agent as HttpAgent;
-        return new HttpAgentTransport(httpAgent.config.url);
+        return new HttpAgentTransport(httpAgent.config);
       }
       case 'stdio': {
         const stdioAgent = agent as StdioAgent;

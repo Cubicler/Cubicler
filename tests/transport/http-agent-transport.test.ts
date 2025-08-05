@@ -1,19 +1,25 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { HttpAgentTransport } from '../../src/transport/http-agent-transport.js';
 import type { AgentRequest, AgentResponse } from '../../src/model/dispatch.js';
+import type { HttpTransportConfig } from '../../src/model/agents.js';
 import * as fetchHelper from '../../src/utils/fetch-helper.js';
+import * as jwtHelper from '../../src/utils/jwt-helper.js';
 
-// Mock the fetch helper
+// Mock the fetch helper and jwt helper
 vi.mock('../../src/utils/fetch-helper.js');
+vi.mock('../../src/utils/jwt-helper.js');
 
 describe('HttpAgentTransport', () => {
-  const mockUrl = 'http://localhost:3000/agent';
+  const mockConfig: HttpTransportConfig = {
+    url: 'http://localhost:3000/agent'
+  };
   let transport: HttpAgentTransport;
   const mockFetchWithAgentTimeout = vi.mocked(fetchHelper.fetchWithAgentTimeout);
+  const mockJwtHelper = vi.mocked(jwtHelper.default);
 
   beforeEach(() => {
     vi.clearAllMocks();
-    transport = new HttpAgentTransport(mockUrl);
+    transport = new HttpAgentTransport(mockConfig);
   });
 
   describe('constructor', () => {
@@ -22,17 +28,17 @@ describe('HttpAgentTransport', () => {
     });
 
     it('should throw error for empty URL', () => {
-      expect(() => new HttpAgentTransport('')).toThrow('Agent URL must be a non-empty string');
+      expect(() => new HttpAgentTransport({ url: '' })).toThrow('Agent URL must be a non-empty string');
     });
 
-    it('should throw error for non-string URL', () => {
+    it('should throw error for invalid config', () => {
       expect(() => new HttpAgentTransport(null as any)).toThrow(
         'Agent URL must be a non-empty string'
       );
     });
   });
 
-  describe('call', () => {
+  describe('dispatch', () => {
     const mockAgentRequest: AgentRequest = {
       agent: {
         identifier: 'test-agent',
@@ -67,9 +73,9 @@ describe('HttpAgentTransport', () => {
         data: mockAgentResponse,
       } as any);
 
-      const result = await transport.call(mockAgentRequest);
+      const result = await transport.dispatch(mockAgentRequest);
 
-      expect(mockFetchWithAgentTimeout).toHaveBeenCalledWith(mockUrl, {
+      expect(mockFetchWithAgentTimeout).toHaveBeenCalledWith(mockConfig.url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         data: mockAgentRequest,
@@ -83,7 +89,7 @@ describe('HttpAgentTransport', () => {
         statusText: 'Internal Server Error',
       } as any);
 
-      await expect(transport.call(mockAgentRequest)).rejects.toThrow(
+      await expect(transport.dispatch(mockAgentRequest)).rejects.toThrow(
         'Agent responded with status 500: Internal Server Error'
       );
     });
@@ -99,7 +105,7 @@ describe('HttpAgentTransport', () => {
         data: invalidResponse,
       } as any);
 
-      await expect(transport.call(mockAgentRequest)).rejects.toThrow(
+      await expect(transport.dispatch(mockAgentRequest)).rejects.toThrow(
         'Invalid agent response format: missing required fields (timestamp, type, content, metadata)'
       );
     });
@@ -108,7 +114,79 @@ describe('HttpAgentTransport', () => {
       const fetchError = new Error('Network error');
       mockFetchWithAgentTimeout.mockRejectedValue(fetchError);
 
-      await expect(transport.call(mockAgentRequest)).rejects.toThrow('Network error');
+      await expect(transport.dispatch(mockAgentRequest)).rejects.toThrow('Network error');
+    });
+
+    it('should include JWT token in Authorization header when configured', async () => {
+      const jwtConfig: HttpTransportConfig = {
+        url: 'http://localhost:3000/agent',
+        auth: {
+          type: 'jwt',
+          config: {
+            token: 'test-jwt-token',
+          },
+        },
+      };
+
+      const jwtTransport = new HttpAgentTransport(jwtConfig);
+      mockJwtHelper.getToken.mockResolvedValue('test-jwt-token');
+
+      mockFetchWithAgentTimeout.mockResolvedValue({
+        status: 200,
+        data: mockAgentResponse,
+      } as any);
+
+      await jwtTransport.dispatch(mockAgentRequest);
+
+      expect(mockJwtHelper.getToken).toHaveBeenCalledWith({
+        token: 'test-jwt-token',
+      });
+
+      expect(mockFetchWithAgentTimeout).toHaveBeenCalledWith(jwtConfig.url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer test-jwt-token',
+        },
+        data: mockAgentRequest,
+      });
+    });
+
+    it('should handle JWT token fetch errors', async () => {
+      const jwtConfig: HttpTransportConfig = {
+        url: 'http://localhost:3000/agent',
+        auth: {
+          type: 'jwt',
+          config: {
+            tokenUrl: 'https://auth.example.com/token',
+            clientId: 'test-client',
+            clientSecret: 'test-secret',
+          },
+        },
+      };
+
+      const jwtTransport = new HttpAgentTransport(jwtConfig);
+      const jwtError = new Error('Token fetch failed');
+      mockJwtHelper.getToken.mockRejectedValue(jwtError);
+
+      await expect(jwtTransport.dispatch(mockAgentRequest)).rejects.toThrow('Token fetch failed');
+    });
+
+    it('should not include Authorization header when no auth configured', async () => {
+      mockFetchWithAgentTimeout.mockResolvedValue({
+        status: 200,
+        data: mockAgentResponse,
+      } as any);
+
+      await transport.dispatch(mockAgentRequest);
+
+      expect(mockJwtHelper.getToken).not.toHaveBeenCalled();
+      
+      expect(mockFetchWithAgentTimeout).toHaveBeenCalledWith(mockConfig.url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        data: mockAgentRequest,
+      });
     });
   });
 });

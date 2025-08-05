@@ -1,6 +1,8 @@
 import type { AgentTransport } from '../interface/agent-transport.js';
 import type { AgentRequest, AgentResponse } from '../model/dispatch.js';
+import type { HttpTransportConfig } from '../model/agents.js';
 import { fetchWithAgentTimeout } from '../utils/fetch-helper.js';
+import jwtHelper from '../utils/jwt-helper.js';
 
 /**
  * HTTP transport implementation for agent communication
@@ -9,10 +11,10 @@ import { fetchWithAgentTimeout } from '../utils/fetch-helper.js';
 export class HttpAgentTransport implements AgentTransport {
   /**
    * Creates a new HttpAgentTransport instance
-   * @param url - The HTTP URL endpoint for the agent
+   * @param config - HTTP transport configuration
    */
-  constructor(private readonly url: string) {
-    if (!url || typeof url !== 'string') {
+  constructor(private readonly config: HttpTransportConfig) {
+    if (!config?.url || typeof config.url !== 'string') {
       throw new Error('Agent URL must be a non-empty string');
     }
   }
@@ -24,12 +26,14 @@ export class HttpAgentTransport implements AgentTransport {
    * @throws Error if the HTTP request fails or returns invalid response
    */
   async dispatch(agentRequest: AgentRequest): Promise<AgentResponse> {
-    console.log(`🚀 [HttpAgentTransport] Calling agent at ${this.url}`);
+    console.log(`🚀 [HttpAgentTransport] Calling agent at ${this.config.url}`);
 
     try {
-      const response = await fetchWithAgentTimeout(this.url, {
+      const headers = await this.buildHeaders();
+      
+      const response = await fetchWithAgentTimeout(this.config.url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         data: agentRequest,
       });
 
@@ -42,6 +46,24 @@ export class HttpAgentTransport implements AgentTransport {
       console.error(`❌ [HttpAgentTransport] Agent call failed:`, error);
       throw error;
     }
+  }
+
+  /**
+   * Build HTTP headers including JWT authentication if configured
+   * @returns Promise that resolves to headers object
+   * @throws Error if JWT token cannot be obtained
+   */
+  private async buildHeaders(): Promise<Record<string, string>> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (this.config.auth?.type === 'jwt') {
+      const token = await jwtHelper.getToken(this.config.auth.config);
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    return headers;
   }
 
   /**

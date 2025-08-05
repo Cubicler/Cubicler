@@ -502,6 +502,136 @@ Then use them in your configuration files:
 
 ---
 
+## 🔐 JWT Authentication
+
+Cubicler supports bidirectional JWT authentication to secure both incoming requests to Cubicler and outgoing requests to agents.
+
+### Server Authentication (Protecting Cubicler Endpoints)
+
+Configure JWT authentication for `/dispatch` and `/mcp` endpoints using a server configuration file:
+
+**Environment Variable:**
+```env
+# Optional: Path to server configuration file
+CUBICLER_SERVER_CONFIG=./server-config.yaml
+```
+
+**Server Configuration (`server-config.yaml`):**
+```yaml
+server:
+  port: 1503
+  host: "0.0.0.0"
+  
+  # Global JWT authentication (applies to all endpoints)
+  auth:
+    jwt:
+      secret: "${JWT_SECRET}"
+      issuer: "my-auth-server"
+      audience: "cubicler-api"
+      algorithms: ["HS256", "RS256"]
+      
+  # Per-endpoint JWT authentication (overrides global)
+  endpoints:
+    dispatch:
+      auth:
+        jwt:
+          secret: "${DISPATCH_JWT_SECRET}"
+          audience: "dispatch-api"
+    mcp:
+      auth:
+        jwt:
+          secret: "${MCP_JWT_SECRET}"
+          audience: "mcp-api"
+```
+
+**Environment Variables:**
+```env
+# JWT secrets for verification
+JWT_SECRET=your-global-jwt-secret
+DISPATCH_JWT_SECRET=your-dispatch-specific-secret
+MCP_JWT_SECRET=your-mcp-specific-secret
+```
+
+### Agent Authentication (Securing Outbound Requests)
+
+Configure JWT authentication for HTTP agents in your `agents.json`:
+
+**Static JWT Token:**
+```json
+{
+  "agents": [
+    {
+      "identifier": "secure-agent",
+      "name": "Secure Agent",
+      "transport": "http",
+      "config": {
+        "url": "https://api.example.com/agent",
+        "auth": {
+          "type": "jwt",
+          "config": {
+            "token": "${JWT_TOKEN}"
+          }
+        }
+      }
+    }
+  ]
+}
+```
+
+**OAuth2 Client Credentials Flow:**
+```json
+{
+  "agents": [
+    {
+      "identifier": "oauth-agent", 
+      "name": "OAuth Agent",
+      "transport": "http",
+      "config": {
+        "url": "https://api.example.com/agent",
+        "auth": {
+          "type": "jwt",
+          "config": {
+            "tokenUrl": "https://auth.example.com/token",
+            "clientId": "${CLIENT_ID}",
+            "clientSecret": "${CLIENT_SECRET}",
+            "audience": "agent-api",
+            "refreshThreshold": 5
+          }
+        }
+      }
+    }
+  ]
+}
+```
+
+**Environment Variables:**
+```env
+# Static JWT token
+JWT_TOKEN=your-jwt-token-here
+
+# OAuth2 credentials
+CLIENT_ID=your-client-id
+CLIENT_SECRET=your-client-secret
+```
+
+### JWT Authentication Flow
+
+1. **Client to Cubicler**: Clients include JWT token in `Authorization: Bearer <token>` header
+2. **Cubicler Verification**: Validates token signature, expiry, issuer, and audience
+3. **Cubicler to Agent**: Includes JWT token in outbound requests to agents
+4. **Token Management**: Automatic token caching and refresh for OAuth2 flows
+
+### Security Features
+
+- ✅ **Bidirectional Security**: Both inbound and outbound requests are secured
+- ✅ **Flexible Configuration**: Per-endpoint or global authentication settings
+- ✅ **Multiple Algorithms**: Support for HS256, RS256, and other standard algorithms
+- ✅ **Token Refresh**: Automatic OAuth2 token refresh with configurable thresholds
+- ✅ **Environment Variables**: Secure credential management
+- ✅ **Comprehensive Validation**: Issuer, audience, expiry, and signature verification
+
+---
+
 ## 📡 Using Cubicler
 
 ### Main API Endpoints

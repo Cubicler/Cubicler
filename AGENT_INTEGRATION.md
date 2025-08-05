@@ -50,6 +50,201 @@ A **CubicAgent** in Cubicler is an AI service that implements a streamlined API 
 
 ---
 
+## 🔐 JWT Authentication for Agents
+
+If your Cubicler instance has JWT authentication enabled, agents need to handle both incoming JWT verification and outgoing JWT authentication.
+
+### Receiving JWT Tokens from Cubicler
+
+When Cubicler is configured with JWT authentication for agents, it will include a JWT token in outbound requests:
+
+```http
+POST /agent HTTP/1.1
+Host: your-agent-service.com
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+{
+  "agent": {...},
+  "messages": [...],
+  "tools": [...],
+  "servers": [...]
+}
+```
+
+### Agent JWT Verification Implementation
+
+Your agent should verify the JWT token to ensure requests are from authorized Cubicler instances:
+
+**Node.js Example:**
+```javascript
+const jwt = require('jsonwebtoken');
+const express = require('express');
+
+const app = express();
+app.use(express.json());
+
+// JWT verification middleware
+function verifyJWT(req, res, next) {
+  const authHeader = req.headers.authorization;
+  
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ 
+      error: 'Missing or invalid Authorization header' 
+    });
+  }
+
+  const token = authHeader.substring(7);
+  
+  try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    req.cubiclerAuth = payload;
+    next();
+  } catch (error) {
+    return res.status(401).json({ 
+      error: 'Invalid JWT token',
+      details: error.message 
+    });
+  }
+}
+
+// Agent endpoint with JWT protection
+app.post('/agent', verifyJWT, async (req, res) => {
+  const { agent, messages, tools, servers } = req.body;
+  
+  // Your agent implementation here
+  const response = await processAgentRequest(req.body);
+  
+  res.json(response);
+});
+```
+
+**Python Example:**
+```python
+import jwt
+from flask import Flask, request, jsonify
+from functools import wraps
+import os
+
+app = Flask(__name__)
+
+def verify_jwt(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        auth_header = request.headers.get('Authorization')
+        
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return jsonify({
+                'error': 'Missing or invalid Authorization header'
+            }), 401
+            
+        token = auth_header[7:]  # Remove 'Bearer ' prefix
+        
+        try:
+            payload = jwt.decode(
+                token, 
+                os.getenv('JWT_SECRET'), 
+                algorithms=['HS256', 'RS256']
+            )
+            request.cubicler_auth = payload
+            return f(*args, **kwargs)
+        except jwt.InvalidTokenError as e:
+            return jsonify({
+                'error': 'Invalid JWT token',
+                'details': str(e)
+            }), 401
+    
+    return decorated_function
+
+@app.route('/agent', methods=['POST'])
+@verify_jwt
+def agent_endpoint():
+    data = request.json
+    
+    # Your agent implementation here
+    response = process_agent_request(data)
+    
+    return jsonify(response)
+```
+
+### Authenticating Calls Back to Cubicler
+
+When your agent needs to call Cubicler's `/mcp` endpoint, you may need to include a JWT token:
+
+**JavaScript Example:**
+```javascript
+async function callCubiclerMCP(mcpRequest, cubiclerUrl, jwtToken) {
+  const response = await fetch(`${cubiclerUrl}/mcp`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${jwtToken}`
+    },
+    body: JSON.stringify(mcpRequest)
+  });
+
+  if (response.status === 401) {
+    throw new Error('JWT authentication failed with Cubicler');
+  }
+
+  return response.json();
+}
+
+// Usage in your agent
+app.post('/agent', verifyJWT, async (req, res) => {
+  const { agent, messages, tools, servers } = req.body;
+  
+  // Use tools by calling back to Cubicler
+  const toolResponse = await callCubiclerMCP({
+    jsonrpc: '2.0',
+    id: 1,
+    method: 'tools/call',
+    params: {
+      name: 'weather_get_current',
+      arguments: { location: 'Paris' }
+    }
+  }, process.env.CUBICLER_URL, process.env.CUBICLER_JWT_TOKEN);
+
+  // Process response and return to user
+  res.json({
+    timestamp: new Date().toISOString(),
+    type: 'text',
+    content: `Weather data: ${toolResponse.result}`,
+    metadata: {
+      usedToken: 150,
+      usedTools: 1
+    }
+  });
+});
+```
+
+### JWT Configuration for Agents
+
+Add JWT configuration to your agent's environment:
+
+```env
+# For verifying incoming tokens from Cubicler
+JWT_SECRET=your-jwt-secret-key
+JWT_ISSUER=cubicler-instance
+JWT_AUDIENCE=your-agent-service
+
+# For authenticating with Cubicler
+CUBICLER_URL=http://localhost:1503
+CUBICLER_JWT_TOKEN=your-token-for-cubicler-calls
+```
+
+### JWT Security Best Practices
+
+1. **Verify Token Signature**: Always verify JWT signatures using the correct secret/key
+2. **Check Expiration**: Validate token expiry dates
+3. **Validate Claims**: Check issuer and audience claims if configured
+4. **Secure Storage**: Store JWT secrets securely (environment variables, key management systems)
+5. **Error Handling**: Return appropriate HTTP status codes for authentication failures
+6. **Token Refresh**: Implement token refresh logic for long-running agents
+7. **Logging**: Log authentication failures for security monitoring
+
+---
+
 ## 📋 Required API Contract
 
 ### Agent Endpoint: `POST /agent`
