@@ -3,16 +3,78 @@
  */
 
 /**
- * Agent configuration from agents.json
+ * Base agent configuration
  */
-export interface Agent {
+export interface BaseAgent {
   identifier: string; // lowercase, no spaces, only - or _
   name: string;
-  transport: 'http' | 'stdio'; // start with http
-  url: string;
   description: string;
   prompt?: string; // optional agent-specific prompt
 }
+
+/**
+ * HTTP transport configuration
+ */
+export interface HttpTransportConfig {
+  url: string;
+}
+
+/**
+ * Stdio transport configuration
+ */
+export interface StdioTransportConfig {
+  url: string; // command to execute
+}
+
+/**
+ * Direct transport configuration for OpenAI
+ */
+export interface DirectOpenAIConfig {
+  provider: 'openai';
+  apiKey: string;
+  model?: 'gpt-4o' | 'gpt-4' | 'gpt-4-turbo' | 'gpt-3.5-turbo';
+  temperature?: number;
+  sessionMaxTokens?: number;
+  organization?: string;
+  project?: string;
+  baseURL?: string;
+  timeout?: number;
+  maxRetries?: number;
+}
+
+/**
+ * Direct transport configuration (extensible for other providers)
+ */
+export type DirectTransportConfig = DirectOpenAIConfig;
+
+/**
+ * Agent configuration with HTTP transport
+ */
+export interface HttpAgent extends BaseAgent {
+  transport: 'http';
+  config: HttpTransportConfig;
+}
+
+/**
+ * Agent configuration with stdio transport
+ */
+export interface StdioAgent extends BaseAgent {
+  transport: 'stdio';
+  config: StdioTransportConfig;
+}
+
+/**
+ * Agent configuration with direct transport
+ */
+export interface DirectAgent extends BaseAgent {
+  transport: 'direct';
+  config: DirectTransportConfig;
+}
+
+/**
+ * Union type for all agent configurations
+ */
+export type Agent = HttpAgent | StdioAgent | DirectAgent;
 
 /**
  * Agents configuration (JSON format)
