@@ -18,7 +18,7 @@ describe('ServerConfigService', () => {
     // Clear environment variables
     delete process.env.CUBICLER_PORT;
     delete process.env.CUBICLER_HOST;
-    delete process.env.CUBICLER_SERVER_CONFIG;
+    delete process.env.CUBICLER_CONFIG;
   });
 
   describe('loadConfig', () => {
@@ -43,8 +43,8 @@ describe('ServerConfigService', () => {
       });
     });
 
-    it('should load configuration from file when CUBICLER_SERVER_CONFIG is set', async () => {
-      process.env.CUBICLER_SERVER_CONFIG = 'config.yaml';
+    it('should load configuration from file when CUBICLER_CONFIG is set', async () => {
+      process.env.CUBICLER_CONFIG = 'cubicler.json';
       
       const mockConfig: CubiclerConfig = {
         server: {
@@ -74,7 +74,7 @@ describe('ServerConfigService', () => {
 
       const config = await configService.loadConfig();
 
-      expect(mockConfigHelper.loadConfigFromSource).toHaveBeenCalledWith('CUBICLER_SERVER_CONFIG', 'server configuration');
+      expect(mockConfigHelper.loadConfigFromSource).toHaveBeenCalledWith('CUBICLER_CONFIG', 'Cubicler configuration');
       expect(config).toEqual({
         port: 9000,
         host: 'localhost',
@@ -100,7 +100,7 @@ describe('ServerConfigService', () => {
 
     it('should merge file config with default config', async () => {
       process.env.CUBICLER_PORT = '7000';
-      process.env.CUBICLER_SERVER_CONFIG = 'config.yaml';
+      process.env.CUBICLER_CONFIG = 'cubicler.json';
       
       const mockConfig: CubiclerConfig = {
         server: {
@@ -128,7 +128,7 @@ describe('ServerConfigService', () => {
     });
 
     it('should fall back to default config when file loading fails', async () => {
-      process.env.CUBICLER_SERVER_CONFIG = 'non-existent-config.yaml';
+      process.env.CUBICLER_CONFIG = 'non-existent-cubicler.json';
       
       mockConfigHelper.loadConfigFromSource.mockRejectedValue(new Error('File not found'));
 
@@ -171,7 +171,7 @@ describe('ServerConfigService', () => {
     });
 
     it('should return endpoint-specific JWT config', async () => {
-      process.env.CUBICLER_SERVER_CONFIG = 'config.yaml';
+      process.env.CUBICLER_CONFIG = 'cubicler.json';
       
       const mockConfig: CubiclerConfig = {
         server: {
@@ -206,7 +206,7 @@ describe('ServerConfigService', () => {
     });
 
     it('should fall back to global JWT config when endpoint-specific not found', async () => {
-      process.env.CUBICLER_SERVER_CONFIG = 'config.yaml';
+      process.env.CUBICLER_CONFIG = 'cubicler.json';
       
       const mockConfig: CubiclerConfig = {
         server: {
@@ -249,7 +249,7 @@ describe('ServerConfigService', () => {
     });
 
     it('should return true when endpoint-specific JWT config exists', async () => {
-      process.env.CUBICLER_SERVER_CONFIG = 'config.yaml';
+      process.env.CUBICLER_CONFIG = 'cubicler.json';
       
       const mockConfig: CubiclerConfig = {
         server: {
@@ -275,7 +275,7 @@ describe('ServerConfigService', () => {
     });
 
     it('should return true when global JWT config exists', async () => {
-      process.env.CUBICLER_SERVER_CONFIG = 'config.yaml';
+      process.env.CUBICLER_CONFIG = 'cubicler.json';
       
       const mockConfig: CubiclerConfig = {
         server: {

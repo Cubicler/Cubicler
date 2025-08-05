@@ -348,7 +348,7 @@ async function startServer() {
   console.log(`   - CORS enabled: ${process.env.ENABLE_CORS === 'true' ? 'Yes' : 'No'}`);
   console.log(`   - Providers list: ${process.env.CUBICLER_PROVIDERS_LIST || 'Not configured'}`);
   console.log(`   - Agents list: ${process.env.CUBICLER_AGENTS_LIST || 'Not configured'}`);
-  console.log(`   - Server config: ${process.env.CUBICLER_SERVER_CONFIG || 'Not configured'}`);
+  console.log(`   - Server config: ${process.env.CUBICLER_CONFIG || 'Not configured'}`);
   
   // Show JWT authentication status
   const dispatchJWT = serverConfigService.isJWTEnabled('dispatch');

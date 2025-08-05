@@ -511,40 +511,55 @@ Cubicler supports bidirectional JWT authentication to secure both incoming reque
 Configure JWT authentication for `/dispatch` and `/mcp` endpoints using a server configuration file:
 
 **Environment Variable:**
+
 ```env
-# Optional: Path to server configuration file
-CUBICLER_SERVER_CONFIG=./server-config.yaml
+# Optional: Path to Cubicler configuration file
+CUBICLER_CONFIG=./cubicler.json
 ```
 
-**Server Configuration (`server-config.yaml`):**
-```yaml
-server:
-  port: 1503
-  host: "0.0.0.0"
-  
-  # Global JWT authentication (applies to all endpoints)
-  auth:
-    jwt:
-      secret: "${JWT_SECRET}"
-      issuer: "my-auth-server"
-      audience: "cubicler-api"
-      algorithms: ["HS256", "RS256"]
-      
-  # Per-endpoint JWT authentication (overrides global)
-  endpoints:
-    dispatch:
-      auth:
-        jwt:
-          secret: "${DISPATCH_JWT_SECRET}"
-          audience: "dispatch-api"
-    mcp:
-      auth:
-        jwt:
-          secret: "${MCP_JWT_SECRET}"
-          audience: "mcp-api"
+**Server Configuration (`cubicler.json`):**
+
+```json
+{
+  "server": {
+    "port": 1503,
+    "host": "0.0.0.0",
+    
+    "auth": {
+      "jwt": {
+        "secret": "${JWT_SECRET}",
+        "issuer": "my-auth-server",
+        "audience": "cubicler-api",
+        "algorithms": ["HS256", "RS256"]
+      }
+    },
+    
+    "endpoints": {
+      "dispatch": {
+        "path": "/dispatch",
+        "auth": {
+          "jwt": {
+            "secret": "${DISPATCH_JWT_SECRET}",
+            "audience": "dispatch-api"
+          }
+        }
+      },
+      "mcp": {
+        "path": "/mcp",
+        "auth": {
+          "jwt": {
+            "secret": "${MCP_JWT_SECRET}",
+            "audience": "mcp-api"
+          }
+        }
+      }
+    }
+  }
+}
 ```
 
 **Environment Variables:**
+
 ```env
 # JWT secrets for verification
 JWT_SECRET=your-global-jwt-secret

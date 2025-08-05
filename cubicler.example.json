@@ -1,0 +1,55 @@
+{
+  "_description": "Cubicler Server Configuration Example - This file shows how to configure JWT authentication for Cubicler endpoints",
+  "_usage": [
+    "1. Copy this file to your desired location (e.g., ./cubicler.json)",
+    "2. Set the CUBICLER_CONFIG environment variable to point to your config file",
+    "3. Configure the required environment variables for JWT secrets"
+  ],
+  "_environmentVariables": {
+    "_description": "Environment Variables Required:",
+    "_global": {
+      "JWT_SECRET": "your-global-jwt-secret-here"
+    },
+    "_endpointSpecific": {
+      "DISPATCH_JWT_SECRET": "your-dispatch-specific-secret",
+      "MCP_JWT_SECRET": "your-mcp-specific-secret"
+    },
+    "_note": "To disable JWT authentication completely, remove the auth sections. To disable JWT for specific endpoints, remove the endpoint from the endpoints section."
+  },
+  "server": {
+    "port": 1503,
+    "host": "0.0.0.0",
+    "auth": {
+      "jwt": {
+        "secret": "${JWT_SECRET}",
+        "issuer": "cubicler-instance",
+        "audience": "cubicler-api",
+        "algorithms": ["HS256", "RS256"],
+        "required": true
+      }
+    },
+    "endpoints": {
+      "dispatch": {
+        "path": "/dispatch",
+        "auth": {
+          "jwt": {
+            "secret": "${DISPATCH_JWT_SECRET}",
+            "audience": "dispatch-api",
+            "algorithms": ["HS256"]
+          }
+        }
+      },
+      "mcp": {
+        "path": "/mcp",
+        "auth": {
+          "jwt": {
+            "secret": "${MCP_JWT_SECRET}",
+            "audience": "mcp-api",
+            "issuer": "mcp-auth-server",
+            "algorithms": ["RS256"]
+          }
+        }
+      }
+    }
+  }
+}

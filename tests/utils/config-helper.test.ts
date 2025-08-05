@@ -402,7 +402,9 @@ describe('Config Helper', () => {
             identifier: 'gpt-4o',
             name: 'GPT-4O',
             transport: 'http',
-            url: 'http://localhost:3000/agent',
+            config: {
+              url: 'http://localhost:3000/agent',
+            },
             description: 'GPT-4O agent',
           },
         ],
@@ -417,7 +419,9 @@ describe('Config Helper', () => {
             identifier: 'test-agent',
             name: 'Test Agent',
             transport: 'http',
-            url: 'http://localhost:3000/agent',
+            config: {
+              url: 'http://localhost:3000/agent',
+            },
             description: 'Test agent description',
           },
         ],
@@ -475,7 +479,7 @@ describe('Config Helper', () => {
       );
     });
 
-    it('should throw error for missing URL', () => {
+    it('should throw error for missing transport', () => {
       const config = {
         agents: [
           {
@@ -486,7 +490,7 @@ describe('Config Helper', () => {
         ],
       };
       expect(() => validateAgentsConfig(config)).toThrow(
-        'Invalid agent at index 0: missing or invalid url'
+        'Invalid agent at index 0: missing or invalid transport'
       );
     });
 
@@ -495,7 +499,10 @@ describe('Config Helper', () => {
         agents: [
           {
             identifier: 'test',
-            url: 'http://localhost:3000',
+            transport: 'http',
+            config: {
+              url: 'http://localhost:3000',
+            },
             description: 'Test description',
           },
         ],
@@ -511,7 +518,10 @@ describe('Config Helper', () => {
           {
             identifier: 'Test Agent',
             name: 'Test Agent',
-            url: 'http://localhost:3000',
+            transport: 'http',
+            config: {
+              url: 'http://localhost:3000',
+            },
             description: 'Test description',
           },
         ],
@@ -530,7 +540,10 @@ describe('Config Helper', () => {
             {
               identifier,
               name: 'Test Agent',
-              url: 'http://localhost:3000',
+              transport: 'http',
+              config: {
+                url: 'http://localhost:3000',
+              },
               description: 'Test description',
             },
           ],
@@ -545,7 +558,10 @@ describe('Config Helper', () => {
           {
             identifier: 'this_is_a_very_long_identifier_that_exceeds_32_characters',
             name: 'Test Agent',
-            url: 'http://localhost:3000',
+            transport: 'http',
+            config: {
+              url: 'http://localhost:3000',
+            },
             description: 'Test description',
           },
         ],
@@ -561,13 +577,19 @@ describe('Config Helper', () => {
           {
             identifier: 'test-agent',
             name: 'Test Agent 1',
-            url: 'http://localhost:3000',
+            transport: 'http',
+            config: {
+              url: 'http://localhost:3000',
+            },
             description: 'Test description 1',
           },
           {
             identifier: 'test-agent',
             name: 'Test Agent 2',
-            url: 'http://localhost:3001',
+            transport: 'http',
+            config: {
+              url: 'http://localhost:3001',
+            },
             description: 'Test description 2',
           },
         ],
@@ -583,25 +605,37 @@ describe('Config Helper', () => {
           {
             identifier: 'agent-1',
             name: 'Agent 1a',
-            url: 'http://localhost:3000',
+            transport: 'http',
+            config: {
+              url: 'http://localhost:3000',
+            },
             description: 'Agent 1a description',
           },
           {
             identifier: 'agent-1',
             name: 'Agent 1b',
-            url: 'http://localhost:3001',
+            transport: 'http',
+            config: {
+              url: 'http://localhost:3001',
+            },
             description: 'Agent 1b description',
           },
           {
             identifier: 'agent-2',
             name: 'Agent 2a',
-            url: 'http://localhost:3002',
+            transport: 'http',
+            config: {
+              url: 'http://localhost:3002',
+            },
             description: 'Agent 2a description',
           },
           {
             identifier: 'agent-2',
             name: 'Agent 2b',
-            url: 'http://localhost:3003',
+            transport: 'http',
+            config: {
+              url: 'http://localhost:3003',
+            },
             description: 'Agent 2b description',
           },
         ],
@@ -618,7 +652,10 @@ describe('Config Helper', () => {
           {
             identifier: 'test',
             name: 'Test',
-            url: 'http://localhost:3000',
+            transport: 'http',
+            config: {
+              url: 'http://localhost:3000',
+            },
             description: 'Test description',
           },
         ],
@@ -635,7 +672,10 @@ describe('Config Helper', () => {
           {
             identifier: 'test',
             name: 'Test',
-            url: 'http://localhost:3000',
+            transport: 'http',
+            config: {
+              url: 'http://localhost:3000',
+            },
             description: 'Test description',
           },
         ],

@@ -5,11 +5,11 @@ import { EventEmitter } from 'events';
 import * as envHelper from '../../src/utils/env-helper.js';
 
 // Mock child_process
-const mockChild = new EventEmitter();
+const mockChild = new EventEmitter() as any;
 mockChild.stdin = {
   write: vi.fn(),
   end: vi.fn(),
-} as any;
+};
 mockChild.stdout = new EventEmitter();
 mockChild.stderr = new EventEmitter();
 mockChild.kill = vi.fn();
@@ -82,7 +82,7 @@ describe('StdioAgentTransport', () => {
     };
 
     it('should call agent successfully', async () => {
-      const promise = transport.call(mockAgentRequest);
+      const promise = transport.dispatch(mockAgentRequest);
 
       // Simulate successful response
       setTimeout(() => {
@@ -98,7 +98,7 @@ describe('StdioAgentTransport', () => {
     });
 
     it('should handle process exit with non-zero code', async () => {
-      const promise = transport.call(mockAgentRequest);
+      const promise = transport.dispatch(mockAgentRequest);
 
       setTimeout(() => {
         mockChild.stderr.emit('data', 'Process failed');
@@ -109,7 +109,7 @@ describe('StdioAgentTransport', () => {
     });
 
     it('should handle invalid JSON response', async () => {
-      const promise = transport.call(mockAgentRequest);
+      const promise = transport.dispatch(mockAgentRequest);
 
       setTimeout(() => {
         mockChild.stdout.emit('data', 'invalid json');
@@ -125,7 +125,7 @@ describe('StdioAgentTransport', () => {
         // missing type, content, metadata
       };
 
-      const promise = transport.call(mockAgentRequest);
+      const promise = transport.dispatch(mockAgentRequest);
 
       setTimeout(() => {
         mockChild.stdout.emit('data', JSON.stringify(invalidResponse));
@@ -138,7 +138,7 @@ describe('StdioAgentTransport', () => {
     });
 
     it('should handle process spawn error', async () => {
-      const promise = transport.call(mockAgentRequest);
+      const promise = transport.dispatch(mockAgentRequest);
 
       setTimeout(() => {
         mockChild.emit('error', new Error('Command not found'));
@@ -151,7 +151,7 @@ describe('StdioAgentTransport', () => {
       mockGetAgentCallTimeout.mockReturnValue(100); // Short timeout
       const transport = new StdioAgentTransport(mockCommand);
 
-      const promise = transport.call(mockAgentRequest);
+      const promise = transport.dispatch(mockAgentRequest);
 
       // Don't emit any events to trigger timeout
       await expect(promise).rejects.toThrow('Agent call timeout after 100ms');
@@ -159,7 +159,7 @@ describe('StdioAgentTransport', () => {
     });
 
     it('should handle process killed by signal', async () => {
-      const promise = transport.call(mockAgentRequest);
+      const promise = transport.dispatch(mockAgentRequest);
 
       setTimeout(() => {
         mockChild.emit('close', null, 'SIGTERM');
@@ -173,7 +173,7 @@ describe('StdioAgentTransport', () => {
         throw new Error('Write failed');
       });
 
-      await expect(transport.call(mockAgentRequest)).rejects.toThrow(
+      await expect(transport.dispatch(mockAgentRequest)).rejects.toThrow(
         'Failed to write to agent process: Error: Write failed'
       );
     });

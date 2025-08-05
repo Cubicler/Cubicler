@@ -22,7 +22,7 @@ export class ServerConfigService {
     };
 
     // Check if server config is specified via environment variable
-    const configSource = process.env.CUBICLER_SERVER_CONFIG;
+    const configSource = process.env.CUBICLER_CONFIG;
     
     if (!configSource) {
       console.log(`📋 [ServerConfig] Using default configuration`);
@@ -31,7 +31,7 @@ export class ServerConfigService {
     }
 
     try {
-      const cubiclerConfig = await loadConfigFromSource<CubiclerConfig>('CUBICLER_SERVER_CONFIG', 'server configuration');
+      const cubiclerConfig = await loadConfigFromSource<CubiclerConfig>('CUBICLER_CONFIG', 'Cubicler configuration');
       
       this.config = {
         ...defaultConfig,
