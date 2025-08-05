@@ -1,0 +1,91 @@
+import type { AgentRequest, AgentResponse } from '../model/dispatch.js';
+import type { DirectOpenAIConfig } from '../model/agents.js';
+import type { MCPHandling } from '../interface/mcp-handling.js';
+import { OpenAIService } from '@cubicler/cubicagent-openai';
+import { CubicAgent } from '@cubicler/cubicagentkit';
+import type { OpenAIConfig, DispatchConfig } from '@cubicler/cubicagent-openai/dist/config/environment.js';
+import { DirectAgentTransport } from './direct-agent-transport.js';
+import { expandEnvVariable } from '../utils/env-helper.js';
+
+/**
+ * Direct transport for OpenAI agents
+ * Handles OpenAI-specific config validation and dispatch logic
+ */
+export class DirectOpenAIAgentTransport extends DirectAgentTransport {
+  constructor(
+    config: DirectOpenAIConfig,
+    mcpService: MCPHandling
+  ) {
+    super(config, mcpService);
+    this.validateConfig(config);
+  }
+
+  /**
+   * Dispatch request to OpenAI agent
+   */
+  async dispatch(agentRequest: AgentRequest): Promise<AgentResponse> {
+    console.log(`🤖 [DirectOpenAIAgentTransport] Creating OpenAI agent for dispatch`);
+
+    const openaiConfig = this.config as DirectOpenAIConfig;
+    
+    // Create a fresh CubicAgent instance for this request
+    const cubicAgent = new CubicAgent(this, this);
+
+    // Build OpenAI config from our DirectOpenAIConfig
+    const openaiServiceConfig: OpenAIConfig = {
+      apiKey: expandEnvVariable(openaiConfig.apiKey),
+      model: openaiConfig.model || 'gpt-4o',
+      temperature: openaiConfig.temperature ?? 0.7,
+      sessionMaxTokens: openaiConfig.sessionMaxTokens ?? 4000,
+      organization: openaiConfig.organization,
+      project: openaiConfig.project,
+      baseURL: openaiConfig.baseURL,
+      timeout: openaiConfig.timeout ?? 30000,
+      maxRetries: openaiConfig.maxRetries ?? 3,
+    };
+
+    // Build dispatch config with defaults
+    const dispatchConfig: DispatchConfig = {
+      timeout: 90000,
+      mcpMaxRetries: 3,
+      mcpCallTimeout: 30000,
+      sessionMaxIteration: 10,
+      endpoint: '/mcp',
+      agentPort: 3000,
+    };
+
+    // Create OpenAI service instance
+    const openaiService = new OpenAIService(cubicAgent, openaiServiceConfig, dispatchConfig);
+
+    try {
+      // Dispatch the request to the OpenAI service
+      const response = await openaiService.dispatch(agentRequest);
+      console.log(`✅ [DirectOpenAIAgentTransport] OpenAI dispatch completed`);
+      return response;
+    } catch (error) {
+      console.error(`❌ [DirectOpenAIAgentTransport] OpenAI dispatch failed:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Validate OpenAI direct transport configuration
+   */
+  private validateConfig(config: DirectOpenAIConfig): void {
+    if (!config.provider || config.provider !== 'openai') {
+      throw new Error('DirectOpenAIAgentTransport requires provider to be "openai"');
+    }
+    if (!config.apiKey || typeof config.apiKey !== 'string') {
+      throw new Error('OpenAI direct transport requires a valid apiKey');
+    }
+    if (
+      config.temperature !== undefined &&
+      (config.temperature < 0 || config.temperature > 2)
+    ) {
+      throw new Error('OpenAI temperature must be between 0 and 2');
+    }
+    if (config.sessionMaxTokens !== undefined && config.sessionMaxTokens < 1) {
+      throw new Error('OpenAI sessionMaxTokens must be greater than 0');
+    }
+  }
+}
