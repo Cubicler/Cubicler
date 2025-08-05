@@ -1,8 +1,10 @@
 import type { AgentTransport } from '../interface/agent-transport.js';
 import type { AgentRequest, AgentResponse } from '../model/dispatch.js';
-import type { DirectTransportConfig } from '../model/agents.js';
+import type { DirectTransportConfig, Agent } from '../model/agents.js';
 import type { MCPHandling } from '../interface/mcp-handling.js';
+import type { ServersProviding } from '../interface/servers-providing.js';
 import type { AgentClient, AgentServer, JSONValue, JSONObject, RequestHandler } from '@cubicler/cubicagentkit';
+import { validateToolAccess } from '../utils/restriction-helper.js';
 
 /**
  * Direct transport implementation for agent communication
@@ -15,11 +17,16 @@ export abstract class DirectAgentTransport implements AgentTransport, AgentClien
    * Creates a new DirectAgentTransport instance
    * @param config - The direct transport configuration
    * @param mcpService - MCP service for handling tools and servers
+   * @param agent - Agent configuration for restriction validation
    */
   constructor(
     protected readonly config: DirectTransportConfig,
     // eslint-disable-next-line no-unused-vars
-    protected readonly mcpService: MCPHandling
+    protected readonly mcpService: MCPHandling,
+    // eslint-disable-next-line no-unused-vars
+    protected readonly agent: Agent,
+    // eslint-disable-next-line no-unused-vars
+    protected readonly serversProvider: ServersProviding
   ) {
     // Validation should be handled by subclasses
   }
@@ -56,6 +63,9 @@ export abstract class DirectAgentTransport implements AgentTransport, AgentClien
     console.log(`🛠️ [DirectAgentTransport] Calling tool: ${toolName} with args:`, parameters);
 
     try {
+      // Validate tool access based on agent restrictions
+      await validateToolAccess(this.agent, toolName, this.serversProvider);
+
       // Create MCP request for tool call - same pattern as /mcp endpoint
       const mcpRequest = {
         jsonrpc: '2.0' as const,

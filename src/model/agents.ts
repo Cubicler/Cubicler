@@ -10,6 +10,10 @@ export interface BaseAgent {
   name: string;
   description: string;
   prompt?: string; // optional agent-specific prompt
+  allowedServers?: string[]; // optional list of allowed server identifiers
+  allowedTools?: string[]; // optional list of allowed tool names (format: "server.tool")
+  restrictedServers?: string[]; // optional list of restricted server identifiers
+  restrictedTools?: string[]; // optional list of restricted tool names (format: "server.tool")
 }
 
 /**

@@ -3,18 +3,41 @@
   "defaultPrompt": "./prompts/default-agent.md",
   "agents": [
     {
-      "identifier": "gpt-4o",
-      "name": "GPT-4o Assistant",
-      "transport": "http",
-      "url": "http://localhost:3000/agent",
-      "description": "OpenAI GPT-4o powered agent with advanced reasoning capabilities",
+      "identifier": "gpt-4o-direct",
+      "name": "GPT-4o Direct Agent",
+      "transport": "direct",
+      "config": {
+        "provider": "openai",
+        "apiKey": "${OPENAI_API_KEY}",
+        "model": "gpt-4o",
+        "temperature": 0.7,
+        "sessionMaxTokens": 4096
+      },
+      "description": "OpenAI GPT-4o powered agent running directly in Cubicler",
       "prompt": "You are an advanced AI assistant powered by GPT-4o. You excel at complex reasoning, analysis, and problem-solving tasks. Always provide detailed explanations and cite your reasoning process."
+    },
+    {
+      "identifier": "gpt-4-turbo-direct",
+      "name": "GPT-4 Turbo Direct Agent", 
+      "transport": "direct",
+      "config": {
+        "provider": "openai",
+        "apiKey": "${OPENAI_API_KEY}",
+        "model": "gpt-4-turbo",
+        "temperature": 0.5,
+        "sessionMaxTokens": 8192,
+        "organization": "${OPENAI_ORG_ID}"
+      },
+      "description": "OpenAI GPT-4 Turbo agent for complex tasks requiring higher context",
+      "prompt": "./prompts/technical-specialist.md"
     },
     {
       "identifier": "claude-3-5-sonnet",
       "name": "Claude 3.5 Sonnet",
-      "transport": "http", 
-      "url": "http://localhost:3001/agent",
+      "transport": "http",
+      "config": {
+        "url": "http://localhost:3001/agent"
+      },
       "description": "Anthropic Claude 3.5 Sonnet with excellent coding and analysis skills",
       "prompt": "https://raw.githubusercontent.com/your-org/prompts/main/claude-specialist.md"
     },
@@ -22,7 +45,9 @@
       "identifier": "custom-specialist",
       "name": "Domain Specialist",
       "transport": "http",
-      "url": "http://localhost:3002/agent", 
+      "config": {
+        "url": "http://localhost:3002/agent"
+      },
       "description": "Specialized agent for domain-specific tasks",
       "prompt": "You are a domain specialist with deep expertise in specific areas. You provide detailed, technical responses and always cite your reasoning. When analyzing data, you present findings in a structured format with clear conclusions and actionable insights."
     },
@@ -30,9 +55,20 @@
       "identifier": "file-based-agent",
       "name": "File-based Agent",
       "transport": "http",
-      "url": "http://localhost:3003/agent",
+      "config": {
+        "url": "http://localhost:3003/agent"
+      },
       "description": "Agent with prompt loaded from local file",
       "prompt": "./prompts/specialist-agent.md"
+    },
+    {
+      "identifier": "local-llama",
+      "name": "Local LLaMA Agent",
+      "transport": "stdio",
+      "config": {
+        "url": "/usr/local/bin/llama-agent --model llama2 --temperature 0.7"
+      },
+      "description": "Local LLaMA model running as a command-line process"
     }
   ]
 }

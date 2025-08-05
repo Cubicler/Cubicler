@@ -12,6 +12,8 @@ import {
   MessageSender,
 } from '../model/dispatch.js';
 import { AgentTransportFactory } from '../factory/agent-transport-factory.js';
+import { filterAllowedServers, filterAllowedTools } from '../utils/restriction-helper.js';
+import type { ServersProviding } from '../interface/servers-providing.js';
 
 /**
  * Dispatch Service for Cubicler
@@ -30,9 +32,11 @@ export class DispatchService {
     // eslint-disable-next-line no-unused-vars
     private readonly mcpService: MCPHandling,
     // eslint-disable-next-line no-unused-vars
-    private readonly agentProvider: AgentsProviding
+    private readonly agentProvider: AgentsProviding,
+    // eslint-disable-next-line no-unused-vars
+    private readonly serversProvider: ServersProviding
   ) {
-    this.transportFactory = new AgentTransportFactory(this.mcpService);
+    this.transportFactory = new AgentTransportFactory(this.mcpService, this.serversProvider);
     console.log(
       `🔧 [DispatchService] Created with MCP service and agent provider`
     );
@@ -50,8 +54,8 @@ export class DispatchService {
     this.validateDispatchRequest(request);
 
     // Gather all required data for the agent request
-    const [agentInfo, agent, prompt, serversInfo, cubiclerTools] =
-      await this.gatherAgentData(agentId);
+    const agentData = await this.gatherAgentData(agentId);
+    const [agentInfo, agent, prompt, serversInfo, cubiclerTools] = agentData;
 
     // Create sender object once for reuse
     const sender = { id: agentInfo.identifier, name: agentInfo.name };
@@ -101,8 +105,8 @@ export class DispatchService {
   /**
    * Gather all agent-related data in parallel for optimal performance
    */
-  private async gatherAgentData(agentId: string | undefined) {
-    return Promise.all([
+  private async gatherAgentData(agentId: string | undefined): Promise<[AgentInfo, Agent, string, AgentServerInfo[], ToolDefinition[]]> {
+    const [agentInfo, agent, prompt, serversInfo, allTools] = await Promise.all([
       this.agentProvider.getAgentInfo(agentId),
       this.agentProvider.getAgent(agentId),
       this.agentProvider.getAgentPrompt(agentId),
@@ -136,6 +140,12 @@ export class DispatchService {
         return result.tools || [];
       }),
     ]);
+
+    // Apply agent restrictions
+    const filteredServers = filterAllowedServers(agent, serversInfo);
+    const filteredTools = await filterAllowedTools(agent, allTools, this.serversProvider);
+
+    return [agentInfo, agent, prompt, filteredServers, filteredTools];
   }
 
   /**
@@ -219,6 +229,7 @@ export class DispatchService {
 
 import mcpService from './mcp-service.js';
 import agentService from './agent-service.js';
+import providerService from './provider-service.js';
 
 // Export the class for dependency injection
-export default new DispatchService(mcpService, agentService);
+export default new DispatchService(mcpService, agentService, providerService);

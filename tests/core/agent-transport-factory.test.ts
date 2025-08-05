@@ -5,10 +5,12 @@ import { StdioAgentTransport } from '../../src/transport/stdio-agent-transport.j
 import { DirectOpenAIAgentTransport } from '../../src/transport/direct-openai-agent-transport.js';
 import type { Agent, DirectAgent } from '../../src/model/agents.js';
 import type { MCPHandling } from '../../src/interface/mcp-handling.js';
+import type { ServersProviding } from '../../src/interface/servers-providing.js';
 
 describe('AgentTransportFactory', () => {
   let factory: AgentTransportFactory;
   let mockMcpService: MCPHandling;
+  let mockServersProvider: ServersProviding;
 
   beforeEach(() => {
     // Create mock MCP service
@@ -17,7 +19,13 @@ describe('AgentTransportFactory', () => {
       handleMCPRequest: vi.fn(),
     };
 
-    factory = new AgentTransportFactory(mockMcpService);
+    // Create mock servers provider
+    mockServersProvider = {
+      getAvailableServers: vi.fn(),
+      getServerHash: vi.fn(),
+    };
+
+    factory = new AgentTransportFactory(mockMcpService, mockServersProvider);
   });
 
   describe('createTransport', () => {

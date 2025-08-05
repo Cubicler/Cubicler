@@ -1,6 +1,7 @@
 import type { Agent, DirectAgent, HttpAgent, StdioAgent } from '../model/agents.js';
 import type { AgentTransport } from '../interface/agent-transport.js';
 import type { MCPHandling } from '../interface/mcp-handling.js';
+import type { ServersProviding } from '../interface/servers-providing.js';
 import { HttpAgentTransport } from '../transport/http-agent-transport.js';
 import { StdioAgentTransport } from '../transport/stdio-agent-transport.js';
 import { DirectOpenAIAgentTransport } from '../transport/direct-openai-agent-transport.js';
@@ -13,10 +14,13 @@ export class AgentTransportFactory {
   /**
    * Creates a new AgentTransportFactory instance
    * @param mcpService - MCP service for handling tools and servers
+   * @param serversProvider - Server provider for resolving server identifiers from hashes
    */
   constructor(
     // eslint-disable-next-line no-unused-vars
-    private readonly mcpService: MCPHandling
+    private readonly mcpService: MCPHandling,
+    // eslint-disable-next-line no-unused-vars
+    private readonly serversProvider: ServersProviding
   ) {}
 
   /**
@@ -41,7 +45,7 @@ export class AgentTransportFactory {
         // Check provider and create appropriate direct transport
         switch (directAgent.config.provider) {
           case 'openai':
-            return new DirectOpenAIAgentTransport(directAgent.config, this.mcpService);
+            return new DirectOpenAIAgentTransport(directAgent.config, this.mcpService, agent, this.serversProvider);
           default:
             throw new Error(`Unsupported direct transport provider: ${directAgent.config.provider}. Supported providers: openai`);
         }

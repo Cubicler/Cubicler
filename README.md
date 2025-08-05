@@ -145,6 +145,13 @@ This tells Cubicler which AI agents are available. You can use `{{env.VARIABLE_N
       "transport": "http", 
       "url": "{{env.CLAUDE_AGENT_URL}}",
       "description": "Creative and analytical tasks"
+    },
+    {
+      "identifier": "local_llama",
+      "name": "Local LLaMA Agent",
+      "transport": "stdio",
+      "url": "/usr/local/bin/llama-agent --model llama2 --temperature 0.7",
+      "description": "Local LLaMA model running as a command-line process"
     }
   ]
 }
@@ -189,6 +196,31 @@ This tells Cubicler which AI agents are available. You can use `{{env.VARIABLE_N
 - **Graceful Fallback**: If file/URL loading fails, content is used as inline text
 
 > **💡 Environment Variables**: Use `{{env.VARIABLE_NAME}}` syntax in any string value to substitute environment variables. Perfect for keeping sensitive URLs and tokens secure!
+
+#### 🚀 Transport Types
+
+Cubicler supports different ways to communicate with AI agents:
+
+**HTTP Transport** (`"transport": "http"`):
+
+- Standard REST API communication
+- Agent runs as a web server
+- `url` field contains the HTTP endpoint (e.g., `http://localhost:3000/agent`)
+
+**Stdio Transport** (`"transport": "stdio"`):
+
+- Local process-based communication via stdin/stdout
+- Perfect for command-line AI agents or local model runners
+- `url` field contains the command to execute (e.g., `/usr/local/bin/agent --model llama2`)
+- Supports command arguments and environment variables
+- Process timeout configurable via `AGENT_CALL_TIMEOUT` (default: 90000ms)
+
+**Communication Flow for Stdio Agents**:
+
+1. Cubicler spawns the process using the command in `url`
+2. Sends `AgentRequest` as JSON to the process's stdin
+3. Process responds with `AgentResponse` as JSON via stdout
+4. Process exits or continues running (agent's choice)
 
 ### Providers Configuration (`providers.json`)
 

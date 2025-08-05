@@ -2,6 +2,7 @@ import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { DispatchService } from '../../src/core/dispatch-service.js';
 import type { AgentsProviding } from '../../src/interface/agents-providing.js';
 import type { MCPHandling } from '../../src/interface/mcp-handling.js';
+import type { ServersProviding } from '../../src/interface/servers-providing.js';
 import type { Agent, AgentInfo } from '../../src/model/agents.js';
 import type { MCPRequest, MCPResponse } from '../../src/model/types.js';
 
@@ -16,6 +17,7 @@ describe('Dispatch Service', () => {
   let dispatchService: DispatchService;
   let mockMcpService: MCPHandling;
   let mockAgentProvider: AgentsProviding;
+  let mockServersProvider: ServersProviding;
   let mockTransportFactory: any;
   let mockTransport: any;
 
@@ -50,8 +52,14 @@ describe('Dispatch Service', () => {
       getAllAgents: vi.fn(),
     };
 
+    // Create mock servers provider
+    mockServersProvider = {
+      getAvailableServers: vi.fn(),
+      getServerHash: vi.fn(),
+    };
+
     // Create dispatch service with mocked dependencies
-    dispatchService = new DispatchService(mockMcpService, mockAgentProvider);
+    dispatchService = new DispatchService(mockMcpService, mockAgentProvider, mockServersProvider);
   });
 
   describe('dispatch', () => {

@@ -1,6 +1,7 @@
 import type { AgentRequest, AgentResponse } from '../model/dispatch.js';
-import type { DirectOpenAIConfig } from '../model/agents.js';
+import type { DirectOpenAIConfig, Agent } from '../model/agents.js';
 import type { MCPHandling } from '../interface/mcp-handling.js';
+import type { ServersProviding } from '../interface/servers-providing.js';
 import { OpenAIService } from '@cubicler/cubicagent-openai';
 import { CubicAgent } from '@cubicler/cubicagentkit';
 import type { OpenAIConfig, DispatchConfig } from '@cubicler/cubicagent-openai/dist/config/environment.js';
@@ -14,9 +15,11 @@ import { expandEnvVariable } from '../utils/env-helper.js';
 export class DirectOpenAIAgentTransport extends DirectAgentTransport {
   constructor(
     config: DirectOpenAIConfig,
-    mcpService: MCPHandling
+    mcpService: MCPHandling,
+    agent: Agent,
+    serversProvider: ServersProviding
   ) {
-    super(config, mcpService);
+    super(config, mcpService, agent, serversProvider);
     this.validateConfig(config);
   }
 

@@ -5,6 +5,7 @@ import type { ServersProviding } from '../interface/servers-providing.js';
 import type { AgentsConfigProviding } from '../interface/agents-config-providing.js';
 import type { AvailableServersResponse, ServerInfo } from '../model/server.js';
 import { loadPrompt } from '../utils/prompt-helper.js';
+import { filterAllowedServers } from '../utils/restriction-helper.js';
 
 config();
 
@@ -64,7 +65,7 @@ export class AgentService implements AgentsProviding {
     }
 
     // Add technical section about available servers (only if prompts are configured)
-    const technicalSection = await this.buildTechnicalSection();
+    const technicalSection = await this.buildTechnicalSection(agent);
     if (technicalSection) {
       promptParts.push(technicalSection);
     }
@@ -148,9 +149,9 @@ export class AgentService implements AgentsProviding {
    * Generate technical section about available servers and how to access their tools
    * This is inlined as it's only used in getAgentPrompt()
    */
-  private async buildTechnicalSection(): Promise<string> {
+  private async buildTechnicalSection(agent?: Agent): Promise<string> {
     const baseSections = this.createBaseTechnicalSections();
-    const serverSections = await this.createServerSpecificSections();
+    const serverSections = await this.createServerSpecificSections(agent);
 
     return [...baseSections, ...serverSections].join('\n');
   }
@@ -229,14 +230,28 @@ export class AgentService implements AgentsProviding {
 
   /**
    * Create server-specific sections based on available servers
+   * @param agent - Optional agent to apply restrictions
    * @returns Array of server-specific sections
    */
-  private async createServerSpecificSections(): Promise<string[]> {
+  private async createServerSpecificSections(agent?: Agent): Promise<string[]> {
     try {
       const serversResponse = await this.serversProvider.getAvailableServers();
 
       if (serversResponse.total > 0) {
-        return this.createAvailableServersSection(serversResponse);
+        // Apply agent restrictions if agent is provided
+        const filteredServers = agent 
+          ? filterAllowedServers(agent, serversResponse.servers)
+          : serversResponse.servers;
+
+        if (filteredServers.length > 0) {
+          return this.createAvailableServersSection({
+            ...serversResponse,
+            servers: filteredServers,
+            total: filteredServers.length
+          });
+        } else {
+          return this.createNoServersSection();
+        }
       } else {
         return this.createNoServersSection();
       }

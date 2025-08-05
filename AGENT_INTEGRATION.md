@@ -549,6 +549,85 @@ curl -X POST http://localhost:1503/dispatch/my_custom_agent \
 1. **Check the response** follows the `DispatchResponse` format
 2. **Verify tool calls** work by asking for weather or other services
 
+### Stdio Agent Implementation (Python Example)
+
+For stdio transport, your agent runs as a command-line process that communicates via stdin/stdout:
+
+```python
+#!/usr/bin/env python3
+import json
+import sys
+from datetime import datetime
+
+def call_cubicler_tool(tool_name, params):
+    """Call a Cubicler tool - implement your HTTP client here"""
+    # This would make HTTP request to Cubicler for tool execution
+    # Implementation depends on your environment and HTTP library
+    pass
+
+def process_request():
+    # Read request from stdin
+    try:
+        request_data = json.load(sys.stdin)
+        agent = request_data['agent']
+        tools = request_data['tools'] 
+        servers = request_data['servers']
+        messages = request_data['messages']
+        
+        # Process the last user message
+        last_message = messages[-1]
+        user_content = last_message['content']
+        
+        # Simple echo response - replace with your AI logic
+        response_content = f"I received: {user_content}"
+        
+        # You can call Cubicler tools here if needed:
+        # weather_data = call_cubicler_tool('1r2dj4_get_weather', {'city': 'Jakarta'})
+        
+        # Return response as JSON to stdout
+        response = {
+            "timestamp": datetime.now().isoformat(),
+            "type": "text",
+            "content": response_content,
+            "metadata": {
+                "usedToken": 10,
+                "usedTools": 0
+            }
+        }
+        
+        json.dump(response, sys.stdout)
+        sys.stdout.flush()
+        
+    except Exception as e:
+        # Error response
+        error_response = {
+            "timestamp": datetime.now().isoformat(),
+            "type": "text", 
+            "content": f"Error processing request: {str(e)}",
+            "metadata": {
+                "usedToken": 0,
+                "usedTools": 0
+            }
+        }
+        json.dump(error_response, sys.stdout)
+        sys.stdout.flush()
+
+if __name__ == "__main__":
+    process_request()
+```
+
+**Agent Configuration:**
+
+```json
+{
+  "identifier": "python-agent",
+  "name": "Python CLI Agent",
+  "transport": "stdio",
+  "url": "/usr/bin/python3 /path/to/agent.py",
+  "description": "Python-based command-line agent"
+}
+```
+
 ---
 
 ## 🚀 Advanced Features
@@ -580,11 +659,29 @@ Always return a valid `AgentResponse` even on errors:
 
 ### Transport Support
 
-Currently, Cubicler supports HTTP transport for agents. Future versions will add:
+Cubicler supports multiple transport types for agent communication:
+
+#### HTTP Transport
+
+- Standard REST API communication
+- Agent runs as a web server listening on HTTP endpoint
+- Most common for cloud-based or containerized agents
+
+#### Stdio Transport
+
+- Local process-based communication via stdin/stdout
+- Perfect for command-line agents or local model runners
+- Agent configured with command to execute (e.g., `/usr/local/bin/agent --model llama2`)
+- Communication flow:
+  1. Cubicler spawns the process
+  2. Sends `AgentRequest` as JSON to stdin
+  3. Agent responds with `AgentResponse` as JSON via stdout
+  4. Process can exit or continue running
+
+Future versions will add:
 
 - Server-Sent Events (SSE)
 - WebSocket
-- stdio
 
 ---
 
