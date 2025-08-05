@@ -324,12 +324,14 @@ function validateAgent(agent: unknown, index: number): void {
 
   const typedAgent = agent as {
     identifier?: unknown;
-    url?: unknown;
+    transport?: unknown;
+    config?: unknown;
     name?: unknown;
   };
 
   validateAgentRequiredFields(typedAgent, index);
   validateAgentIdentifierFormat(typedAgent.identifier as string, index);
+  validateAgentTransportConfig(typedAgent, index);
 }
 
 /**
@@ -339,19 +341,68 @@ function validateAgent(agent: unknown, index: number): void {
  * @throws Error if required fields are missing or invalid
  */
 function validateAgentRequiredFields(
-  agent: { identifier?: unknown; url?: unknown; name?: unknown },
+  agent: { identifier?: unknown; transport?: unknown; config?: unknown; name?: unknown },
   index: number
 ): void {
   if (!agent.identifier || typeof agent.identifier !== 'string') {
     throw new Error(`Invalid agent at index ${index}: missing or invalid identifier`);
   }
 
-  if (!agent.url || typeof agent.url !== 'string') {
-    throw new Error(`Invalid agent at index ${index}: missing or invalid url`);
+  if (!agent.transport || typeof agent.transport !== 'string') {
+    throw new Error(`Invalid agent at index ${index}: missing or invalid transport`);
   }
 
   if (!agent.name || typeof agent.name !== 'string') {
     throw new Error(`Invalid agent at index ${index}: missing or invalid name`);
+  }
+
+  if (!agent.config || typeof agent.config !== 'object' || Array.isArray(agent.config)) {
+    throw new Error(`Invalid agent at index ${index}: missing or invalid config object`);
+  }
+}
+
+/**
+ * Validate agent transport-specific configuration
+ * @param agent - Agent to validate
+ * @param index - Array index for error messages
+ * @throws Error if transport configuration is invalid
+ */
+function validateAgentTransportConfig(
+  agent: { transport?: unknown; config?: unknown },
+  index: number
+): void {
+  const transport = agent.transport as string;
+  const config = agent.config as any;
+
+  switch (transport) {
+    case 'http':
+      if (!config.url || typeof config.url !== 'string') {
+        throw new Error(`Invalid agent at index ${index}: HTTP transport requires config.url`);
+      }
+      break;
+    case 'stdio':
+      if (!config.url || typeof config.url !== 'string') {
+        throw new Error(
+          `Invalid agent at index ${index}: stdio transport requires config.url (command)`
+        );
+      }
+      break;
+    case 'direct':
+      if (!config.provider || typeof config.provider !== 'string') {
+        throw new Error(
+          `Invalid agent at index ${index}: direct transport requires config.provider`
+        );
+      }
+      if (config.provider === 'openai') {
+        if (!config.apiKey || typeof config.apiKey !== 'string') {
+          throw new Error(
+            `Invalid agent at index ${index}: OpenAI direct transport requires config.apiKey`
+          );
+        }
+      }
+      break;
+    default:
+      throw new Error(`Invalid agent at index ${index}: unsupported transport type '${transport}'`);
   }
 }
 

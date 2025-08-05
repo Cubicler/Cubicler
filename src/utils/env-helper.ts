@@ -1,6 +1,23 @@
 import type { JSONObject, JSONValue } from '../model/types.js';
 
 /**
+ * Expand environment variable references in config values
+ * Supports ${VAR_NAME} syntax
+ * @param value - The string that may contain environment variable placeholders
+ * @returns The string with environment variables substituted
+ * @throws Error if environment variable is not defined
+ */
+export function expandEnvVariable(value: string): string {
+  return value.replace(/\$\{([^}]+)\}/g, (match, varName) => {
+    const envValue = process.env[varName];
+    if (envValue === undefined) {
+      throw new Error(`Environment variable ${varName} is not defined`);
+    }
+    return envValue;
+  });
+}
+
+/**
  * Helper function to substitute environment variables in strings
  * Supports {{env.VARIABLE_NAME}} syntax
  * @param str - The string that may contain environment variable placeholders
