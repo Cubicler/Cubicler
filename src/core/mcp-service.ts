@@ -1,5 +1,6 @@
 import type { JSONObject, JSONValue, MCPRequest, MCPResponse } from '../model/types.js';
 import type { MCPFormattedTool } from '../model/tools.js';
+import type { MCPHandling } from '../interface/mcp-handling.js';
 import { MCPCompatible } from '../interface/mcp-compatible.js';
 
 /**
@@ -7,7 +8,7 @@ import { MCPCompatible } from '../interface/mcp-compatible.js';
  * Aggregates all MCPCompatible services and handles the MCP protocol
  * Uses dependency injection to manage multiple providers
  */
-export class MCPService {
+export class MCPService implements MCPHandling {
   private providers: MCPCompatible[];
 
   /**

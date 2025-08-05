@@ -116,11 +116,32 @@ export class AgentService implements AgentsProviding {
    * Get agent URL for communication
    * @param agentIdentifier - Optional agent identifier. If not provided, uses default agent
    * @returns The URL endpoint for the agent
+   * @throws Error if agent doesn't have a URL (e.g., direct transport)
    */
   async getAgentUrl(agentIdentifier?: string): Promise<string> {
     const config = await this.agentsConfigProvider.getAgentsConfig();
     const agent = await this.resolveAgent(agentIdentifier, config);
-    return agent.url;
+
+    switch (agent.transport) {
+      case 'http':
+        return (agent as any).config.url;
+      case 'stdio':
+        return (agent as any).config.url;
+      case 'direct':
+        throw new Error(`Direct transport agents don't have URLs. Use agent factory instead.`);
+      default:
+        throw new Error(`Unsupported transport type: ${(agent as any).transport}`);
+    }
+  }
+
+  /**
+   * Get full agent configuration
+   * @param agentIdentifier - Optional agent identifier. If not provided, uses default agent
+   * @returns The full agent configuration object
+   */
+  async getAgent(agentIdentifier?: string): Promise<Agent> {
+    const config = await this.agentsConfigProvider.getAgentsConfig();
+    return await this.resolveAgent(agentIdentifier, config);
   }
 
   /**
