@@ -7,10 +7,10 @@ import prettierConfig from 'eslint-config-prettier';
 export default [
   // Base JavaScript recommended rules
   js.configs.recommended,
-  
+
   // Prettier config to disable conflicting rules
   prettierConfig,
-  
+
   // Main TypeScript configuration (source files only)
   {
     files: ['src/**/*.ts'],
@@ -40,18 +40,21 @@ export default [
     rules: {
       // Prettier integration
       'prettier/prettier': 'error',
-      
+
       // TypeScript specific rules
-      '@typescript-eslint/no-unused-vars': ['error', { 
-        argsIgnorePattern: '^_',
-        varsIgnorePattern: '^_'
-      }],
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+        },
+      ],
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off',
       '@typescript-eslint/no-non-null-assertion': 'warn',
       '@typescript-eslint/no-var-requires': 'error',
-      
+
       // General rules
       'no-console': 'off', // Allow console.log in Node.js apps
       'no-debugger': 'error',
@@ -63,17 +66,20 @@ export default [
       'no-var': 'error',
       'object-shorthand': 'error',
       'prefer-template': 'error',
-      
+
       // Import rules
-      'sort-imports': ['error', {
-        ignoreCase: false,
-        ignoreDeclarationSort: true,
-        ignoreMemberSort: false,
-        memberSyntaxSortOrder: ['none', 'all', 'multiple', 'single'],
-      }],
+      'sort-imports': [
+        'error',
+        {
+          ignoreCase: false,
+          ignoreDeclarationSort: true,
+          ignoreMemberSort: false,
+          memberSyntaxSortOrder: ['none', 'all', 'multiple', 'single'],
+        },
+      ],
     },
   },
-  
+
   // Test files configuration
   {
     files: ['**/*.test.ts', '**/*.spec.ts', '**/tests/**/*.ts'],
@@ -120,15 +126,18 @@ export default [
     rules: {
       // Prettier integration
       'prettier/prettier': 'error',
-      
+
       // Relaxed rules for test files
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-non-null-assertion': 'off',
-      '@typescript-eslint/no-unused-vars': ['error', { 
-        argsIgnorePattern: '^_',
-        varsIgnorePattern: '^_'
-      }],
-      
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+        },
+      ],
+
       // General rules for tests
       'no-console': 'off',
       'no-debugger': 'error',
@@ -137,7 +146,7 @@ export default [
       'no-unused-vars': 'off', // Use TypeScript version instead
     },
   },
-  
+
   // Configuration files
   {
     files: ['*.config.ts', '*.config.js', 'eslint.config.js'],
@@ -169,14 +178,9 @@ export default [
       'no-console': 'off',
     },
   },
-  
+
   // Ignore patterns
   {
-    ignores: [
-      'dist/',
-      'node_modules/',
-      'coverage/',
-      '*.d.ts',
-    ],
+    ignores: ['dist/', 'node_modules/', 'coverage/', '*.d.ts'],
   },
 ];
