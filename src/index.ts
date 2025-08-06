@@ -9,6 +9,7 @@ import dispatchService from './core/dispatch-service.js';
 import mcpService from './core/mcp-service.js';
 import internalToolsService from './core/internal-tools-service.js';
 import serverConfigService from './core/server-config-service.js';
+import sseAgentService from './core/sse-agent-service.js';
 
 // Import JWT middleware
 import { type AuthenticatedRequest, createJwtMiddleware } from './middleware/jwt-auth.js';
@@ -102,6 +103,29 @@ app.get('/health', async (req: Request, res: Response) => {
   );
 
   res.status(statusCode).json(health);
+});
+
+// ===== Endpoints Discovery =====
+app.get('/endpoints', (req: Request, res: Response) => {
+  console.log(`🔗 [Server] GET /endpoints - API discovery requested`);
+
+  const endpoints = [
+    { method: 'GET', path: '/health', description: 'Health check with service status' },
+    { method: 'GET', path: '/agents', description: 'List available agents' },
+    { method: 'GET', path: '/endpoints', description: 'API discovery' },
+    { method: 'POST', path: '/dispatch', description: 'Dispatch to default agent' },
+    { method: 'POST', path: '/dispatch/:agentId', description: 'Dispatch to specific agent' },
+    { method: 'POST', path: '/mcp', description: 'MCP protocol endpoint' },
+    { method: 'GET', path: '/sse/:agentId', description: 'SSE connection for agents' },
+    { method: 'POST', path: '/sse/:agentId/response', description: 'Agent response endpoint' },
+    { method: 'GET', path: '/sse/status', description: 'SSE connection status' },
+  ];
+
+  console.log(`✅ [Server] GET /endpoints - Success (${endpoints.length} endpoints)`);
+  res.json({
+    total: endpoints.length,
+    endpoints,
+  });
 });
 
 // ===== Agents Endpoint =====
@@ -267,6 +291,145 @@ app.post('/mcp', async (req: AuthenticatedRequest, res: Response) => {
   return handleMCPRequest(req, res);
 });
 
+// ===== SSE Agent Endpoints =====
+
+// GET /sse/:agentId - SSE endpoint for agents to connect
+app.get('/sse/:agentId', async (req: Request, res: Response) => {
+  // Apply JWT middleware if configured
+  const jwtMiddleware = await createEndpointJwtMiddleware('sse');
+  if (jwtMiddleware) {
+    return jwtMiddleware(req, res, async () => {
+      await handleSseConnection(req as AuthenticatedRequest, res);
+    });
+  }
+
+  // No JWT middleware configured, proceed without authentication
+  await handleSseConnection(req as AuthenticatedRequest, res);
+});
+
+async function handleSseConnection(req: AuthenticatedRequest, res: Response) {
+  const { agentId } = req.params;
+
+  if (!agentId) {
+    console.log(`⚠️ [Server] SSE connection attempt without agent ID`);
+    res.status(400).json({ error: 'Agent ID is required' });
+    return;
+  }
+
+  console.log(`🔄 [Server] SSE connection request from agent ${agentId}`);
+
+  // Check if agent exists
+  try {
+    const agents = await agentService.getAllAgents();
+    const agentExists = agents.some((agent) => agent.identifier === agentId);
+
+    if (!agentExists) {
+      console.log(`⚠️ [Server] Unknown agent ${agentId} attempted SSE connection`);
+      res.status(404).json({ error: `Agent ${agentId} not found` });
+      return;
+    }
+
+    // Handle the SSE connection
+    const connected = sseAgentService.handleAgentConnection(agentId, res);
+
+    if (!connected) {
+      console.log(`❌ [Server] Failed to establish SSE connection for agent ${agentId}`);
+      res.status(500).json({ error: 'Failed to establish SSE connection' });
+      return;
+    }
+
+    console.log(`✅ [Server] SSE connection established for agent ${agentId}`);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`❌ [Server] SSE connection error for agent ${agentId}: ${errorMessage}`);
+    res.status(500).json({ error: errorMessage });
+  }
+}
+
+// POST /sse/:agentId/response - endpoint for agents to send responses
+app.post('/sse/:agentId/response', async (req: Request, res: Response) => {
+  // Apply JWT middleware if configured
+  const jwtMiddleware = await createEndpointJwtMiddleware('sse');
+  if (jwtMiddleware) {
+    return jwtMiddleware(req, res, async () => {
+      await handleSseResponse(req as AuthenticatedRequest, res);
+    });
+  }
+
+  // No JWT middleware configured, proceed without authentication
+  await handleSseResponse(req as AuthenticatedRequest, res);
+});
+
+async function handleSseResponse(req: AuthenticatedRequest, res: Response) {
+  const { agentId } = req.params;
+  const { requestId, response: agentResponse } = req.body;
+
+  if (!agentId) {
+    console.log(`⚠️ [Server] Agent response without agent ID`);
+    res.status(400).json({ error: 'Agent ID is required' });
+    return;
+  }
+
+  if (!requestId || !agentResponse) {
+    console.log(`⚠️ [Server] Agent ${agentId} sent incomplete response`);
+    res.status(400).json({ error: 'Request ID and response are required' });
+    return;
+  }
+
+  console.log(`📨 [Server] Received response from agent ${agentId} for request ${requestId}`);
+
+  try {
+    const handled = sseAgentService.handleAgentResponse(agentId, requestId, agentResponse);
+
+    if (!handled) {
+      console.log(`⚠️ [Server] No handler for response from agent ${agentId}`);
+      res.status(404).json({ error: `No active session for agent ${agentId}` });
+      return;
+    }
+
+    console.log(`✅ [Server] Response from agent ${agentId} handled successfully`);
+    res.json({ success: true });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`❌ [Server] Error handling response from agent ${agentId}: ${errorMessage}`);
+    res.status(500).json({ error: errorMessage });
+  }
+}
+
+// GET /sse/status - endpoint to check SSE agent connection status
+app.get('/sse/status', async (req: Request, res: Response) => {
+  // Apply JWT middleware if configured
+  const jwtMiddleware = await createEndpointJwtMiddleware('sse');
+  if (jwtMiddleware) {
+    return jwtMiddleware(req, res, async () => {
+      await handleSseStatus(req as AuthenticatedRequest, res);
+    });
+  }
+
+  // No JWT middleware configured, proceed without authentication
+  await handleSseStatus(req as AuthenticatedRequest, res);
+});
+
+async function handleSseStatus(req: AuthenticatedRequest, res: Response) {
+  console.log(`🔍 [Server] SSE status check requested`);
+
+  try {
+    const connectedAgents = sseAgentService.getConnectedAgentIds();
+
+    res.json({
+      status: 'ok',
+      connectedAgents,
+      totalConnected: connectedAgents.length,
+    });
+
+    console.log(`✅ [Server] SSE status: ${connectedAgents.length} agents connected`);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`❌ [Server] SSE status check error: ${errorMessage}`);
+    res.status(500).json({ error: errorMessage });
+  }
+}
+
 // Helper function to handle MCP request logic
 async function handleMCPRequest(req: AuthenticatedRequest, res: Response) {
   const mcpRequest: MCPRequest = req.body;
@@ -363,9 +526,13 @@ async function startServer() {
     console.log(`🔗 [Server] Available endpoints:`);
     console.log(`   GET  /health`);
     console.log(`   GET  /agents`);
+    console.log(`   GET  /endpoints`);
     console.log(`   POST /dispatch`);
     console.log(`   POST /dispatch/:agentId`);
     console.log(`   POST /mcp`);
+    console.log(`   GET  /sse/:agentId`);
+    console.log(`   POST /sse/:agentId/response`);
+    console.log(`   GET  /sse/status`);
 
     // Perform initial health check and tool initialization
     console.log(`\n🏥 [Server] Performing initial health check...`);

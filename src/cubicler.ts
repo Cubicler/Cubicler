@@ -21,6 +21,7 @@ export {
   ServerConfigService,
   default as serverConfigService,
 } from './core/server-config-service.js';
+export { SseAgentService, default as sseAgentService } from './core/sse-agent-service.js';
 
 // Export utilities and protocols
 export { Cache, createEnvCache } from './utils/cache.js';

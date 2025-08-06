@@ -43,7 +43,6 @@ export interface HttpTransportConfig {
  * SSE transport configuration
  */
 export interface SseTransportConfig {
-  url: string;
   auth?: {
     type: 'jwt';
     config: JwtAuthConfig;

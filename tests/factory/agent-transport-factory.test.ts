@@ -51,9 +51,7 @@ describe('AgentTransportFactory', () => {
         identifier: 'test-agent',
         name: 'Test Agent',
         transport: 'sse',
-        config: {
-          url: 'https://localhost:3000/agent/sse',
-        },
+        config: {},
         description: 'Test agent',
       };
 

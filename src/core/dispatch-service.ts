@@ -14,6 +14,8 @@ import {
 import { AgentTransportFactory } from '../factory/agent-transport-factory.js';
 import { filterAllowedServers, filterAllowedTools } from '../utils/restriction-helper.js';
 import type { ServersProviding } from '../interface/servers-providing.js';
+import { SseAgentTransport } from '../transport/agent/sse-agent-transport.js';
+import sseAgentService from './sse-agent-service.js';
 
 /**
  * Dispatch Service for Cubicler
@@ -97,6 +99,12 @@ export class DispatchService {
    */
   private async callAgent(agent: Agent, agentRequest: AgentRequest): Promise<AgentResponse> {
     const transport = this.transportFactory.createTransport(agent);
+
+    // Register SSE transports with the SSE agent service for connection management
+    if (transport instanceof SseAgentTransport) {
+      sseAgentService.registerAgent(agent.identifier, transport);
+    }
+
     return await transport.dispatch(agentRequest);
   }
 

@@ -1,204 +1,191 @@
 import type { AgentTransport } from '../../interface/agent-transport.js';
 import type { AgentRequest, AgentResponse } from '../../model/dispatch.js';
 import type { SseTransportConfig } from '../../model/agents.js';
-import { fetchWithAgentTimeout } from '../../utils/fetch-helper.js';
-import jwtHelper from '../../utils/jwt-helper.js';
+import { Response } from 'express';
 
 /**
  * SSE transport implementation for agent communication
- * Handles Server-Sent Events streaming communication with agents
+ * Cubicler acts as SSE server, agents connect to receive requests
  */
 export class SseAgentTransport implements AgentTransport {
+  private readonly agentId: string;
+  private connectedAgent: Response | null = null;
+  private readonly pendingRequests = new Map<
+    string,
+    {
+      resolve: (_response: AgentResponse) => void;
+      reject: (_error: Error) => void;
+      timeout: ReturnType<typeof globalThis.setTimeout>;
+    }
+  >();
+  private readonly requestTimeout = 300000; // 5 minutes timeout for agent responses
+
   /**
    * Creates a new SseAgentTransport instance
-   * @param config - SSE transport configuration
+   * @param _config - SSE transport configuration (unused - agents connect to Cubicler)
+   * @param agentId - Unique identifier for this agent
    */
-  constructor(private readonly config: SseTransportConfig) {
-    if (!config?.url || typeof config.url !== 'string') {
-      throw new Error('Agent URL must be a non-empty string');
-    }
+  constructor(
+    private readonly _config: SseTransportConfig,
+    agentId: string
+  ) {
+    // No URL validation needed - SSE agents connect TO Cubicler
+    this.agentId = agentId;
   }
 
   /**
-   * Call the agent via SSE streaming request
+   * Dispatch request to agent via SSE
    * @param agentRequest - The request to send to the agent
    * @returns Promise that resolves to the agent's response
-   * @throws Error if the SSE request fails or returns invalid response
+   * @throws Error if no agent is connected or request fails
    */
   async dispatch(agentRequest: AgentRequest): Promise<AgentResponse> {
-    console.log(`🚀 [SseAgentTransport] Starting SSE connection to ${this.config.url}`);
-
-    try {
-      const headers = await this.buildHeaders();
-
-      // Add SSE-specific headers
-      headers.Accept = 'text/event-stream';
-      headers['Cache-Control'] = 'no-cache';
-
-      const response = await this.streamFromAgent(agentRequest, headers);
-
-      console.log(`✅ [SseAgentTransport] Agent responded successfully via SSE`);
-      return response;
-    } catch (error) {
-      console.error(`❌ [SseAgentTransport] Agent call failed:`, error);
-      throw error;
+    if (!this.connectedAgent) {
+      throw new Error(`No agent connected for ${this.agentId}`);
     }
-  }
 
-  /**
-   * Stream data from agent using SSE
-   * @param agentRequest - The request to send to the agent
-   * @param headers - HTTP headers for the request
-   * @returns Promise that resolves to the complete agent response
-   */
-  private async streamFromAgent(
-    agentRequest: AgentRequest,
-    headers: Record<string, string>
-  ): Promise<AgentResponse> {
+    console.log(`🚀 [SseAgentTransport] Dispatching request to agent ${this.agentId}`);
+
     return new Promise((resolve, reject) => {
-      let responseBuffer = '';
-      let hasReceivedData = false;
-      let finalResponse: AgentResponse | null = null;
-      let isResolved = false;
+      const requestId = this.generateRequestId();
 
-      // Set timeout for the entire SSE session
-      const timeoutId = globalThis.setTimeout(() => {
-        if (!isResolved) {
-          isResolved = true;
-          reject(new Error('SSE request timed out'));
-        }
-      }, 300000); // 5 minutes timeout
+      // Set up timeout
+      const timeout = globalThis.setTimeout(() => {
+        this.pendingRequests.delete(requestId);
+        reject(
+          new Error(
+            `Agent ${this.agentId} request ${requestId} timed out after ${this.requestTimeout}ms`
+          )
+        );
+      }, this.requestTimeout);
 
-      const safeResolve = (value: AgentResponse) => {
-        if (!isResolved) {
-          isResolved = true;
-          globalThis.clearTimeout(timeoutId);
-          resolve(value);
-        }
-      };
+      // Store pending request
+      this.pendingRequests.set(requestId, { resolve, reject, timeout });
 
-      const safeReject = (reason: Error | string | unknown) => {
-        if (!isResolved) {
-          isResolved = true;
-          globalThis.clearTimeout(timeoutId);
-          reject(reason);
-        }
-      };
+      // Send request to agent via SSE
+      try {
+        const sseData = {
+          id: requestId,
+          type: 'agent_request',
+          data: agentRequest,
+        };
 
-      const processSSEData = (data: string) => {
-        const lines = data.split('\n');
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Safe: checked above
+        this.connectedAgent!.write(`id: ${requestId}\n`);
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Safe: checked above
+        this.connectedAgent!.write(`event: agent_request\n`);
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Safe: checked above
+        this.connectedAgent!.write(`data: ${JSON.stringify(sseData)}\n\n`);
 
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const eventData = line.slice(6); // Remove 'data: ' prefix
-
-            if (eventData === '[DONE]') {
-              // SSE stream completed
-              if (finalResponse) {
-                safeResolve(finalResponse);
-              } else {
-                safeReject(new Error('SSE stream completed but no final response received'));
-              }
-              return;
-            }
-
-            try {
-              const parsedData = JSON.parse(eventData);
-
-              // Handle different SSE event types
-              if (parsedData.type === 'content_delta') {
-                responseBuffer += parsedData.content || '';
-                hasReceivedData = true;
-              } else if (parsedData.type === 'response_complete') {
-                // Final response with metadata
-                finalResponse = {
-                  timestamp: parsedData.timestamp || new Date().toISOString(),
-                  type: 'text',
-                  content: responseBuffer,
-                  metadata: parsedData.metadata || { usedToken: 0, usedTools: 0 },
-                };
-              }
-            } catch (parseError) {
-              console.warn(`⚠️ [SseAgentTransport] Failed to parse SSE data:`, parseError);
-            }
-          }
-        }
-      };
-
-      // Use fetch with timeout for the SSE connection
-      fetchWithAgentTimeout(this.config.url, {
-        method: 'POST',
-        headers,
-        data: agentRequest,
-        responseType: 'stream',
-      })
-        .then((response) => {
-          this.validateHttpResponse(response);
-
-          // Handle the response as a stream
-          if (response.data && typeof response.data.on === 'function') {
-            response.data.on('data', (chunk: Buffer) => {
-              const chunkStr = chunk.toString();
-              processSSEData(chunkStr);
-            });
-
-            response.data.on('end', () => {
-              if (!hasReceivedData) {
-                safeReject(new Error('SSE stream ended without receiving any data'));
-              } else if (finalResponse) {
-                safeResolve(finalResponse);
-              } else {
-                // Create fallback response if no final response was received
-                safeResolve({
-                  timestamp: new Date().toISOString(),
-                  type: 'text',
-                  content: responseBuffer,
-                  metadata: { usedToken: 0, usedTools: 0 },
-                });
-              }
-            });
-
-            response.data.on('error', (error: Error) => {
-              safeReject(new Error(`SSE stream error: ${error.message}`));
-            });
-          } else {
-            safeReject(new Error('Invalid SSE response format'));
-          }
-        })
-        .catch((error) => {
-          safeReject(error);
-        });
+        console.log(`📡 [SseAgentTransport] Request ${requestId} sent to agent ${this.agentId}`);
+      } catch (error) {
+        globalThis.clearTimeout(timeout);
+        this.pendingRequests.delete(requestId);
+        reject(
+          new Error(
+            `Failed to send request to agent ${this.agentId}: ${error instanceof Error ? error.message : 'Unknown error'}`
+          )
+        );
+      }
     });
   }
 
   /**
-   * Build HTTP headers including JWT authentication if configured
-   * @returns Promise that resolves to headers object
-   * @throws Error if JWT token cannot be obtained
+   * Register agent connection for SSE
+   * @param response - Express response object for SSE connection
    */
-  private async buildHeaders(): Promise<Record<string, string>> {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
+  registerAgentConnection(response: Response): void {
+    console.log(`✅ [SseAgentTransport] Agent ${this.agentId} connected via SSE`);
 
-    if (this.config.auth?.type === 'jwt') {
-      const token = await jwtHelper.getToken(this.config.auth.config);
-      headers.Authorization = `Bearer ${token}`;
-    }
+    // Set up SSE headers
+    response.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Cache-Control',
+    });
 
-    return headers;
+    // Send initial connection message
+    response.write(`event: connected\n`);
+    response.write(`data: {"message": "Connected to Cubicler", "agentId": "${this.agentId}"}\n\n`);
+
+    this.connectedAgent = response;
+
+    // Handle connection close
+    response.on('close', () => {
+      console.log(`🔄 [SseAgentTransport] Agent ${this.agentId} disconnected`);
+      this.connectedAgent = null;
+
+      // Reject all pending requests
+      for (const [_requestId, pending] of this.pendingRequests.entries()) {
+        globalThis.clearTimeout(pending.timeout);
+        pending.reject(new Error(`Agent ${this.agentId} disconnected`));
+      }
+      this.pendingRequests.clear();
+    });
   }
 
   /**
-   * Validate HTTP response status
-   * @param response - HTTP response from agent
-   * @throws Error if status indicates failure
+   * Handle response from agent
+   * @param requestId - ID of the original request
+   * @param response - Agent response
    */
-  private validateHttpResponse(response: { status: number; statusText?: string }): void {
-    if (response.status < 200 || response.status >= 300) {
-      throw new Error(
-        `Agent responded with status ${response.status}: ${response.statusText || 'Unknown error'}`
+  handleAgentResponse(requestId: string, response: AgentResponse): void {
+    const pending = this.pendingRequests.get(requestId);
+
+    if (pending) {
+      globalThis.clearTimeout(pending.timeout);
+      this.pendingRequests.delete(requestId);
+
+      console.log(
+        `✅ [SseAgentTransport] Received response from agent ${this.agentId} for request ${requestId}`
+      );
+      pending.resolve(response);
+    } else {
+      console.warn(
+        `⚠️ [SseAgentTransport] Received response for unknown request ${requestId} from agent ${this.agentId}`
       );
     }
+  }
+
+  /**
+   * Check if agent is connected
+   */
+  isAgentConnected(): boolean {
+    return this.connectedAgent !== null && !this.connectedAgent.destroyed;
+  }
+
+  /**
+   * Get agent ID
+   */
+  getAgentId(): string {
+    return this.agentId;
+  }
+
+  /**
+   * Disconnect agent and clean up resources
+   */
+  disconnect(): void {
+    if (this.connectedAgent && !this.connectedAgent.destroyed) {
+      this.connectedAgent.end();
+    }
+    this.connectedAgent = null;
+
+    // Reject all pending requests
+    for (const [, pending] of this.pendingRequests.entries()) {
+      globalThis.clearTimeout(pending.timeout);
+      pending.reject(new Error(`Agent ${this.agentId} transport disconnected`));
+    }
+    this.pendingRequests.clear();
+
+    console.log(`🔄 [SseAgentTransport] Agent ${this.agentId} transport disconnected`);
+  }
+
+  /**
+   * Generate unique request ID
+   */
+  private generateRequestId(): string {
+    return `${this.agentId}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
   }
 }

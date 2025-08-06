@@ -38,7 +38,7 @@ export class AgentTransportFactory {
       }
       case 'sse': {
         const sseAgent = agent as SseAgent;
-        return new SseAgentTransport(sseAgent.config);
+        return new SseAgentTransport(sseAgent.config, sseAgent.identifier);
       }
       case 'stdio': {
         const stdioAgent = agent as StdioAgent;
