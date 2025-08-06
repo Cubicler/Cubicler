@@ -6,8 +6,12 @@ export interface MCPServer {
   name: string;
   description: string;
   transport: 'http' | 'sse' | 'websocket' | 'stdio'; // start with http
-  url: string;
-  headers?: Record<string, string>;
+  url?: string; // Required for http/sse/websocket, optional for stdio
+  headers?: Record<string, string>; // For HTTP transport
+  command?: string; // Required for stdio transport
+  args?: string[]; // Optional arguments for stdio command
+  cwd?: string; // Optional working directory for stdio command
+  env?: Record<string, string>; // Optional environment variables for stdio command
 }
 
 /**

@@ -226,6 +226,9 @@ export class InternalToolsService implements MCPCompatible {
    * @returns Filtered and normalized tools
    */
   private filterToolsByPrefix(tools: ToolDefinition[], prefix: string): ToolDefinition[] {
+    if (!tools) {
+      return [];
+    }
     return tools
       .filter((tool) => tool.name.startsWith(prefix))
       .map((tool) => ({

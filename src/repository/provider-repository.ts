@@ -146,13 +146,16 @@ class ProviderRepository implements ProvidersConfigProviding {
     if (config.mcpServers) {
       for (const mcpServer of config.mcpServers) {
         const identifier = toSnakeCase(mcpServer.identifier); // Store as snake_case
-        const hash = generateServerHash(mcpServer.identifier, mcpServer.url);
+        const hash = generateServerHash(
+          mcpServer.identifier,
+          mcpServer.url || mcpServer.command || ''
+        );
 
         metadata.push({
           identifier,
           name: mcpServer.name,
           description: mcpServer.description,
-          url: mcpServer.url,
+          url: mcpServer.url || mcpServer.command || '',
           hash,
           toolsCount: 0, // Will be updated when tools are loaded
           type: 'mcp',

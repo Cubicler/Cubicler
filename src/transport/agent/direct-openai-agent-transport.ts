@@ -1,7 +1,7 @@
-import type { AgentRequest, AgentResponse } from '../model/dispatch.js';
-import type { Agent, DirectOpenAIConfig } from '../model/agents.js';
-import type { MCPHandling } from '../interface/mcp-handling.js';
-import type { ServersProviding } from '../interface/servers-providing.js';
+import type { AgentRequest, AgentResponse } from '../../model/dispatch.js';
+import type { Agent, DirectOpenAIConfig } from '../../model/agents.js';
+import type { MCPHandling } from '../../interface/mcp-handling.js';
+import type { ServersProviding } from '../../interface/servers-providing.js';
 import { OpenAIService } from '@cubicler/cubicagent-openai';
 import { CubicAgent } from '@cubicler/cubicagentkit';
 import type {
@@ -9,7 +9,7 @@ import type {
   OpenAIConfig,
 } from '@cubicler/cubicagent-openai/dist/config/environment.js';
 import { DirectAgentTransport } from './direct-agent-transport.js';
-import { expandEnvVariable } from '../utils/env-helper.js';
+import { expandEnvVariable } from '../../utils/env-helper.js';
 
 /**
  * Direct transport for OpenAI agents

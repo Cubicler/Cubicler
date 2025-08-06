@@ -1,8 +1,8 @@
-import type { AgentTransport } from '../interface/agent-transport.js';
-import type { AgentRequest, AgentResponse } from '../model/dispatch.js';
-import type { Agent, DirectTransportConfig } from '../model/agents.js';
-import type { MCPHandling } from '../interface/mcp-handling.js';
-import type { ServersProviding } from '../interface/servers-providing.js';
+import type { AgentTransport } from '../../interface/agent-transport.js';
+import type { AgentRequest, AgentResponse } from '../../model/dispatch.js';
+import type { Agent, DirectTransportConfig } from '../../model/agents.js';
+import type { MCPHandling } from '../../interface/mcp-handling.js';
+import type { ServersProviding } from '../../interface/servers-providing.js';
 import type {
   AgentClient,
   AgentServer,
@@ -10,7 +10,7 @@ import type {
   JSONValue,
   RequestHandler,
 } from '@cubicler/cubicagentkit';
-import { validateToolAccess } from '../utils/restriction-helper.js';
+import { validateToolAccess } from '../../utils/restriction-helper.js';
 
 /**
  * Direct transport implementation for agent communication

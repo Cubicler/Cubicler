@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { HttpAgentTransport } from '../../src/transport/http-agent-transport.js';
-import type { AgentRequest, AgentResponse } from '../../src/model/dispatch.js';
-import type { HttpTransportConfig } from '../../src/model/agents.js';
-import * as fetchHelper from '../../src/utils/fetch-helper.js';
-import * as jwtHelper from '../../src/utils/jwt-helper.js';
+import { HttpAgentTransport } from '../../../src/transport/agent/http-agent-transport.js';
+import type { AgentRequest, AgentResponse } from '../../../src/model/dispatch.js';
+import type { HttpTransportConfig } from '../../../src/model/agents.js';
+import * as fetchHelper from '../../../src/utils/fetch-helper.js';
+import * as jwtHelper from '../../../src/utils/jwt-helper.js';
 
 // Mock the fetch helper and jwt helper
-vi.mock('../../src/utils/fetch-helper.js');
-vi.mock('../../src/utils/jwt-helper.js');
+vi.mock('../../../src/utils/fetch-helper.js');
+vi.mock('../../../src/utils/jwt-helper.js');
 
 describe('HttpAgentTransport', () => {
   const mockConfig: HttpTransportConfig = {

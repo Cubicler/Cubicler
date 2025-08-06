@@ -1,10 +1,11 @@
-import type { Agent, DirectAgent, HttpAgent, StdioAgent } from '../model/agents.js';
+import type { Agent, DirectAgent, HttpAgent, SseAgent, StdioAgent } from '../model/agents.js';
 import type { AgentTransport } from '../interface/agent-transport.js';
 import type { MCPHandling } from '../interface/mcp-handling.js';
 import type { ServersProviding } from '../interface/servers-providing.js';
-import { HttpAgentTransport } from '../transport/http-agent-transport.js';
-import { StdioAgentTransport } from '../transport/stdio-agent-transport.js';
-import { DirectOpenAIAgentTransport } from '../transport/direct-openai-agent-transport.js';
+import { HttpAgentTransport } from '../transport/agent/http-agent-transport.js';
+import { SseAgentTransport } from '../transport/agent/sse-agent-transport.js';
+import { StdioAgentTransport } from '../transport/agent/stdio-agent-transport.js';
+import { DirectOpenAIAgentTransport } from '../transport/agent/direct-openai-agent-transport.js';
 
 /**
  * Factory for creating agent transport implementations
@@ -34,6 +35,10 @@ export class AgentTransportFactory {
       case 'http': {
         const httpAgent = agent as HttpAgent;
         return new HttpAgentTransport(httpAgent.config);
+      }
+      case 'sse': {
+        const sseAgent = agent as SseAgent;
+        return new SseAgentTransport(sseAgent.config);
       }
       case 'stdio': {
         const stdioAgent = agent as StdioAgent;

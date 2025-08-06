@@ -40,6 +40,17 @@ export interface HttpTransportConfig {
 }
 
 /**
+ * SSE transport configuration
+ */
+export interface SseTransportConfig {
+  url: string;
+  auth?: {
+    type: 'jwt';
+    config: JwtAuthConfig;
+  };
+}
+
+/**
  * Stdio transport configuration
  */
 export interface StdioTransportConfig {
@@ -76,6 +87,14 @@ export interface HttpAgent extends BaseAgent {
 }
 
 /**
+ * Agent configuration with SSE transport
+ */
+export interface SseAgent extends BaseAgent {
+  transport: 'sse';
+  config: SseTransportConfig;
+}
+
+/**
  * Agent configuration with stdio transport
  */
 export interface StdioAgent extends BaseAgent {
@@ -94,7 +113,7 @@ export interface DirectAgent extends BaseAgent {
 /**
  * Union type for all agent configurations
  */
-export type Agent = HttpAgent | StdioAgent | DirectAgent;
+export type Agent = HttpAgent | SseAgent | StdioAgent | DirectAgent;
 
 /**
  * Agents configuration (JSON format)

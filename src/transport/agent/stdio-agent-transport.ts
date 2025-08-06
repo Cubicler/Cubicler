@@ -1,7 +1,7 @@
 import { spawn } from 'child_process';
-import type { AgentTransport } from '../interface/agent-transport.js';
-import type { AgentRequest, AgentResponse } from '../model/dispatch.js';
-import { getAgentCallTimeout } from '../utils/env-helper.js';
+import type { AgentTransport } from '../../interface/agent-transport.js';
+import type { AgentRequest, AgentResponse } from '../../model/dispatch.js';
+import { getAgentCallTimeout } from '../../utils/env-helper.js';
 
 // Node.js globals for timeout handling
 /* eslint-disable no-undef */

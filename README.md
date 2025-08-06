@@ -64,7 +64,7 @@ Cubicler connects four types of components:
 docker run -p 1503:1503 
   -e CUBICLER_AGENTS_LIST=https://your-cloud.com/agents.json 
   -e CUBICLER_PROVIDERS_LIST=https://your-cloud.com/providers.json 
-  cubicler/cubicler:2.2.0
+  cubicler/cubicler:2.3.0
 ```
 
 ### Installation from Source
@@ -88,6 +88,9 @@ CUBICLER_AGENTS_LIST=https://your-cloud.com/agents.json
 
 # Optional - Server port (default: 1503)
 CUBICLER_PORT=1503
+
+# Optional - Path to Cubicler server configuration file
+CUBICLER_CONFIG=./cubicler.json
 ```
 
 ### Start the Server
@@ -120,6 +123,9 @@ CUBICLER_PROVIDERS_LIST=https://your-server.com/providers.json
 
 # Optional: Server port (default: 1503)
 CUBICLER_PORT=1503
+
+# Optional: Path to Cubicler server configuration file
+CUBICLER_CONFIG=./cubicler.json
 ```
 
 ### Agents Configuration (`agents.json`)
@@ -128,29 +134,66 @@ This tells Cubicler which AI agents are available. You can use `{{env.VARIABLE_N
 
 ```json
 {
-  "basePrompt": "You are a helpful AI assistant.",
-  "defaultPrompt": "You have access to various tools and services.",
+  "basePrompt": "You are a helpful AI assistant powered by Cubicler with access to various tools and services.",
+  "defaultPrompt": "./prompts/default-agent.md",
   "agents": [
     {
-      "identifier": "gpt_4o",
-      "name": "GPT-4O Agent", 
+      "identifier": "gpt-4o-direct",
+      "name": "GPT-4o Direct Agent",
+      "transport": "direct",
+      "config": {
+        "provider": "openai",
+        "apiKey": "${OPENAI_API_KEY}",
+        "model": "gpt-4o",
+        "temperature": 0.7,
+        "sessionMaxTokens": 4096
+      },
+      "description": "OpenAI GPT-4o powered agent running directly in Cubicler",
+      "prompt": "You are an advanced AI assistant powered by GPT-4o."
+    },
+    {
+      "identifier": "claude-3-5-sonnet",
+      "name": "Claude 3.5 Sonnet",
       "transport": "http",
-      "url": "{{env.GPT_AGENT_URL}}",
-      "description": "Advanced reasoning and analysis",
-      "prompt": "You specialize in complex problem solving."
+      "config": {
+        "url": "http://localhost:3001/agent"
+      },
+      "description": "Anthropic Claude 3.5 Sonnet with excellent coding and analysis skills",
+      "prompt": "https://raw.githubusercontent.com/your-org/prompts/main/claude-specialist.md"
     },
     {
-      "identifier": "claude_3_5",
-      "name": "Claude 3.5 Agent",
-      "transport": "http", 
-      "url": "{{env.CLAUDE_AGENT_URL}}",
-      "description": "Creative and analytical tasks"
+      "identifier": "streaming-agent",
+      "name": "Streaming Agent",
+      "transport": "sse",
+      "config": {
+        "url": "http://localhost:3002/agent/stream"
+      },
+      "description": "Agent that supports real-time streaming responses",
+      "prompt": "You provide streaming responses for real-time interactions."
     },
     {
-      "identifier": "local_llama",
+      "identifier": "secure-agent-jwt",
+      "name": "JWT Secured Agent",
+      "transport": "http",
+      "config": {
+        "url": "https://api.example.com/agent",
+        "auth": {
+          "type": "jwt",
+          "config": {
+            "token": "${JWT_TOKEN}"
+          }
+        }
+      },
+      "description": "Agent service protected with JWT authentication",
+      "prompt": "You are a secure AI assistant running behind JWT authentication."
+    },
+    {
+      "identifier": "local-llama",
       "name": "Local LLaMA Agent",
       "transport": "stdio",
-      "url": "/usr/local/bin/llama-agent --model llama2 --temperature 0.7",
+      "config": {
+        "url": "/usr/local/bin/llama-agent --model llama2 --temperature 0.7"
+      },
       "description": "Local LLaMA model running as a command-line process"
     }
   ]
@@ -201,11 +244,28 @@ This tells Cubicler which AI agents are available. You can use `{{env.VARIABLE_N
 
 Cubicler supports different ways to communicate with AI agents:
 
+**Direct Transport** (`"transport": "direct"`):
+
+- Built-in AI providers running directly within Cubicler
+- No external agent server needed
+- Supports OpenAI GPT models (GPT-4o, GPT-4 Turbo, etc.)
+- Configured via `config.provider`, `config.apiKey`, `config.model`
+- Perfect for simple deployments without separate agent services
+
 **HTTP Transport** (`"transport": "http"`):
 
 - Standard REST API communication
 - Agent runs as a web server
 - `url` field contains the HTTP endpoint (e.g., `http://localhost:3000/agent`)
+- Supports JWT authentication for secure agent communication
+
+**SSE Transport** (`"transport": "sse"`):
+
+- Server-Sent Events for real-time streaming communication
+- Agent provides an SSE endpoint for streaming responses
+- `url` field contains the SSE endpoint (e.g., `http://localhost:3000/agent/stream`)
+- Perfect for streaming responses and real-time agent interactions
+- Supports JWT authentication and connection management
 
 **Stdio Transport** (`"transport": "stdio"`):
 
@@ -224,20 +284,59 @@ Cubicler supports different ways to communicate with AI agents:
 
 ### Providers Configuration (`providers.json`)
 
-This tells Cubicler which external services AI agents can use. You can use `{{env.VARIABLE_NAME}}` to substitute environment variables:
+This tells Cubicler which external services AI agents can use. You can use `{{env.VARIABLE_NAME}}` to substitute environment variables.
+
+#### 🔌 MCP Transport Types
+
+MCP servers support multiple transport protocols:
+
+**HTTP Transport** (`"transport": "http"`):
+
+- Standard HTTP-based MCP communication
+- Server provides MCP endpoints over HTTP
+- Supports headers for authentication
+
+**SSE Transport** (`"transport": "sse"`):
+
+- Server-Sent Events for streaming MCP communication
+- Perfect for real-time tool execution and streaming results
+- Maintains persistent connections for better performance
+
+**Stdio Transport** (`"transport": "stdio"`):
+
+- Local process-based MCP communication
+- Server runs as a command-line process
+- Communicates via stdin/stdout using MCP protocol
 
 ```json
 {
   "mcpServers": [
     {
-      "identifier": "weather_service",
-      "name": "Weather Service",
-      "description": "Get weather information",
+      "identifier": "weather_service_http",
+      "name": "Weather Service (HTTP)",
+      "description": "Get weather information via HTTP MCP",
       "transport": "http",
       "url": "{{env.WEATHER_API_URL}}",
       "headers": {
         "Authorization": "Bearer {{env.WEATHER_API_KEY}}"
       }
+    },
+    {
+      "identifier": "weather_service_sse",
+      "name": "Weather Service (SSE)",
+      "description": "Get weather information via SSE MCP",
+      "transport": "sse",
+      "url": "{{env.WEATHER_SSE_URL}}",
+      "headers": {
+        "Authorization": "Bearer {{env.WEATHER_API_KEY}}"
+      }
+    },
+    {
+      "identifier": "local_mcp_service",
+      "name": "Local MCP Service",
+      "description": "Local MCP service via stdio",
+      "transport": "stdio",
+      "url": "/usr/local/bin/mcp-server --config /path/to/config"
     }
   ],
   "restServers": [
@@ -504,7 +603,7 @@ Then use them in your configuration files:
 
 ## 🔐 JWT Authentication
 
-Cubicler supports bidirectional JWT authentication to secure both incoming requests to Cubicler and outgoing requests to agents.
+Cubicler supports comprehensive JWT authentication to secure both incoming requests to Cubicler and outgoing requests to agents.
 
 ### Server Authentication (Protecting Cubicler Endpoints)
 
@@ -524,23 +623,23 @@ CUBICLER_CONFIG=./cubicler.json
   "server": {
     "port": 1503,
     "host": "0.0.0.0",
-    
     "auth": {
       "jwt": {
         "secret": "${JWT_SECRET}",
-        "issuer": "my-auth-server",
+        "issuer": "cubicler-instance",
         "audience": "cubicler-api",
-        "algorithms": ["HS256", "RS256"]
+        "algorithms": ["HS256", "RS256"],
+        "required": true
       }
     },
-    
     "endpoints": {
       "dispatch": {
         "path": "/dispatch",
         "auth": {
           "jwt": {
             "secret": "${DISPATCH_JWT_SECRET}",
-            "audience": "dispatch-api"
+            "audience": "dispatch-api",
+            "algorithms": ["HS256"]
           }
         }
       },
@@ -549,7 +648,9 @@ CUBICLER_CONFIG=./cubicler.json
         "auth": {
           "jwt": {
             "secret": "${MCP_JWT_SECRET}",
-            "audience": "mcp-api"
+            "audience": "mcp-api",
+            "issuer": "mcp-auth-server",
+            "algorithms": ["RS256"]
           }
         }
       }
@@ -572,12 +673,13 @@ MCP_JWT_SECRET=your-mcp-specific-secret
 Configure JWT authentication for HTTP agents in your `agents.json`:
 
 **Static JWT Token:**
+
 ```json
 {
   "agents": [
     {
-      "identifier": "secure-agent",
-      "name": "Secure Agent",
+      "identifier": "secure-agent-jwt",
+      "name": "JWT Secured Agent",
       "transport": "http",
       "config": {
         "url": "https://api.example.com/agent",
@@ -594,23 +696,24 @@ Configure JWT authentication for HTTP agents in your `agents.json`:
 ```
 
 **OAuth2 Client Credentials Flow:**
+
 ```json
 {
   "agents": [
     {
       "identifier": "oauth-agent", 
-      "name": "OAuth Agent",
+      "name": "OAuth2 JWT Agent",
       "transport": "http",
       "config": {
-        "url": "https://api.example.com/agent",
+        "url": "https://secure-api.example.com/agent",
         "auth": {
           "type": "jwt",
           "config": {
-            "tokenUrl": "https://auth.example.com/token",
-            "clientId": "${CLIENT_ID}",
-            "clientSecret": "${CLIENT_SECRET}",
+            "tokenUrl": "https://auth.example.com/oauth/token",
+            "clientId": "${OAUTH_CLIENT_ID}",
+            "clientSecret": "${OAUTH_CLIENT_SECRET}",
             "audience": "agent-api",
-            "refreshThreshold": 5
+            "refreshThreshold": 10
           }
         }
       }
@@ -620,13 +723,14 @@ Configure JWT authentication for HTTP agents in your `agents.json`:
 ```
 
 **Environment Variables:**
+
 ```env
 # Static JWT token
 JWT_TOKEN=your-jwt-token-here
 
 # OAuth2 credentials
-CLIENT_ID=your-client-id
-CLIENT_SECRET=your-client-secret
+OAUTH_CLIENT_ID=your-client-id
+OAUTH_CLIENT_SECRET=your-client-secret
 ```
 
 ### JWT Authentication Flow
@@ -785,11 +889,14 @@ AI agent calls: `1r2dj4_get_current_weather({"city": "Paris"})`
 
 - 🔌 **MCP Protocol Support**: Connect to standardized AI services
 - 🎯 **Flexible Agent Configuration**: Multiple AI models, custom prompts  
+- ⚡ **Direct AI Integration**: Built-in OpenAI GPT support without separate agent services
 - 🔐 **REST API Integration**: Use any HTTP API as an AI tool
+- 🛡️ **Comprehensive JWT Authentication**: Secure both inbound and outbound requests
 - 🛠️ **Built-in Discovery Tools**: AI agents can explore available services
 - 🧩 **Modular Architecture**: Clean, maintainable service separation
 - 📘 **TypeScript**: Full type safety and excellent developer experience
 - 🔄 **Hot Configuration**: Update settings without restarting
+- 🚀 **Multiple Transport Types**: Direct, HTTP, SSE, and Stdio for both agents and MCP servers
 
 ---
 

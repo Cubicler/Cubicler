@@ -1,7 +1,6 @@
-import type { JSONObject, JSONValue, MCPRequest, MCPResponse } from '../model/types.js';
+import type { JSONObject, JSONValue, MCPRequest } from '../model/types.js';
 import type { MCPTool, ToolDefinition } from '../model/tools.js';
 import type { MCPServer } from '../model/providers.js';
-import { fetchWithDefaultTimeout } from '../utils/fetch-helper.js';
 import {
   generateFunctionName,
   generateServerHash,
@@ -12,15 +11,18 @@ import type { ProvidersConfigProviding } from '../interface/providers-config-pro
 import type { ServersProviding } from '../interface/servers-providing.js';
 import providersRepository from '../repository/provider-repository.js';
 import { MCPCompatible } from '../interface/mcp-compatible.js';
+import { MCPTransportFactory } from '../factory/mcp-transport-factory.js';
+import type { MCPTransport } from '../interface/mcp-transport.js';
 
 /**
  * MCP Provider Service for Cubicler
- * Handles Model Context Protocol communication with MCP servers only
+ * Handles Model Context Protocol communication with MCP servers using transport abstraction
  */
 class ProviderMCPService implements MCPCompatible {
   readonly identifier = 'provider-mcp';
   private readonly providerConfig: ProvidersConfigProviding;
   private serversProvider: ServersProviding | null = null;
+  private readonly transports = new Map<string, MCPTransport>();
 
   /**
    * Creates a new ProviderMCPService instance
@@ -48,9 +50,10 @@ class ProviderMCPService implements MCPCompatible {
     // Initialize all MCP servers
     const config = await this.providerConfig.getProvidersConfig();
     const mcpServers = config.mcpServers || [];
+
     for (const server of mcpServers) {
       try {
-        await this.initializeMCPServer(server.identifier);
+        await this.initializeMCPServer(server);
       } catch (error) {
         console.warn(
           `⚠️ [ProviderMCPService] Failed to initialize MCP server ${server.identifier}:`,
@@ -128,8 +131,67 @@ class ProviderMCPService implements MCPCompatible {
       throw new Error(`Server not found for hash: ${serverHash}`);
     }
 
+    // Ensure transport exists for this server
+    if (!this.transports.has(server.identifier)) {
+      try {
+        const transport = MCPTransportFactory.createTransport(server);
+        await transport.initialize(server);
+        this.transports.set(server.identifier, transport);
+      } catch (error) {
+        throw new Error(
+          `Failed to create transport for ${server.identifier}: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
+      }
+    }
+
     const result = await this.executeMCPTool(server.identifier, functionName, parameters);
     return result as JSONValue;
+  }
+
+  /**
+   * Initialize a single MCP server
+   * @param server - Server configuration
+   */
+  private async initializeMCPServer(server: MCPServer): Promise<void> {
+    console.log(`🔄 [ProviderMCPService] Initializing MCP server: ${server.identifier}`);
+
+    // Create and initialize transport
+    const transport = MCPTransportFactory.createTransport(server);
+    await transport.initialize(server);
+
+    // Store transport (even if initialization fails, we keep it for tool operations)
+    this.transports.set(server.identifier, transport);
+
+    // Send initialize request
+    const request: MCPRequest = {
+      jsonrpc: '2.0',
+      id: 'initialize',
+      method: 'initialize',
+      params: {
+        protocolVersion: '2024-11-05',
+        capabilities: {
+          tools: {},
+        },
+        clientInfo: {
+          name: 'Cubicler',
+          version: '2.0',
+        },
+      },
+    };
+
+    try {
+      const response = await transport.sendRequest(request);
+
+      if (response.error) {
+        throw new Error(`MCP server initialization failed: ${response.error.message}`);
+      }
+    } catch (error) {
+      throw new Error(
+        `MCP server initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+
+    console.log(`✅ [ProviderMCPService] MCP server ${server.identifier} initialized`);
   }
 
   /**
@@ -138,10 +200,29 @@ class ProviderMCPService implements MCPCompatible {
    * @returns Array of tool definitions
    */
   private async loadToolsFromServer(server: MCPServer): Promise<ToolDefinition[]> {
+    // Ensure transport exists for this server
+    if (!this.transports.has(server.identifier)) {
+      try {
+        const transport = MCPTransportFactory.createTransport(server);
+        await transport.initialize(server);
+        this.transports.set(server.identifier, transport);
+      } catch (error) {
+        console.warn(
+          `⚠️ [ProviderMCPService] Failed to create transport for ${server.identifier}:`,
+          error
+        );
+        return [];
+      }
+    }
+
     const mcpTools = await this.getMCPTools(server.identifier);
 
     return mcpTools.map((tool) => ({
-      name: generateFunctionName(server.identifier, server.url, toSnakeCase(tool.name)),
+      name: generateFunctionName(
+        server.identifier,
+        server.url || server.command || '',
+        toSnakeCase(tool.name)
+      ),
       description: tool.description || `MCP tool: ${tool.name}`,
       parameters: tool.inputSchema || { type: 'object', properties: {} },
     }));
@@ -157,101 +238,9 @@ class ProviderMCPService implements MCPCompatible {
     const mcpServers = config.mcpServers || [];
 
     return mcpServers.find((s: MCPServer) => {
-      const expectedHash = generateServerHash(s.identifier, s.url);
+      const expectedHash = generateServerHash(s.identifier, s.url || s.command || '');
       return expectedHash === serverHash;
     });
-  }
-
-  /**
-   * Send an MCP request to a specific server
-   */
-  private async sendMCPRequest(
-    serverIdentifier: string,
-    request: MCPRequest
-  ): Promise<MCPResponse> {
-    console.log(
-      `📡 [ProviderMCPService] Sending MCP request to ${serverIdentifier}:`,
-      request.method
-    );
-
-    const mcpServer = await this.getMCPServerConfig(serverIdentifier);
-    this.validateMCPServerTransport(mcpServer);
-
-    try {
-      const response = await this.executeMCPRequest(mcpServer, request);
-      console.log(`✅ [ProviderMCPService] MCP request to ${serverIdentifier} successful`);
-      return response.data as MCPResponse;
-    } catch (error) {
-      console.error(`❌ [ProviderMCPService] MCP request to ${serverIdentifier} failed:`, error);
-      return this.createMCPErrorResponse(request, error);
-    }
-  }
-
-  /**
-   * Get MCP server configuration
-   * @param serverIdentifier - Server identifier
-   * @returns Server configuration
-   * @throws Error if server not found
-   */
-  private async getMCPServerConfig(serverIdentifier: string): Promise<MCPServer> {
-    const config = await this.providerConfig.getProvidersConfig();
-    const mcpServer = config.mcpServers?.find((s: MCPServer) => s.identifier === serverIdentifier);
-
-    if (!mcpServer) {
-      throw new Error(`MCP server not found: ${serverIdentifier}`);
-    }
-
-    return mcpServer;
-  }
-
-  /**
-   * Validate MCP server transport
-   * @param mcpServer - Server configuration
-   * @throws Error if transport is not supported
-   */
-  private validateMCPServerTransport(mcpServer: MCPServer): void {
-    if (mcpServer.transport !== 'http') {
-      throw new Error(
-        `Transport ${mcpServer.transport} not yet supported. Currently only HTTP transport is supported.`
-      );
-    }
-  }
-
-  /**
-   * Execute MCP request via HTTP
-   * @param mcpServer - Server configuration
-   * @param request - MCP request
-   * @returns HTTP response
-   */
-  private async executeMCPRequest(
-    mcpServer: MCPServer,
-    request: MCPRequest
-  ): Promise<{ data: MCPResponse; status: number }> {
-    return await fetchWithDefaultTimeout(mcpServer.url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...mcpServer.headers,
-      },
-      data: request,
-    });
-  }
-
-  /**
-   * Create MCP error response
-   * @param request - Original request
-   * @param error - Error that occurred
-   * @returns MCP error response
-   */
-  private createMCPErrorResponse(request: MCPRequest, error: unknown): MCPResponse {
-    return {
-      jsonrpc: '2.0',
-      id: request.id,
-      error: {
-        code: -32603, // Internal error
-        message: `MCP request failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      },
-    };
   }
 
   /**
@@ -259,6 +248,11 @@ class ProviderMCPService implements MCPCompatible {
    * Implements the MCP tools/list method
    */
   private async getMCPTools(serverIdentifier: string): Promise<MCPTool[]> {
+    const transport = this.transports.get(serverIdentifier);
+    if (!transport) {
+      throw new Error(`Transport not found for server: ${serverIdentifier}`);
+    }
+
     const request: MCPRequest = {
       jsonrpc: '2.0',
       id: 'tools-request',
@@ -266,7 +260,7 @@ class ProviderMCPService implements MCPCompatible {
       params: {},
     };
 
-    const response = await this.sendMCPRequest(serverIdentifier, request);
+    const response = await transport.sendRequest(request);
 
     if (response.error) {
       throw new Error(`MCP tools request failed: ${response.error.message}`);
@@ -289,6 +283,11 @@ class ProviderMCPService implements MCPCompatible {
     toolName: string,
     parameters: JSONObject
   ): Promise<JSONValue> {
+    const transport = this.transports.get(serverIdentifier);
+    if (!transport) {
+      throw new Error(`Transport not found for server: ${serverIdentifier}`);
+    }
+
     const request: MCPRequest = {
       jsonrpc: '2.0',
       id: `execute-${toolName}`,
@@ -299,7 +298,7 @@ class ProviderMCPService implements MCPCompatible {
       },
     };
 
-    const response = await this.sendMCPRequest(serverIdentifier, request);
+    const response = await transport.sendRequest(request);
 
     if (response.error) {
       throw new Error(`MCP tool execution failed: ${response.error.message}`);
@@ -309,43 +308,22 @@ class ProviderMCPService implements MCPCompatible {
   }
 
   /**
-   * Initialize connection to an MCP server
+   * Cleanup method to close all transports
    */
-  private async initializeMCPServer(serverIdentifier: string): Promise<void> {
-    console.log(`🔄 [ProviderMCPService] Initializing MCP server: ${serverIdentifier}`);
+  async cleanup(): Promise<void> {
+    console.log('🔄 [ProviderMCPService] Cleaning up transports...');
 
-    const request: MCPRequest = {
-      jsonrpc: '2.0',
-      id: 'initialize',
-      method: 'initialize',
-      params: {
-        protocolVersion: '2024-11-05',
-        capabilities: {
-          tools: {},
-        },
-        clientInfo: {
-          name: 'Cubicler',
-          version: '2.0',
-        },
-      },
-    };
-
-    const response = await this.sendMCPRequest(serverIdentifier, request);
-
-    if (response.error) {
-      throw new Error(`MCP server initialization failed: ${response.error.message}`);
+    for (const [identifier, transport] of this.transports.entries()) {
+      try {
+        await transport.close();
+        console.log(`✅ [ProviderMCPService] Closed transport for ${identifier}`);
+      } catch (error) {
+        console.warn(`⚠️ [ProviderMCPService] Failed to close transport for ${identifier}:`, error);
+      }
     }
 
-    console.log(`✅ [ProviderMCPService] MCP server ${serverIdentifier} initialized`);
-  }
-
-  /**
-   * Check if a server is an MCP server
-   */
-  private async isMCPServer(serverIdentifier: string): Promise<boolean> {
-    const config = await this.providerConfig.getProvidersConfig();
-    const mcpServer = config.mcpServers?.find((s) => s.identifier === serverIdentifier);
-    return mcpServer !== undefined;
+    this.transports.clear();
+    console.log('✅ [ProviderMCPService] All transports cleaned up');
   }
 }
 

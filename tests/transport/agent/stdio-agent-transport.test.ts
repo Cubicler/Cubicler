@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { StdioAgentTransport } from '../../src/transport/stdio-agent-transport.js';
-import type { AgentRequest, AgentResponse } from '../../src/model/dispatch.js';
+import { StdioAgentTransport } from '../../../src/transport/agent/stdio-agent-transport.js';
+import type { AgentRequest, AgentResponse } from '../../../src/model/dispatch.js';
 import { EventEmitter } from 'events';
-import * as envHelper from '../../src/utils/env-helper.js';
+import * as envHelper from '../../../src/utils/env-helper.js';
 
 // Mock child_process
 const mockChild = new EventEmitter() as any;
@@ -19,7 +19,7 @@ vi.mock('child_process', () => ({
 }));
 
 // Mock env helper
-vi.mock('../../src/utils/env-helper.js');
+vi.mock('../../../src/utils/env-helper.js');
 
 describe('StdioAgentTransport', () => {
   const mockCommand = 'python3 /path/to/agent.py --config test';

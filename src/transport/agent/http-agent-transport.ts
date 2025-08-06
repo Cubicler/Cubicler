@@ -1,8 +1,8 @@
-import type { AgentTransport } from '../interface/agent-transport.js';
-import type { AgentRequest, AgentResponse } from '../model/dispatch.js';
-import type { HttpTransportConfig } from '../model/agents.js';
-import { fetchWithAgentTimeout } from '../utils/fetch-helper.js';
-import jwtHelper from '../utils/jwt-helper.js';
+import type { AgentTransport } from '../../interface/agent-transport.js';
+import type { AgentRequest, AgentResponse } from '../../model/dispatch.js';
+import type { HttpTransportConfig } from '../../model/agents.js';
+import { fetchWithAgentTimeout } from '../../utils/fetch-helper.js';
+import jwtHelper from '../../utils/jwt-helper.js';
 
 /**
  * HTTP transport implementation for agent communication
