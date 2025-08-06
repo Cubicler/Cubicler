@@ -318,11 +318,11 @@ app.use((req: Request, res: Response) => {
   res.status(404).json({ error: 'Endpoint not found' });
 });
 
-// Export the app for testing
-export { app };
+// Export the app for testing and startServer for library usage
+export { app, startServer };
 
 // Start the server only if this file is run directly
-const isMainModule = import.meta.url === `file://${process.argv[1]}`;
+const isMainModule = process.argv[1] && import.meta.url === new URL(process.argv[1], 'file:').href;
 if (isMainModule) {
   startServer();
 }
