@@ -372,7 +372,7 @@ function validateAgentTransportConfig(
   index: number
 ): void {
   const transport = agent.transport as string;
-  const config = agent.config as any;
+  const config = agent.config as Record<string, unknown>;
 
   switch (transport) {
     case 'http':

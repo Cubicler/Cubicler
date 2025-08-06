@@ -1,12 +1,11 @@
-import jwt from 'jsonwebtoken';
-import type { JWTPayload, Algorithm } from 'jsonwebtoken';
-import type { JWTAuthConfig } from '../model/agents.js';
+import jwt, { type Algorithm, type JwtPayload } from 'jsonwebtoken';
+import type { JwtAuthConfig } from '../model/agents.js';
 import { fetchWithDefaultTimeout } from './fetch-helper.js';
 
 /**
  * JWT token with metadata
  */
-export interface JWTToken {
+export interface JwtToken {
   token: string;
   expiresAt: Date;
 }
@@ -14,8 +13,8 @@ export interface JWTToken {
 /**
  * JWT helper class for handling authentication tokens
  */
-export class JWTHelper {
-  private tokenCache = new Map<string, JWTToken>();
+export class JwtHelper {
+  private tokenCache = new Map<string, JwtToken>();
 
   /**
    * Get JWT token for authentication
@@ -23,7 +22,7 @@ export class JWTHelper {
    * @returns Promise that resolves to JWT token
    * @throws Error if token cannot be obtained
    */
-  async getToken(config: JWTAuthConfig): Promise<string> {
+  async getToken(config: JwtAuthConfig): Promise<string> {
     if (config.token) {
       return config.token;
     }
@@ -41,7 +40,7 @@ export class JWTHelper {
    * @returns Promise that resolves to JWT token
    * @throws Error if token request fails
    */
-  private async getTokenFromUrl(config: JWTAuthConfig): Promise<string> {
+  private async getTokenFromUrl(config: JwtAuthConfig): Promise<string> {
     if (!config.tokenUrl) {
       throw new Error('Token URL is required for OAuth2 flow');
     }
@@ -64,7 +63,7 @@ export class JWTHelper {
    * @returns Promise that resolves to JWT token with metadata
    * @throws Error if token request fails
    */
-  private async fetchNewToken(config: JWTAuthConfig): Promise<JWTToken> {
+  private async fetchNewToken(config: JwtAuthConfig): Promise<JwtToken> {
     if (!config.tokenUrl || !config.clientId || !config.clientSecret) {
       throw new Error('OAuth2 flow requires tokenUrl, clientId, and clientSecret');
     }
@@ -99,7 +98,9 @@ export class JWTHelper {
         expiresAt,
       };
     } catch (error) {
-      throw new Error(`Failed to fetch JWT token: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to fetch JWT token: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -108,7 +109,10 @@ export class JWTHelper {
    * @param response - HTTP response
    * @throws Error if response is invalid
    */
-  private validateTokenResponse(response: { status: number; data: any }): void {
+  private validateTokenResponse(response: {
+    status: number;
+    data: { access_token?: string; expires_in?: number };
+  }): void {
     if (response.status < 200 || response.status >= 300) {
       throw new Error(`Token endpoint responded with status ${response.status}`);
     }
@@ -124,11 +128,11 @@ export class JWTHelper {
    * @param refreshThresholdMinutes - Minutes before expiry to consider invalid
    * @returns True if token is valid
    */
-  private isTokenValid(token: JWTToken, refreshThresholdMinutes: number): boolean {
+  private isTokenValid(token: JwtToken, refreshThresholdMinutes: number): boolean {
     const now = new Date();
     const refreshTime = new Date(token.expiresAt);
     refreshTime.setMinutes(refreshTime.getMinutes() - refreshThresholdMinutes);
-    
+
     return now < refreshTime;
   }
 
@@ -137,7 +141,7 @@ export class JWTHelper {
    * @param config - JWT configuration
    * @returns Cache key string
    */
-  private getCacheKey(config: JWTAuthConfig): string {
+  private getCacheKey(config: JwtAuthConfig): string {
     return `${config.tokenUrl}:${config.clientId}:${config.audience || 'default'}`;
   }
 
@@ -160,11 +164,11 @@ export class JWTHelper {
     token: string,
     secret: string,
     options: {
-      issuer?: string;
-      audience?: string;
-      algorithms?: Algorithm[];
+      issuer?: string | undefined;
+      audience?: string | undefined;
+      algorithms?: Algorithm[] | undefined;
     } = {}
-  ): Promise<JWTPayload> {
+  ): Promise<JwtPayload> {
     if (!token || typeof token !== 'string') {
       throw new Error('JWT token must be a non-empty string');
     }
@@ -175,7 +179,7 @@ export class JWTHelper {
 
     try {
       const payload = jwt.verify(token, secret, {
-        algorithms: options.algorithms || ['HS256', 'RS256'] as Algorithm[],
+        algorithms: options.algorithms || (['HS256', 'RS256'] as Algorithm[]),
         issuer: options.issuer,
         audience: options.audience,
       });
@@ -184,7 +188,7 @@ export class JWTHelper {
         throw new Error('Invalid JWT payload format');
       }
 
-      return payload as JWTPayload;
+      return payload as JwtPayload;
     } catch (error) {
       if (error instanceof jwt.JsonWebTokenError) {
         throw new Error(`JWT verification failed: ${error.message}`);
@@ -204,7 +208,7 @@ export class JWTHelper {
    * @param token - JWT token to decode
    * @returns JWT payload or null if invalid
    */
-  decodeToken(token: string): JWTPayload | null {
+  decodeToken(token: string): JwtPayload | null {
     try {
       const payload = jwt.decode(token);
       return typeof payload === 'object' && payload !== null ? payload : null;
@@ -214,4 +218,4 @@ export class JWTHelper {
   }
 }
 
-export default new JWTHelper();
+export default new JwtHelper();

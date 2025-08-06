@@ -1,7 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import jwt from 'jsonwebtoken';
-import type { Request, Response, NextFunction } from 'express';
-import { createJWTMiddleware, createOptionalJWTMiddleware, extractJWTToken, type AuthenticatedRequest } from '../../src/middleware/jwt-auth.js';
+import type { Response, NextFunction } from 'express';
+import {
+  createJwtMiddleware,
+  createOptionalJwtMiddleware,
+  extractJwtToken,
+  type AuthenticatedRequest,
+} from '../../src/middleware/jwt-auth.js';
 import * as jwtHelper from '../../src/utils/jwt-helper.js';
 
 // Mock the JWT helper
@@ -15,16 +20,16 @@ describe('JWT Auth Middleware', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     mockReq = {
       headers: {},
     };
-    
+
     mockRes = {
       status: vi.fn().mockReturnThis(),
       json: vi.fn().mockReturnThis(),
     };
-    
+
     mockNext = vi.fn();
   });
 
@@ -38,11 +43,11 @@ describe('JWT Auth Middleware', () => {
     it('should authenticate valid JWT token', async () => {
       const testPayload = { sub: 'user123', email: 'test@example.com' };
       const token = jwt.sign(testPayload, testConfig.secret);
-      
+
       mockReq.headers = { authorization: `Bearer ${token}` };
       mockJwtHelper.verifyToken.mockResolvedValue(testPayload);
 
-      const middleware = createJWTMiddleware(testConfig);
+      const middleware = createJwtMiddleware(testConfig);
       await middleware(mockReq as AuthenticatedRequest, mockRes as Response, mockNext);
 
       expect(mockJwtHelper.verifyToken).toHaveBeenCalledWith(token, testConfig.secret, {
@@ -53,7 +58,6 @@ describe('JWT Auth Middleware', () => {
       expect(mockReq.jwt).toEqual(testPayload);
       expect(mockReq.user).toEqual({
         id: 'user123',
-        email: 'test@example.com',
         name: undefined,
         roles: undefined,
         ...testPayload,
@@ -63,13 +67,13 @@ describe('JWT Auth Middleware', () => {
     });
 
     it('should return 401 when authorization header is missing', async () => {
-      const middleware = createJWTMiddleware(testConfig);
+      const middleware = createJwtMiddleware(testConfig);
       await middleware(mockReq as AuthenticatedRequest, mockRes as Response, mockNext);
 
       expect(mockRes.status).toHaveBeenCalledWith(401);
       expect(mockRes.json).toHaveBeenCalledWith({
         error: 'Authorization header is required',
-        code: 'MISSING_AUTH_HEADER'
+        code: 'MISSING_AUTH_HEADER',
       });
       expect(mockNext).not.toHaveBeenCalled();
     });
@@ -77,13 +81,13 @@ describe('JWT Auth Middleware', () => {
     it('should return 401 when authorization header does not use Bearer scheme', async () => {
       mockReq.headers = { authorization: 'Basic user:pass' };
 
-      const middleware = createJWTMiddleware(testConfig);
+      const middleware = createJwtMiddleware(testConfig);
       await middleware(mockReq as AuthenticatedRequest, mockRes as Response, mockNext);
 
       expect(mockRes.status).toHaveBeenCalledWith(401);
       expect(mockRes.json).toHaveBeenCalledWith({
         error: 'Authorization header must use Bearer scheme',
-        code: 'INVALID_AUTH_SCHEME'
+        code: 'INVALID_AUTH_SCHEME',
       });
       expect(mockNext).not.toHaveBeenCalled();
     });
@@ -91,13 +95,13 @@ describe('JWT Auth Middleware', () => {
     it('should return 401 when Bearer token is empty', async () => {
       mockReq.headers = { authorization: 'Bearer ' };
 
-      const middleware = createJWTMiddleware(testConfig);
+      const middleware = createJwtMiddleware(testConfig);
       await middleware(mockReq as AuthenticatedRequest, mockRes as Response, mockNext);
 
       expect(mockRes.status).toHaveBeenCalledWith(401);
       expect(mockRes.json).toHaveBeenCalledWith({
         error: 'JWT token is required',
-        code: 'MISSING_TOKEN'
+        code: 'MISSING_TOKEN',
       });
       expect(mockNext).not.toHaveBeenCalled();
     });
@@ -105,15 +109,17 @@ describe('JWT Auth Middleware', () => {
     it('should return 401 when JWT verification fails', async () => {
       const token = 'invalid.jwt.token';
       mockReq.headers = { authorization: `Bearer ${token}` };
-      mockJwtHelper.verifyToken.mockRejectedValue(new Error('JWT verification failed: invalid signature'));
+      mockJwtHelper.verifyToken.mockRejectedValue(
+        new Error('JWT verification failed: invalid signature')
+      );
 
-      const middleware = createJWTMiddleware(testConfig);
+      const middleware = createJwtMiddleware(testConfig);
       await middleware(mockReq as AuthenticatedRequest, mockRes as Response, mockNext);
 
       expect(mockRes.status).toHaveBeenCalledWith(401);
       expect(mockRes.json).toHaveBeenCalledWith({
         error: 'JWT token is invalid',
-        code: 'TOKEN_INVALID'
+        code: 'TOKEN_INVALID',
       });
       expect(mockNext).not.toHaveBeenCalled();
     });
@@ -123,13 +129,13 @@ describe('JWT Auth Middleware', () => {
       mockReq.headers = { authorization: `Bearer ${token}` };
       mockJwtHelper.verifyToken.mockRejectedValue(new Error('JWT token has expired'));
 
-      const middleware = createJWTMiddleware(testConfig);
+      const middleware = createJwtMiddleware(testConfig);
       await middleware(mockReq as AuthenticatedRequest, mockRes as Response, mockNext);
 
       expect(mockRes.status).toHaveBeenCalledWith(401);
       expect(mockRes.json).toHaveBeenCalledWith({
         error: 'JWT token has expired',
-        code: 'TOKEN_EXPIRED'
+        code: 'TOKEN_EXPIRED',
       });
       expect(mockNext).not.toHaveBeenCalled();
     });
@@ -139,13 +145,13 @@ describe('JWT Auth Middleware', () => {
       mockReq.headers = { authorization: `Bearer ${token}` };
       mockJwtHelper.verifyToken.mockRejectedValue(new Error('JWT token is invalid'));
 
-      const middleware = createJWTMiddleware(testConfig);
+      const middleware = createJwtMiddleware(testConfig);
       await middleware(mockReq as AuthenticatedRequest, mockRes as Response, mockNext);
 
       expect(mockRes.status).toHaveBeenCalledWith(401);
       expect(mockRes.json).toHaveBeenCalledWith({
         error: 'JWT token is invalid',
-        code: 'TOKEN_INVALID'
+        code: 'TOKEN_INVALID',
       });
       expect(mockNext).not.toHaveBeenCalled();
     });
@@ -155,13 +161,13 @@ describe('JWT Auth Middleware', () => {
       mockReq.headers = { authorization: `Bearer ${token}` };
       mockJwtHelper.verifyToken.mockRejectedValue(new Error('JWT token issuer mismatch'));
 
-      const middleware = createJWTMiddleware(testConfig);
+      const middleware = createJwtMiddleware(testConfig);
       await middleware(mockReq as AuthenticatedRequest, mockRes as Response, mockNext);
 
       expect(mockRes.status).toHaveBeenCalledWith(401);
       expect(mockRes.json).toHaveBeenCalledWith({
         error: 'JWT token issuer mismatch',
-        code: 'ISSUER_MISMATCH'
+        code: 'ISSUER_MISMATCH',
       });
       expect(mockNext).not.toHaveBeenCalled();
     });
@@ -171,19 +177,19 @@ describe('JWT Auth Middleware', () => {
       mockReq.headers = { authorization: `Bearer ${token}` };
       mockJwtHelper.verifyToken.mockRejectedValue(new Error('JWT token audience mismatch'));
 
-      const middleware = createJWTMiddleware(testConfig);
+      const middleware = createJwtMiddleware(testConfig);
       await middleware(mockReq as AuthenticatedRequest, mockRes as Response, mockNext);
 
       expect(mockRes.status).toHaveBeenCalledWith(401);
       expect(mockRes.json).toHaveBeenCalledWith({
         error: 'JWT token audience mismatch',
-        code: 'AUDIENCE_MISMATCH'
+        code: 'AUDIENCE_MISMATCH',
       });
       expect(mockNext).not.toHaveBeenCalled();
     });
   });
 
-  describe('createOptionalJWTMiddleware', () => {
+  describe('createOptionalJwtMiddleware', () => {
     const testConfig = {
       secret: 'test-secret',
       issuer: 'test-issuer',
@@ -191,7 +197,7 @@ describe('JWT Auth Middleware', () => {
     };
 
     it('should proceed without authentication when no authorization header', async () => {
-      const middleware = createOptionalJWTMiddleware(testConfig);
+      const middleware = createOptionalJwtMiddleware(testConfig);
       await middleware(mockReq as AuthenticatedRequest, mockRes as Response, mockNext);
 
       expect(mockNext).toHaveBeenCalled();
@@ -203,11 +209,11 @@ describe('JWT Auth Middleware', () => {
     it('should authenticate when valid JWT token is provided', async () => {
       const testPayload = { sub: 'user123', email: 'test@example.com' };
       const token = jwt.sign(testPayload, testConfig.secret);
-      
+
       mockReq.headers = { authorization: `Bearer ${token}` };
       mockJwtHelper.verifyToken.mockResolvedValue(testPayload);
 
-      const middleware = createOptionalJWTMiddleware(testConfig);
+      const middleware = createOptionalJwtMiddleware(testConfig);
       await middleware(mockReq as AuthenticatedRequest, mockRes as Response, mockNext);
 
       expect(mockJwtHelper.verifyToken).toHaveBeenCalled();
@@ -221,7 +227,7 @@ describe('JWT Auth Middleware', () => {
       mockReq.headers = { authorization: `Bearer ${token}` };
       mockJwtHelper.verifyToken.mockRejectedValue(new Error('JWT verification failed'));
 
-      const middleware = createOptionalJWTMiddleware(testConfig);
+      const middleware = createOptionalJwtMiddleware(testConfig);
       await middleware(mockReq as AuthenticatedRequest, mockRes as Response, mockNext);
 
       expect(mockRes.status).toHaveBeenCalledWith(401);
@@ -229,37 +235,37 @@ describe('JWT Auth Middleware', () => {
     });
   });
 
-  describe('extractJWTToken', () => {
+  describe('extractJwtToken', () => {
     it('should extract token from valid Bearer authorization header', () => {
       const token = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.test.token';
       const authHeader = `Bearer ${token}`;
-      
-      const result = extractJWTToken(authHeader);
-      
+
+      const result = extractJwtToken(authHeader);
+
       expect(result).toBe(token);
     });
 
     it('should return null for missing authorization header', () => {
-      const result = extractJWTToken(undefined);
-      
+      const result = extractJwtToken(undefined);
+
       expect(result).toBeNull();
     });
 
     it('should return null for non-Bearer authorization header', () => {
-      const result = extractJWTToken('Basic user:pass');
-      
+      const result = extractJwtToken('Basic user:pass');
+
       expect(result).toBeNull();
     });
 
     it('should return null for Bearer header without token', () => {
-      const result = extractJWTToken('Bearer ');
-      
+      const result = extractJwtToken('Bearer ');
+
       expect(result).toBeNull();
     });
 
     it('should return null for Bearer header with only spaces', () => {
-      const result = extractJWTToken('Bearer   ');
-      
+      const result = extractJwtToken('Bearer   ');
+
       expect(result).toBeNull();
     });
   });

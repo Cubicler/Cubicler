@@ -49,7 +49,23 @@
                   "type": "string"
                 }
               }
-            }
+            },
+            "required": ["filters"]
+          }
+        },
+        {
+          "name": "create_user",
+          "description": "Create a new user",
+          "path": "/users",
+          "method": "POST",
+          "payload": {
+            "type": "object",
+            "properties": {
+              "name": {"type": "string", "description": "Full name"},
+              "email": {"type": "string", "description": "Email address"},
+              "role": {"type": "string", "enum": ["admin", "user"]}
+            },
+            "required": ["name", "email"]
           }
         }
       ]

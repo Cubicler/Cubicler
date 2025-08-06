@@ -11,7 +11,7 @@ vi.mock('../../src/utils/jwt-helper.js');
 
 describe('HttpAgentTransport', () => {
   const mockConfig: HttpTransportConfig = {
-    url: 'http://localhost:3000/agent'
+    url: 'http://localhost:3000/agent',
   };
   let transport: HttpAgentTransport;
   const mockFetchWithAgentTimeout = vi.mocked(fetchHelper.fetchWithAgentTimeout);
@@ -28,7 +28,9 @@ describe('HttpAgentTransport', () => {
     });
 
     it('should throw error for empty URL', () => {
-      expect(() => new HttpAgentTransport({ url: '' })).toThrow('Agent URL must be a non-empty string');
+      expect(() => new HttpAgentTransport({ url: '' })).toThrow(
+        'Agent URL must be a non-empty string'
+      );
     });
 
     it('should throw error for invalid config', () => {
@@ -181,7 +183,7 @@ describe('HttpAgentTransport', () => {
       await transport.dispatch(mockAgentRequest);
 
       expect(mockJwtHelper.getToken).not.toHaveBeenCalled();
-      
+
       expect(mockFetchWithAgentTimeout).toHaveBeenCalledWith(mockConfig.url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

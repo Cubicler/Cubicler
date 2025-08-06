@@ -8,7 +8,7 @@ import {
 } from '../../src/utils/restriction-helper.js';
 import type { Agent } from '../../src/model/agents.js';
 import type { ServersProviding } from '../../src/interface/servers-providing.js';
-import type { ServerInfo, AvailableServersResponse } from '../../src/model/server.js';
+import type { AvailableServersResponse } from '../../src/model/server.js';
 import type { ToolDefinition } from '../../src/model/tools.js';
 
 describe('Restriction Helper', () => {
@@ -117,8 +117,8 @@ describe('Restriction Helper', () => {
   describe('isToolAllowed', () => {
     beforeEach(() => {
       // Setup server hash mocks
-      vi.mocked(mockServersProvider.getServerHash)
-        .mockImplementation(async (identifier: string) => {
+      vi.mocked(mockServersProvider.getServerHash).mockImplementation(
+        async (identifier: string) => {
           const hashMap: Record<string, string> = {
             weather_service: '1r2dj4',
             news_service: '9k8m3n',
@@ -128,11 +128,16 @@ describe('Restriction Helper', () => {
             return hashMap[identifier];
           }
           throw new Error(`Unknown server: ${identifier}`);
-        });
+        }
+      );
     });
 
     it('should allow internal tools by default', async () => {
-      const result = await isToolAllowed(baseAgent, 'cubicler_available_servers', mockServersProvider);
+      const result = await isToolAllowed(
+        baseAgent,
+        'cubicler_available_servers',
+        mockServersProvider
+      );
       expect(result).toBe(true);
     });
 
@@ -142,7 +147,11 @@ describe('Restriction Helper', () => {
         restrictedTools: ['cubicler_available_servers'],
       };
 
-      const result = await isToolAllowed(agentWithRestrictedInternal, 'cubicler_available_servers', mockServersProvider);
+      const result = await isToolAllowed(
+        agentWithRestrictedInternal,
+        'cubicler_available_servers',
+        mockServersProvider
+      );
       expect(result).toBe(false);
     });
 
@@ -157,7 +166,11 @@ describe('Restriction Helper', () => {
         allowedServers: ['news_service'],
       };
 
-      const result = await isToolAllowed(agentWithServerRestrictions, '1r2dj4_get_weather', mockServersProvider);
+      const result = await isToolAllowed(
+        agentWithServerRestrictions,
+        '1r2dj4_get_weather',
+        mockServersProvider
+      );
       expect(result).toBe(false);
     });
 
@@ -167,7 +180,11 @@ describe('Restriction Helper', () => {
         restrictedServers: ['weather_service'],
       };
 
-      const result = await isToolAllowed(agentWithServerRestrictions, '1r2dj4_get_weather', mockServersProvider);
+      const result = await isToolAllowed(
+        agentWithServerRestrictions,
+        '1r2dj4_get_weather',
+        mockServersProvider
+      );
       expect(result).toBe(false);
     });
 
@@ -177,9 +194,21 @@ describe('Restriction Helper', () => {
         allowedTools: ['weather_service.get_weather', 'news_service.get_headlines'],
       };
 
-      const weatherResult = await isToolAllowed(agentWithAllowedTools, '1r2dj4_get_weather', mockServersProvider);
-      const headlinesResult = await isToolAllowed(agentWithAllowedTools, '9k8m3n_get_headlines', mockServersProvider);
-      const blockedResult = await isToolAllowed(agentWithAllowedTools, '1r2dj4_get_forecast', mockServersProvider);
+      const weatherResult = await isToolAllowed(
+        agentWithAllowedTools,
+        '1r2dj4_get_weather',
+        mockServersProvider
+      );
+      const headlinesResult = await isToolAllowed(
+        agentWithAllowedTools,
+        '9k8m3n_get_headlines',
+        mockServersProvider
+      );
+      const blockedResult = await isToolAllowed(
+        agentWithAllowedTools,
+        '1r2dj4_get_forecast',
+        mockServersProvider
+      );
 
       expect(weatherResult).toBe(true);
       expect(headlinesResult).toBe(true);
@@ -192,8 +221,16 @@ describe('Restriction Helper', () => {
         restrictedTools: ['weather_service.get_forecast'],
       };
 
-      const allowedResult = await isToolAllowed(agentWithRestrictedTools, '1r2dj4_get_weather', mockServersProvider);
-      const restrictedResult = await isToolAllowed(agentWithRestrictedTools, '1r2dj4_get_forecast', mockServersProvider);
+      const allowedResult = await isToolAllowed(
+        agentWithRestrictedTools,
+        '1r2dj4_get_weather',
+        mockServersProvider
+      );
+      const restrictedResult = await isToolAllowed(
+        agentWithRestrictedTools,
+        '1r2dj4_get_forecast',
+        mockServersProvider
+      );
 
       expect(allowedResult).toBe(true);
       expect(restrictedResult).toBe(false);
@@ -210,7 +247,9 @@ describe('Restriction Helper', () => {
     });
 
     it('should handle server provider errors gracefully', async () => {
-      vi.mocked(mockServersProvider.getAvailableServers).mockRejectedValue(new Error('Network error'));
+      vi.mocked(mockServersProvider.getAvailableServers).mockRejectedValue(
+        new Error('Network error')
+      );
 
       const result = await isToolAllowed(baseAgent, '1r2dj4_get_weather', mockServersProvider);
       expect(result).toBe(false);
@@ -251,7 +290,7 @@ describe('Restriction Helper', () => {
 
       const result = filterAllowedServers(agentWithRestricted, mockServersResponse.servers);
       expect(result).toHaveLength(2);
-      expect(result.find(s => s.identifier === 'calendar_service')).toBeUndefined();
+      expect(result.find((s) => s.identifier === 'calendar_service')).toBeUndefined();
     });
 
     it('should handle empty server list', () => {
@@ -284,8 +323,8 @@ describe('Restriction Helper', () => {
       ];
 
       // Setup server hash mocks
-      vi.mocked(mockServersProvider.getServerHash)
-        .mockImplementation(async (identifier: string) => {
+      vi.mocked(mockServersProvider.getServerHash).mockImplementation(
+        async (identifier: string) => {
           const hashMap: Record<string, string> = {
             weather_service: '1r2dj4',
             news_service: '9k8m3n',
@@ -295,7 +334,8 @@ describe('Restriction Helper', () => {
             return hashMap[identifier];
           }
           throw new Error(`Unknown server: ${identifier}`);
-        });
+        }
+      );
     });
 
     it('should return all tools when no restrictions', async () => {
@@ -310,11 +350,15 @@ describe('Restriction Helper', () => {
         allowedServers: ['weather_service'],
       };
 
-      const result = await filterAllowedTools(agentWithServerRestrictions, mockTools, mockServersProvider);
+      const result = await filterAllowedTools(
+        agentWithServerRestrictions,
+        mockTools,
+        mockServersProvider
+      );
       expect(result).toHaveLength(2); // cubicler tool + weather tool
-      expect(result.find(t => t.name === 'cubicler_available_servers')).toBeDefined();
-      expect(result.find(t => t.name === '1r2dj4_get_weather')).toBeDefined();
-      expect(result.find(t => t.name === '9k8m3n_get_headlines')).toBeUndefined();
+      expect(result.find((t) => t.name === 'cubicler_available_servers')).toBeDefined();
+      expect(result.find((t) => t.name === '1r2dj4_get_weather')).toBeDefined();
+      expect(result.find((t) => t.name === '9k8m3n_get_headlines')).toBeUndefined();
     });
 
     it('should filter by tool restrictions', async () => {
@@ -323,9 +367,13 @@ describe('Restriction Helper', () => {
         restrictedTools: ['cubicler_available_servers', 'weather_service.get_weather'],
       };
 
-      const result = await filterAllowedTools(agentWithToolRestrictions, mockTools, mockServersProvider);
+      const result = await filterAllowedTools(
+        agentWithToolRestrictions,
+        mockTools,
+        mockServersProvider
+      );
       expect(result).toHaveLength(1); // only news tool
-      expect(result.find(t => t.name === '9k8m3n_get_headlines')).toBeDefined();
+      expect(result.find((t) => t.name === '9k8m3n_get_headlines')).toBeDefined();
     });
 
     it('should handle empty tools list', async () => {
@@ -338,8 +386,8 @@ describe('Restriction Helper', () => {
   describe('validateToolAccess', () => {
     beforeEach(() => {
       // Setup server hash mocks
-      vi.mocked(mockServersProvider.getServerHash)
-        .mockImplementation(async (identifier: string) => {
+      vi.mocked(mockServersProvider.getServerHash).mockImplementation(
+        async (identifier: string) => {
           const hashMap: Record<string, string> = {
             weather_service: '1r2dj4',
             news_service: '9k8m3n',
@@ -348,15 +396,18 @@ describe('Restriction Helper', () => {
             return hashMap[identifier];
           }
           throw new Error(`Unknown server: ${identifier}`);
-        });
+        }
+      );
     });
 
     it('should not throw for allowed tools', async () => {
-      await expect(validateToolAccess(baseAgent, 'cubicler_available_servers', mockServersProvider))
-        .resolves.not.toThrow();
+      await expect(
+        validateToolAccess(baseAgent, 'cubicler_available_servers', mockServersProvider)
+      ).resolves.not.toThrow();
 
-      await expect(validateToolAccess(baseAgent, '1r2dj4_get_weather', mockServersProvider))
-        .resolves.not.toThrow();
+      await expect(
+        validateToolAccess(baseAgent, '1r2dj4_get_weather', mockServersProvider)
+      ).resolves.not.toThrow();
     });
 
     it('should throw for restricted tools', async () => {
@@ -365,8 +416,9 @@ describe('Restriction Helper', () => {
         restrictedTools: ['cubicler_available_servers'],
       };
 
-      await expect(validateToolAccess(agentWithRestrictions, 'cubicler_available_servers', mockServersProvider))
-        .rejects.toThrow('Access denied: insufficient permissions for requested operation');
+      await expect(
+        validateToolAccess(agentWithRestrictions, 'cubicler_available_servers', mockServersProvider)
+      ).rejects.toThrow('Access denied: insufficient permissions for requested operation');
     });
 
     it('should throw for tools from restricted servers', async () => {
@@ -375,13 +427,15 @@ describe('Restriction Helper', () => {
         restrictedServers: ['weather_service'],
       };
 
-      await expect(validateToolAccess(agentWithServerRestrictions, '1r2dj4_get_weather', mockServersProvider))
-        .rejects.toThrow('Access denied: insufficient permissions for requested operation');
+      await expect(
+        validateToolAccess(agentWithServerRestrictions, '1r2dj4_get_weather', mockServersProvider)
+      ).rejects.toThrow('Access denied: insufficient permissions for requested operation');
     });
 
     it('should throw for invalid tool names', async () => {
-      await expect(validateToolAccess(baseAgent, 'invalid_format', mockServersProvider))
-        .rejects.toThrow('Access denied: insufficient permissions for requested operation');
+      await expect(
+        validateToolAccess(baseAgent, 'invalid_format', mockServersProvider)
+      ).rejects.toThrow('Access denied: insufficient permissions for requested operation');
     });
   });
 });

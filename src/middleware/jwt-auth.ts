@@ -1,26 +1,26 @@
-import type { Request, Response, NextFunction } from 'express';
-import type { JWTPayload } from 'jsonwebtoken';
+import type { NextFunction, Request, Response } from 'express';
+import type { Algorithm, JwtPayload } from 'jsonwebtoken';
 import jwtHelper from '../utils/jwt-helper.js';
 
 /**
  * JWT authentication configuration for server
  */
-export interface ServerJWTConfig {
-  secret: string;           // Secret key or public key for verification
-  issuer?: string;          // Expected issuer
-  audience?: string;        // Expected audience
-  algorithms?: string[];    // Allowed algorithms
-  required?: boolean;       // Whether JWT is required (default: true)
+export interface ServerJwtConfig {
+  secret: string; // Secret key or public key for verification
+  issuer?: string; // Expected issuer
+  audience?: string; // Expected audience
+  algorithms?: string[]; // Allowed algorithms
+  required?: boolean; // Whether JWT is required (default: true)
 }
 
 /**
  * Extended Request interface with JWT payload
  */
 export interface AuthenticatedRequest extends Request {
-  jwt?: JWTPayload;
+  jwt?: JwtPayload;
   user?: {
     id: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
@@ -29,16 +29,16 @@ export interface AuthenticatedRequest extends Request {
  * @param config - JWT configuration for verification
  * @returns Express middleware function
  */
-export function createJWTMiddleware(config: ServerJWTConfig) {
+export function createJwtMiddleware(config: ServerJwtConfig) {
   return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const authHeader = req.headers.authorization;
-      
+
       if (!authHeader) {
         if (config.required !== false) {
           return res.status(401).json({
             error: 'Authorization header is required',
-            code: 'MISSING_AUTH_HEADER'
+            code: 'MISSING_AUTH_HEADER',
           });
         }
         return next();
@@ -47,7 +47,7 @@ export function createJWTMiddleware(config: ServerJWTConfig) {
       if (!authHeader.startsWith('Bearer ')) {
         return res.status(401).json({
           error: 'Authorization header must use Bearer scheme',
-          code: 'INVALID_AUTH_SCHEME'
+          code: 'INVALID_AUTH_SCHEME',
         });
       }
 
@@ -56,7 +56,7 @@ export function createJWTMiddleware(config: ServerJWTConfig) {
       if (!token) {
         return res.status(401).json({
           error: 'JWT token is required',
-          code: 'MISSING_TOKEN'
+          code: 'MISSING_TOKEN',
         });
       }
 
@@ -64,7 +64,7 @@ export function createJWTMiddleware(config: ServerJWTConfig) {
       const payload = await jwtHelper.verifyToken(token, config.secret, {
         issuer: config.issuer,
         audience: config.audience,
-        algorithms: config.algorithms as any[],
+        algorithms: config.algorithms as Algorithm[],
       });
 
       // Attach JWT payload to request
@@ -77,7 +77,7 @@ export function createJWTMiddleware(config: ServerJWTConfig) {
           email: payload.email,
           name: payload.name,
           roles: payload.roles,
-          ...payload
+          ...payload,
         };
       }
 
@@ -85,7 +85,7 @@ export function createJWTMiddleware(config: ServerJWTConfig) {
       next();
     } catch (error) {
       console.error(`❌ [JWT Auth] Token verification failed:`, error);
-      
+
       let errorMessage = 'JWT token verification failed';
       let errorCode = 'TOKEN_VERIFICATION_FAILED';
 
@@ -107,7 +107,7 @@ export function createJWTMiddleware(config: ServerJWTConfig) {
 
       return res.status(401).json({
         error: errorMessage,
-        code: errorCode
+        code: errorCode,
       });
     }
   };
@@ -118,8 +118,8 @@ export function createJWTMiddleware(config: ServerJWTConfig) {
  * @param config - JWT configuration for verification
  * @returns Express middleware function
  */
-export function createOptionalJWTMiddleware(config: Omit<ServerJWTConfig, 'required'>) {
-  return createJWTMiddleware({ ...config, required: false });
+export function createOptionalJwtMiddleware(config: Omit<ServerJwtConfig, 'required'>) {
+  return createJwtMiddleware({ ...config, required: false });
 }
 
 /**
@@ -127,11 +127,11 @@ export function createOptionalJWTMiddleware(config: Omit<ServerJWTConfig, 'requi
  * @param authHeader - Authorization header value
  * @returns JWT token or null if not found
  */
-export function extractJWTToken(authHeader?: string): string | null {
+export function extractJwtToken(authHeader?: string): string | null {
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return null;
   }
-  
+
   const token = authHeader.substring(7).trim();
   return token || null;
 }

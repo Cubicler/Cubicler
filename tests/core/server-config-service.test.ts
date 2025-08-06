@@ -14,7 +14,7 @@ describe('ServerConfigService', () => {
     vi.clearAllMocks();
     configService = new ServerConfigService();
     configService.clearCache();
-    
+
     // Clear environment variables
     delete process.env.CUBICLER_PORT;
     delete process.env.CUBICLER_HOST;
@@ -45,7 +45,7 @@ describe('ServerConfigService', () => {
 
     it('should load configuration from file when CUBICLER_CONFIG is set', async () => {
       process.env.CUBICLER_CONFIG = 'cubicler.json';
-      
+
       const mockConfig: CubiclerConfig = {
         server: {
           port: 9000,
@@ -74,7 +74,10 @@ describe('ServerConfigService', () => {
 
       const config = await configService.loadConfig();
 
-      expect(mockConfigHelper.loadConfigFromSource).toHaveBeenCalledWith('CUBICLER_CONFIG', 'Cubicler configuration');
+      expect(mockConfigHelper.loadConfigFromSource).toHaveBeenCalledWith(
+        'CUBICLER_CONFIG',
+        'Cubicler configuration'
+      );
       expect(config).toEqual({
         port: 9000,
         host: 'localhost',
@@ -101,7 +104,7 @@ describe('ServerConfigService', () => {
     it('should merge file config with default config', async () => {
       process.env.CUBICLER_PORT = '7000';
       process.env.CUBICLER_CONFIG = 'cubicler.json';
-      
+
       const mockConfig: CubiclerConfig = {
         server: {
           auth: {
@@ -129,7 +132,7 @@ describe('ServerConfigService', () => {
 
     it('should fall back to default config when file loading fails', async () => {
       process.env.CUBICLER_CONFIG = 'non-existent-cubicler.json';
-      
+
       mockConfigHelper.loadConfigFromSource.mockRejectedValue(new Error('File not found'));
 
       const config = await configService.loadConfig();
@@ -158,21 +161,21 @@ describe('ServerConfigService', () => {
     it('should return cached config after loading', async () => {
       await configService.loadConfig();
       const config = configService.getConfig();
-      
+
       expect(config).toBeTruthy();
       expect(config?.port).toBe(1503);
     });
   });
 
-  describe('getEndpointJWTConfig', () => {
+  describe('getEndpointJwtConfig', () => {
     it('should return null when no config is loaded', () => {
-      const jwtConfig = configService.getEndpointJWTConfig('dispatch');
+      const jwtConfig = configService.getEndpointJwtConfig('dispatch');
       expect(jwtConfig).toBeNull();
     });
 
     it('should return endpoint-specific JWT config', async () => {
       process.env.CUBICLER_CONFIG = 'cubicler.json';
-      
+
       const mockConfig: CubiclerConfig = {
         server: {
           auth: {
@@ -197,8 +200,8 @@ describe('ServerConfigService', () => {
       mockConfigHelper.loadConfigFromSource.mockResolvedValue(mockConfig);
       await configService.loadConfig();
 
-      const jwtConfig = configService.getEndpointJWTConfig('dispatch');
-      
+      const jwtConfig = configService.getEndpointJwtConfig('dispatch');
+
       expect(jwtConfig).toEqual({
         secret: 'dispatch-secret',
         audience: 'dispatch-api',
@@ -207,7 +210,7 @@ describe('ServerConfigService', () => {
 
     it('should fall back to global JWT config when endpoint-specific not found', async () => {
       process.env.CUBICLER_CONFIG = 'cubicler.json';
-      
+
       const mockConfig: CubiclerConfig = {
         server: {
           auth: {
@@ -222,8 +225,8 @@ describe('ServerConfigService', () => {
       mockConfigHelper.loadConfigFromSource.mockResolvedValue(mockConfig);
       await configService.loadConfig();
 
-      const jwtConfig = configService.getEndpointJWTConfig('mcp');
-      
+      const jwtConfig = configService.getEndpointJwtConfig('mcp');
+
       expect(jwtConfig).toEqual({
         secret: 'global-secret',
         issuer: 'global-issuer',
@@ -233,24 +236,24 @@ describe('ServerConfigService', () => {
     it('should return null when no JWT config is found', async () => {
       await configService.loadConfig();
 
-      const jwtConfig = configService.getEndpointJWTConfig('dispatch');
-      
+      const jwtConfig = configService.getEndpointJwtConfig('dispatch');
+
       expect(jwtConfig).toBeNull();
     });
   });
 
-  describe('isJWTEnabled', () => {
+  describe('isJwtEnabled', () => {
     it('should return false when no JWT config exists', async () => {
       await configService.loadConfig();
 
-      const isEnabled = configService.isJWTEnabled('dispatch');
-      
+      const isEnabled = configService.isJwtEnabled('dispatch');
+
       expect(isEnabled).toBe(false);
     });
 
     it('should return true when endpoint-specific JWT config exists', async () => {
       process.env.CUBICLER_CONFIG = 'cubicler.json';
-      
+
       const mockConfig: CubiclerConfig = {
         server: {
           endpoints: {
@@ -269,14 +272,14 @@ describe('ServerConfigService', () => {
       mockConfigHelper.loadConfigFromSource.mockResolvedValue(mockConfig);
       await configService.loadConfig();
 
-      const isEnabled = configService.isJWTEnabled('dispatch');
-      
+      const isEnabled = configService.isJwtEnabled('dispatch');
+
       expect(isEnabled).toBe(true);
     });
 
     it('should return true when global JWT config exists', async () => {
       process.env.CUBICLER_CONFIG = 'cubicler.json';
-      
+
       const mockConfig: CubiclerConfig = {
         server: {
           auth: {
@@ -290,8 +293,8 @@ describe('ServerConfigService', () => {
       mockConfigHelper.loadConfigFromSource.mockResolvedValue(mockConfig);
       await configService.loadConfig();
 
-      const isEnabled = configService.isJWTEnabled('mcp');
-      
+      const isEnabled = configService.isJwtEnabled('mcp');
+
       expect(isEnabled).toBe(true);
     });
   });

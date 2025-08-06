@@ -11,7 +11,7 @@ import internalToolsService from './core/internal-tools-service.js';
 import serverConfigService from './core/server-config-service.js';
 
 // Import JWT middleware
-import { createJWTMiddleware, type AuthenticatedRequest } from './middleware/jwt-auth.js';
+import { type AuthenticatedRequest, createJwtMiddleware } from './middleware/jwt-auth.js';
 
 // Create Express app
 const app = express();
@@ -45,14 +45,14 @@ if (process.env.ENABLE_CORS === 'true') {
 }
 
 // Function to create JWT middleware for an endpoint
-async function createEndpointJWTMiddleware(endpoint: string) {
-  const jwtConfig = serverConfigService.getEndpointJWTConfig(endpoint);
+async function createEndpointJwtMiddleware(endpoint: string) {
+  const jwtConfig = serverConfigService.getEndpointJwtConfig(endpoint);
   if (!jwtConfig) {
     return null;
   }
 
   console.log(`🔐 [Server] JWT authentication enabled for /${endpoint} endpoint`);
-  return createJWTMiddleware(jwtConfig);
+  return createJwtMiddleware(jwtConfig);
 }
 
 // ===== Health Check Endpoint =====
@@ -127,13 +127,13 @@ app.get('/agents', async (req: Request, res: Response) => {
 // POST /dispatch - dispatch to default agent
 app.post('/dispatch', async (req: AuthenticatedRequest, res: Response) => {
   // Apply JWT middleware if configured
-  const jwtMiddleware = await createEndpointJWTMiddleware('dispatch');
+  const jwtMiddleware = await createEndpointJwtMiddleware('dispatch');
   if (jwtMiddleware) {
     return jwtMiddleware(req, res, async () => {
       return handleDispatchRequest(req, res);
     });
   }
-  
+
   return handleDispatchRequest(req, res);
 });
 
@@ -192,13 +192,13 @@ async function handleDispatchRequest(req: AuthenticatedRequest, res: Response) {
 // POST /dispatch/:agentId - dispatch to specific agent
 app.post('/dispatch/:agentId', async (req: AuthenticatedRequest, res: Response) => {
   // Apply JWT middleware if configured
-  const jwtMiddleware = await createEndpointJWTMiddleware('dispatch');
+  const jwtMiddleware = await createEndpointJwtMiddleware('dispatch');
   if (jwtMiddleware) {
     return jwtMiddleware(req, res, async () => {
       return handleSpecificAgentDispatchRequest(req, res);
     });
   }
-  
+
   return handleSpecificAgentDispatchRequest(req, res);
 });
 
@@ -257,13 +257,13 @@ async function handleSpecificAgentDispatchRequest(req: AuthenticatedRequest, res
 // ===== MCP Endpoint =====
 app.post('/mcp', async (req: AuthenticatedRequest, res: Response) => {
   // Apply JWT middleware if configured
-  const jwtMiddleware = await createEndpointJWTMiddleware('mcp');
+  const jwtMiddleware = await createEndpointJwtMiddleware('mcp');
   if (jwtMiddleware) {
     return jwtMiddleware(req, res, async () => {
       return handleMCPRequest(req, res);
     });
   }
-  
+
   return handleMCPRequest(req, res);
 });
 
@@ -329,13 +329,15 @@ if (isMainModule) {
 
 async function startServer() {
   console.log(`🚀 [Server] Starting Cubicler server...`);
-  
+
   // Load server configuration
   let serverConfig;
   try {
     serverConfig = await serverConfigService.loadConfig();
   } catch (error) {
-    console.error(`❌ [Server] Failed to load server configuration: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error(
+      `❌ [Server] Failed to load server configuration: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
     process.exit(1);
   }
 
@@ -349,12 +351,12 @@ async function startServer() {
   console.log(`   - Providers list: ${process.env.CUBICLER_PROVIDERS_LIST || 'Not configured'}`);
   console.log(`   - Agents list: ${process.env.CUBICLER_AGENTS_LIST || 'Not configured'}`);
   console.log(`   - Server config: ${process.env.CUBICLER_CONFIG || 'Not configured'}`);
-  
+
   // Show JWT authentication status
-  const dispatchJWT = serverConfigService.isJWTEnabled('dispatch');
-  const mcpJWT = serverConfigService.isJWTEnabled('mcp');
-  console.log(`   - JWT Auth (dispatch): ${dispatchJWT ? 'Enabled' : 'Disabled'}`);
-  console.log(`   - JWT Auth (mcp): ${mcpJWT ? 'Enabled' : 'Disabled'}`);
+  const dispatchJwt = serverConfigService.isJwtEnabled('dispatch');
+  const mcpJwt = serverConfigService.isJwtEnabled('mcp');
+  console.log(`   - JWT Auth (dispatch): ${dispatchJwt ? 'Enabled' : 'Disabled'}`);
+  console.log(`   - JWT Auth (mcp): ${mcpJwt ? 'Enabled' : 'Disabled'}`);
 
   app.listen(port, host, async () => {
     console.log(`✅ [Server] Cubicler server is running on port ${port}`);

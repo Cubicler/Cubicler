@@ -41,17 +41,24 @@ export class AgentTransportFactory {
       }
       case 'direct': {
         const directAgent = agent as DirectAgent;
-        
+
         // Check provider and create appropriate direct transport
         switch (directAgent.config.provider) {
           case 'openai':
-            return new DirectOpenAIAgentTransport(directAgent.config, this.mcpService, agent, this.serversProvider);
+            return new DirectOpenAIAgentTransport(
+              directAgent.config,
+              this.mcpService,
+              agent,
+              this.serversProvider
+            );
           default:
-            throw new Error(`Unsupported direct transport provider: ${directAgent.config.provider}. Supported providers: openai`);
+            throw new Error(
+              `Unsupported direct transport provider: ${directAgent.config.provider}. Supported providers: openai`
+            );
         }
       }
       default:
-        throw new Error(`Unsupported transport type: ${(agent as any).transport}`);
+        throw new Error(`Unsupported transport type: ${(agent as Agent).transport}`);
     }
   }
 }

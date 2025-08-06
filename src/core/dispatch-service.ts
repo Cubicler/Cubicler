@@ -1,7 +1,7 @@
 import type { MCPHandling } from '../interface/mcp-handling.js';
 import { AgentsProviding } from '../interface/agents-providing.js';
 import type { Agent, AgentInfo } from '../model/agents.js';
-import type { AgentServerInfo } from '../model/server.js';
+import type { AgentServerInfo, AvailableServersResponse } from '../model/server.js';
 import type { ToolDefinition } from '../model/tools.js';
 import {
   AgentRequest,
@@ -37,9 +37,7 @@ export class DispatchService {
     private readonly serversProvider: ServersProviding
   ) {
     this.transportFactory = new AgentTransportFactory(this.mcpService, this.serversProvider);
-    console.log(
-      `🔧 [DispatchService] Created with MCP service and agent provider`
-    );
+    console.log(`🔧 [DispatchService] Created with MCP service and agent provider`);
   }
 
   /**
@@ -105,40 +103,46 @@ export class DispatchService {
   /**
    * Gather all agent-related data in parallel for optimal performance
    */
-  private async gatherAgentData(agentId: string | undefined): Promise<[AgentInfo, Agent, string, AgentServerInfo[], ToolDefinition[]]> {
+  private async gatherAgentData(
+    agentId: string | undefined
+  ): Promise<[AgentInfo, Agent, string, AgentServerInfo[], ToolDefinition[]]> {
     const [agentInfo, agent, prompt, serversInfo, allTools] = await Promise.all([
       this.agentProvider.getAgentInfo(agentId),
       this.agentProvider.getAgent(agentId),
       this.agentProvider.getAgentPrompt(agentId),
       // Inline servers info retrieval via MCP service
-      this.mcpService.handleMCPRequest({
-        jsonrpc: '2.0',
-        id: Date.now(),
-        method: 'tools/call',
-        params: {
-          name: 'cubicler_available_servers',
-          arguments: {},
-        },
-      }).then((response) => {
-        if (response.error) {
-          throw new Error(`MCP Error: ${response.error.message}`);
-        }
-        const result = response.result as any;
-        return result.servers || [];
-      }),
+      this.mcpService
+        .handleMCPRequest({
+          jsonrpc: '2.0',
+          id: Date.now(),
+          method: 'tools/call',
+          params: {
+            name: 'cubicler_available_servers',
+            arguments: {},
+          },
+        })
+        .then((response) => {
+          if (response.error) {
+            throw new Error(`MCP Error: ${response.error.message}`);
+          }
+          const result = response.result as AvailableServersResponse;
+          return result.servers || [];
+        }),
       // Tools list retrieval via MCP service
-      this.mcpService.handleMCPRequest({
-        jsonrpc: '2.0',
-        id: Date.now() + 1,
-        method: 'tools/list',
-        params: {},
-      }).then((response) => {
-        if (response.error) {
-          throw new Error(`MCP Error: ${response.error.message}`);
-        }
-        const result = response.result as any;
-        return result.tools || [];
-      }),
+      this.mcpService
+        .handleMCPRequest({
+          jsonrpc: '2.0',
+          id: Date.now() + 1,
+          method: 'tools/list',
+          params: {},
+        })
+        .then((response) => {
+          if (response.error) {
+            throw new Error(`MCP Error: ${response.error.message}`);
+          }
+          const result = response.result as { tools: ToolDefinition[] };
+          return result.tools || [];
+        }),
     ]);
 
     // Apply agent restrictions

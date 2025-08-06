@@ -18,5 +18,5 @@ export interface MCPHandling {
    * @returns Promise that resolves to the MCP response
    * @throws Error if the request cannot be processed
    */
-  handleMCPRequest(request: MCPRequest): Promise<MCPResponse>;
+  handleMCPRequest(_request: MCPRequest): Promise<MCPResponse>;
 }

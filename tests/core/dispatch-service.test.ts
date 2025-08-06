@@ -98,42 +98,48 @@ describe('Dispatch Service', () => {
       );
 
       // Mock MCP service responses for tools and servers
-      vi.mocked(mockMcpService.handleMCPRequest).mockImplementation(async (request: MCPRequest): Promise<MCPResponse> => {
-        if (request.params && 'name' in request.params && request.params.name === 'cubicler_available_servers') {
+      vi.mocked(mockMcpService.handleMCPRequest).mockImplementation(
+        async (request: MCPRequest): Promise<MCPResponse> => {
+          if (
+            request.params &&
+            'name' in request.params &&
+            request.params.name === 'cubicler_available_servers'
+          ) {
+            return {
+              jsonrpc: '2.0',
+              id: request.id,
+              result: {
+                servers: [
+                  {
+                    identifier: 'weather_service',
+                    name: 'Weather Service',
+                    description: 'Weather API',
+                  },
+                ],
+              },
+            };
+          } else if (request.method === 'tools/list') {
+            return {
+              jsonrpc: '2.0',
+              id: request.id,
+              result: {
+                tools: [
+                  {
+                    name: 'cubicler_available_servers',
+                    description: 'Get available servers',
+                    parameters: { type: 'object', properties: {} },
+                  },
+                ],
+              },
+            };
+          }
           return {
             jsonrpc: '2.0',
             id: request.id,
-            result: {
-              servers: [
-                {
-                  identifier: 'weather_service',
-                  name: 'Weather Service',
-                  description: 'Weather API',
-                },
-              ],
-            },
-          };
-        } else if (request.method === 'tools/list') {
-          return {
-            jsonrpc: '2.0',
-            id: request.id,
-            result: {
-              tools: [
-                {
-                  name: 'cubicler_available_servers',
-                  description: 'Get available servers',
-                  parameters: { type: 'object', properties: {} },
-                },
-              ],
-            },
+            error: { code: -1, message: 'Unknown method' },
           };
         }
-        return { 
-          jsonrpc: '2.0', 
-          id: request.id, 
-          error: { code: -1, message: 'Unknown method' } 
-        };
-      });
+      );
 
       // Mock transport response
       const mockAgentResponse = {

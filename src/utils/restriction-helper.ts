@@ -2,7 +2,7 @@ import type { Agent } from '../model/agents.js';
 import type { ServerInfo } from '../model/server.js';
 import type { ToolDefinition } from '../model/tools.js';
 import type { ServersProviding } from '../interface/servers-providing.js';
-import { parseFunctionName, toSnakeCase } from './parameter-helper.js';
+import { parseFunctionName } from './parameter-helper.js';
 
 /**
  * Helper functions for handling agent tool and server restrictions
@@ -38,8 +38,8 @@ export function isServerAllowed(agent: Agent, serverIdentifier: string): boolean
  * @returns true if tool is allowed, false otherwise
  */
 export async function isToolAllowed(
-  agent: Agent, 
-  toolName: string, 
+  agent: Agent,
+  toolName: string,
   serversProvider: ServersProviding
 ): Promise<boolean> {
   // For internal tools (cubicler_*), they're always allowed unless explicitly restricted
@@ -54,18 +54,18 @@ export async function isToolAllowed(
   // External tool with {hash}_{function} format
   let serverIdentifier: string;
   let originalToolName: string;
-  
+
   try {
     const parsed = parseFunctionName(toolName);
     const serverHash = parsed.serverHash;
     originalToolName = parsed.functionName;
-    
+
     // Find server identifier from hash using the mandatory servers provider
-    
+
     // Get all servers and find one with matching hash
     const serversResponse = await serversProvider.getAvailableServers();
     let matchingServer: ServerInfo | undefined;
-    
+
     for (const server of serversResponse.servers) {
       try {
         const hash = await serversProvider.getServerHash(server.identifier);
@@ -78,17 +78,17 @@ export async function isToolAllowed(
         continue;
       }
     }
-    
+
     if (!matchingServer) {
       return false; // Unknown server
     }
-    
+
     serverIdentifier = matchingServer.identifier;
-  } catch (error) {
+  } catch {
     // Invalid tool name format or parsing error
     return false;
   }
-  
+
   // Step 1: Check if server is allowed
   if (!isServerAllowed(agent, serverIdentifier)) {
     return false;
@@ -104,7 +104,7 @@ export async function isToolAllowed(
     }
   }
 
-  // Step 3: Remove restrictedTools (if defined)  
+  // Step 3: Remove restrictedTools (if defined)
   if (agent.restrictedTools && agent.restrictedTools.includes(configFormatTool)) {
     return false;
   }
@@ -119,7 +119,7 @@ export async function isToolAllowed(
  * @returns Filtered array of allowed servers
  */
 export function filterAllowedServers(agent: Agent, servers: ServerInfo[]): ServerInfo[] {
-  return servers.filter(server => isServerAllowed(agent, server.identifier));
+  return servers.filter((server) => isServerAllowed(agent, server.identifier));
 }
 
 /**
@@ -130,18 +130,18 @@ export function filterAllowedServers(agent: Agent, servers: ServerInfo[]): Serve
  * @returns Filtered array of allowed tools
  */
 export async function filterAllowedTools(
-  agent: Agent, 
-  tools: ToolDefinition[], 
+  agent: Agent,
+  tools: ToolDefinition[],
   serversProvider: ServersProviding
 ): Promise<ToolDefinition[]> {
   const results = await Promise.all(
-    tools.map(async tool => ({
+    tools.map(async (tool) => ({
       tool,
-      allowed: await isToolAllowed(agent, tool.name, serversProvider)
+      allowed: await isToolAllowed(agent, tool.name, serversProvider),
     }))
   );
-  
-  return results.filter(result => result.allowed).map(result => result.tool);
+
+  return results.filter((result) => result.allowed).map((result) => result.tool);
 }
 
 /**
@@ -153,8 +153,8 @@ export async function filterAllowedTools(
  * @throws Error if tool is restricted
  */
 export async function validateToolAccess(
-  agent: Agent, 
-  toolName: string, 
+  agent: Agent,
+  toolName: string,
   serversProvider: ServersProviding
 ): Promise<void> {
   if (!(await isToolAllowed(agent, toolName, serversProvider))) {

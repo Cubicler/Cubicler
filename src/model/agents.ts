@@ -19,12 +19,12 @@ export interface BaseAgent {
 /**
  * JWT authentication configuration
  */
-export interface JWTAuthConfig {
-  token?: string;           // Static token
-  tokenUrl?: string;        // URL to fetch token
-  clientId?: string;        // For OAuth2 client credentials
-  clientSecret?: string;    // For OAuth2 client credentials  
-  audience?: string;        // JWT audience claim
+export interface JwtAuthConfig {
+  token?: string; // Static token
+  tokenUrl?: string; // URL to fetch token
+  clientId?: string; // For OAuth2 client credentials
+  clientSecret?: string; // For OAuth2 client credentials
+  audience?: string; // JWT audience claim
   refreshThreshold?: number; // Minutes before expiry to refresh (default: 5)
 }
 
@@ -35,7 +35,7 @@ export interface HttpTransportConfig {
   url: string;
   auth?: {
     type: 'jwt';
-    config: JWTAuthConfig;
+    config: JwtAuthConfig;
   };
 }
 

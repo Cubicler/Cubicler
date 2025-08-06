@@ -1,9 +1,15 @@
 import type { AgentTransport } from '../interface/agent-transport.js';
 import type { AgentRequest, AgentResponse } from '../model/dispatch.js';
-import type { DirectTransportConfig, Agent } from '../model/agents.js';
+import type { Agent, DirectTransportConfig } from '../model/agents.js';
 import type { MCPHandling } from '../interface/mcp-handling.js';
 import type { ServersProviding } from '../interface/servers-providing.js';
-import type { AgentClient, AgentServer, JSONValue, JSONObject, RequestHandler } from '@cubicler/cubicagentkit';
+import type {
+  AgentClient,
+  AgentServer,
+  JSONObject,
+  JSONValue,
+  RequestHandler,
+} from '@cubicler/cubicagentkit';
 import { validateToolAccess } from '../utils/restriction-helper.js';
 
 /**
@@ -12,7 +18,6 @@ import { validateToolAccess } from '../utils/restriction-helper.js';
  * Creates a fresh agent instance for each dispatch call
  */
 export abstract class DirectAgentTransport implements AgentTransport, AgentClient, AgentServer {
-
   /**
    * Creates a new DirectAgentTransport instance
    * @param config - The direct transport configuration
@@ -20,6 +25,7 @@ export abstract class DirectAgentTransport implements AgentTransport, AgentClien
    * @param agent - Agent configuration for restriction validation
    */
   constructor(
+    // eslint-disable-next-line no-unused-vars
     protected readonly config: DirectTransportConfig,
     // eslint-disable-next-line no-unused-vars
     protected readonly mcpService: MCPHandling,
@@ -40,7 +46,7 @@ export abstract class DirectAgentTransport implements AgentTransport, AgentClien
    * @returns Promise that resolves to the agent's response
    * @throws Error if the agent call fails
    */
-  abstract dispatch(agentRequest: AgentRequest): Promise<AgentResponse>;
+  abstract dispatch(_agentRequest: AgentRequest): Promise<AgentResponse>;
 
   // ===== AgentClient Implementation =====
 
@@ -79,12 +85,12 @@ export abstract class DirectAgentTransport implements AgentTransport, AgentClien
 
       // Let MCPService handle both internal and external tools
       const mcpResponse = await this.mcpService.handleMCPRequest(mcpRequest);
-      
+
       if (mcpResponse.error) {
         throw new Error(`MCP Error: ${mcpResponse.error.message}`);
       }
-      
-      return mcpResponse.result!;
+
+      return mcpResponse.result as JSONValue;
     } catch (error) {
       console.error(`❌ [DirectAgentTransport] Tool call failed for ${toolName}:`, error);
       throw error;

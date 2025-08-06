@@ -17,7 +17,10 @@ export {
   default as providerRESTService,
 } from './core/provider-rest-service.js';
 export { default as internalFunctionsService } from './core/internal-tools-service.js';
-export { ServerConfigService, default as serverConfigService } from './core/server-config-service.js';
+export {
+  ServerConfigService,
+  default as serverConfigService,
+} from './core/server-config-service.js';
 
 // Export utilities and protocols
 export { Cache, createEnvCache } from './utils/cache.js';
@@ -25,7 +28,7 @@ export { default as providersRepository } from './repository/provider-repository
 export * from './utils/env-helper.js';
 export * from './utils/fetch-helper.js';
 export * from './utils/parameter-helper.js';
-export { JWTHelper, default as jwtHelper } from './utils/jwt-helper.js';
+export { JwtHelper, default as jwtHelper } from './utils/jwt-helper.js';
 
 // Export middleware
 export * from './middleware/jwt-auth.js';

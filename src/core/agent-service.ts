@@ -1,5 +1,5 @@
 import { config } from 'dotenv';
-import type { Agent, AgentInfo, AgentsConfig } from '../model/agents.js';
+import type { Agent, AgentInfo, AgentsConfig, HttpAgent, StdioAgent } from '../model/agents.js';
 import type { AgentsProviding } from '../interface/agents-providing.js';
 import type { ServersProviding } from '../interface/servers-providing.js';
 import type { AgentsConfigProviding } from '../interface/agents-config-providing.js';
@@ -125,13 +125,13 @@ export class AgentService implements AgentsProviding {
 
     switch (agent.transport) {
       case 'http':
-        return (agent as any).config.url;
+        return (agent as HttpAgent).config.url;
       case 'stdio':
-        return (agent as any).config.url;
+        return (agent as StdioAgent).config.url;
       case 'direct':
         throw new Error(`Direct transport agents don't have URLs. Use agent factory instead.`);
       default:
-        throw new Error(`Unsupported transport type: ${(agent as any).transport}`);
+        throw new Error(`Unsupported transport type: ${(agent as Agent).transport}`);
     }
   }
 
@@ -239,7 +239,7 @@ export class AgentService implements AgentsProviding {
 
       if (serversResponse.total > 0) {
         // Apply agent restrictions if agent is provided
-        const filteredServers = agent 
+        const filteredServers = agent
           ? filterAllowedServers(agent, serversResponse.servers)
           : serversResponse.servers;
 
@@ -247,7 +247,7 @@ export class AgentService implements AgentsProviding {
           return this.createAvailableServersSection({
             ...serversResponse,
             servers: filteredServers,
-            total: filteredServers.length
+            total: filteredServers.length,
           });
         } else {
           return this.createNoServersSection();

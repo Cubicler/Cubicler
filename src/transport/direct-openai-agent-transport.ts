@@ -1,10 +1,13 @@
 import type { AgentRequest, AgentResponse } from '../model/dispatch.js';
-import type { DirectOpenAIConfig, Agent } from '../model/agents.js';
+import type { Agent, DirectOpenAIConfig } from '../model/agents.js';
 import type { MCPHandling } from '../interface/mcp-handling.js';
 import type { ServersProviding } from '../interface/servers-providing.js';
 import { OpenAIService } from '@cubicler/cubicagent-openai';
 import { CubicAgent } from '@cubicler/cubicagentkit';
-import type { OpenAIConfig, DispatchConfig } from '@cubicler/cubicagent-openai/dist/config/environment.js';
+import type {
+  DispatchConfig,
+  OpenAIConfig,
+} from '@cubicler/cubicagent-openai/dist/config/environment.js';
 import { DirectAgentTransport } from './direct-agent-transport.js';
 import { expandEnvVariable } from '../utils/env-helper.js';
 
@@ -30,7 +33,7 @@ export class DirectOpenAIAgentTransport extends DirectAgentTransport {
     console.log(`🤖 [DirectOpenAIAgentTransport] Creating OpenAI agent for dispatch`);
 
     const openaiConfig = this.config as DirectOpenAIConfig;
-    
+
     // Create a fresh CubicAgent instance for this request
     const cubicAgent = new CubicAgent(this, this);
 
@@ -81,10 +84,7 @@ export class DirectOpenAIAgentTransport extends DirectAgentTransport {
     if (!config.apiKey || typeof config.apiKey !== 'string') {
       throw new Error('OpenAI direct transport requires a valid apiKey');
     }
-    if (
-      config.temperature !== undefined &&
-      (config.temperature < 0 || config.temperature > 2)
-    ) {
+    if (config.temperature !== undefined && (config.temperature < 0 || config.temperature > 2)) {
       throw new Error('OpenAI temperature must be between 0 and 2');
     }
     if (config.sessionMaxTokens !== undefined && config.sessionMaxTokens < 1) {

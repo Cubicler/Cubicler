@@ -30,7 +30,7 @@ export class HttpAgentTransport implements AgentTransport {
 
     try {
       const headers = await this.buildHeaders();
-      
+
       const response = await fetchWithAgentTimeout(this.config.url, {
         method: 'POST',
         headers,

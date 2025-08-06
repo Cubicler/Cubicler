@@ -1,24 +1,24 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import jwt from 'jsonwebtoken';
-import { JWTHelper } from '../../src/utils/jwt-helper.js';
-import type { JWTAuthConfig } from '../../src/model/agents.js';
+import { JwtHelper } from '../../src/utils/jwt-helper.js';
+import type { JwtAuthConfig } from '../../src/model/agents.js';
 import * as fetchHelper from '../../src/utils/fetch-helper.js';
 
 // Mock the fetch helper
 vi.mock('../../src/utils/fetch-helper.js');
 
-describe('JWTHelper', () => {
-  let jwtHelper: JWTHelper;
+describe('JwtHelper', () => {
+  let jwtHelper: JwtHelper;
   const mockFetchWithDefaultTimeout = vi.mocked(fetchHelper.fetchWithDefaultTimeout);
 
   beforeEach(() => {
     vi.clearAllMocks();
-    jwtHelper = new JWTHelper();
+    jwtHelper = new JwtHelper();
   });
 
   describe('getToken', () => {
     it('should return static token when provided', async () => {
-      const config: JWTAuthConfig = {
+      const config: JwtAuthConfig = {
         token: 'static-jwt-token',
       };
 
@@ -27,7 +27,7 @@ describe('JWTHelper', () => {
     });
 
     it('should fetch token from URL when tokenUrl is provided', async () => {
-      const config: JWTAuthConfig = {
+      const config: JwtAuthConfig = {
         tokenUrl: 'https://auth.example.com/token',
         clientId: 'test-client',
         clientSecret: 'test-secret',
@@ -46,20 +46,17 @@ describe('JWTHelper', () => {
       const token = await jwtHelper.getToken(config);
       expect(token).toBe('oauth-jwt-token');
 
-      expect(mockFetchWithDefaultTimeout).toHaveBeenCalledWith(
-        'https://auth.example.com/token',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          data: 'grant_type=client_credentials&client_id=test-client&client_secret=test-secret',
-        }
-      );
+      expect(mockFetchWithDefaultTimeout).toHaveBeenCalledWith('https://auth.example.com/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        data: 'grant_type=client_credentials&client_id=test-client&client_secret=test-secret',
+      });
     });
 
     it('should include audience in OAuth2 request when provided', async () => {
-      const config: JWTAuthConfig = {
+      const config: JwtAuthConfig = {
         tokenUrl: 'https://auth.example.com/token',
         clientId: 'test-client',
         clientSecret: 'test-secret',
@@ -78,20 +75,17 @@ describe('JWTHelper', () => {
 
       await jwtHelper.getToken(config);
 
-      expect(mockFetchWithDefaultTimeout).toHaveBeenCalledWith(
-        'https://auth.example.com/token',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          data: 'grant_type=client_credentials&client_id=test-client&client_secret=test-secret&audience=api.example.com',
-        }
-      );
+      expect(mockFetchWithDefaultTimeout).toHaveBeenCalledWith('https://auth.example.com/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        data: 'grant_type=client_credentials&client_id=test-client&client_secret=test-secret&audience=api.example.com',
+      });
     });
 
     it('should cache and reuse valid tokens', async () => {
-      const config: JWTAuthConfig = {
+      const config: JwtAuthConfig = {
         tokenUrl: 'https://auth.example.com/token',
         clientId: 'test-client',
         clientSecret: 'test-secret',
@@ -120,7 +114,7 @@ describe('JWTHelper', () => {
     });
 
     it('should throw error when neither token nor tokenUrl is provided', async () => {
-      const config: JWTAuthConfig = {};
+      const config: JwtAuthConfig = {};
 
       await expect(jwtHelper.getToken(config)).rejects.toThrow(
         'JWT configuration must provide either token or tokenUrl'
@@ -128,7 +122,7 @@ describe('JWTHelper', () => {
     });
 
     it('should throw error when OAuth2 credentials are missing', async () => {
-      const config: JWTAuthConfig = {
+      const config: JwtAuthConfig = {
         tokenUrl: 'https://auth.example.com/token',
       };
 
@@ -138,7 +132,7 @@ describe('JWTHelper', () => {
     });
 
     it('should throw error when token endpoint returns error', async () => {
-      const config: JWTAuthConfig = {
+      const config: JwtAuthConfig = {
         tokenUrl: 'https://auth.example.com/token',
         clientId: 'test-client',
         clientSecret: 'test-secret',
@@ -155,7 +149,7 @@ describe('JWTHelper', () => {
     });
 
     it('should throw error when token response is invalid', async () => {
-      const config: JWTAuthConfig = {
+      const config: JwtAuthConfig = {
         tokenUrl: 'https://auth.example.com/token',
         clientId: 'test-client',
         clientSecret: 'test-secret',
@@ -172,7 +166,7 @@ describe('JWTHelper', () => {
     });
 
     it('should handle network errors', async () => {
-      const config: JWTAuthConfig = {
+      const config: JwtAuthConfig = {
         tokenUrl: 'https://auth.example.com/token',
         clientId: 'test-client',
         clientSecret: 'test-secret',
@@ -189,7 +183,7 @@ describe('JWTHelper', () => {
 
   describe('clearCache', () => {
     it('should clear token cache', async () => {
-      const config: JWTAuthConfig = {
+      const config: JwtAuthConfig = {
         tokenUrl: 'https://auth.example.com/token',
         clientId: 'test-client',
         clientSecret: 'test-secret',
@@ -224,9 +218,9 @@ describe('JWTHelper', () => {
 
     it('should verify valid JWT token', async () => {
       const token = jwt.sign(testPayload, testSecret);
-      
+
       const result = await jwtHelper.verifyToken(token, testSecret);
-      
+
       expect(result.sub).toBe('user123');
       expect(result.exp).toBe(testPayload.exp);
     });
@@ -234,19 +228,19 @@ describe('JWTHelper', () => {
     it('should verify token with specific issuer and audience', async () => {
       const payload = { ...testPayload, iss: 'test-issuer', aud: 'test-audience' };
       const token = jwt.sign(payload, testSecret);
-      
+
       const result = await jwtHelper.verifyToken(token, testSecret, {
         issuer: 'test-issuer',
         audience: 'test-audience',
       });
-      
+
       expect(result.iss).toBe('test-issuer');
       expect(result.aud).toBe('test-audience');
     });
 
     it('should throw error for invalid token', async () => {
       const invalidToken = 'invalid.jwt.token';
-      
+
       await expect(jwtHelper.verifyToken(invalidToken, testSecret)).rejects.toThrow(
         'JWT verification failed'
       );
@@ -255,7 +249,7 @@ describe('JWTHelper', () => {
     it('should throw error for expired token', async () => {
       const expiredPayload = { sub: 'user123', exp: Math.floor(Date.now() / 1000) - 3600 };
       const expiredToken = jwt.sign(expiredPayload, testSecret);
-      
+
       await expect(jwtHelper.verifyToken(expiredToken, testSecret)).rejects.toThrow(
         'JWT verification failed: jwt expired'
       );
@@ -263,7 +257,7 @@ describe('JWTHelper', () => {
 
     it('should throw error for wrong secret', async () => {
       const token = jwt.sign(testPayload, testSecret);
-      
+
       await expect(jwtHelper.verifyToken(token, 'wrong-secret')).rejects.toThrow(
         'JWT verification failed'
       );
@@ -272,19 +266,23 @@ describe('JWTHelper', () => {
     it('should throw error for issuer mismatch', async () => {
       const payload = { ...testPayload, iss: 'wrong-issuer' };
       const token = jwt.sign(payload, testSecret);
-      
-      await expect(jwtHelper.verifyToken(token, testSecret, {
-        issuer: 'expected-issuer',
-      })).rejects.toThrow('JWT verification failed');
+
+      await expect(
+        jwtHelper.verifyToken(token, testSecret, {
+          issuer: 'expected-issuer',
+        })
+      ).rejects.toThrow('JWT verification failed');
     });
 
     it('should throw error for audience mismatch', async () => {
       const payload = { ...testPayload, aud: 'wrong-audience' };
       const token = jwt.sign(payload, testSecret);
-      
-      await expect(jwtHelper.verifyToken(token, testSecret, {
-        audience: 'expected-audience',
-      })).rejects.toThrow('JWT verification failed');
+
+      await expect(
+        jwtHelper.verifyToken(token, testSecret, {
+          audience: 'expected-audience',
+        })
+      ).rejects.toThrow('JWT verification failed');
     });
 
     it('should throw error for empty token', async () => {
@@ -295,7 +293,7 @@ describe('JWTHelper', () => {
 
     it('should throw error for empty secret', async () => {
       const token = jwt.sign(testPayload, testSecret);
-      
+
       await expect(jwtHelper.verifyToken(token, '')).rejects.toThrow(
         'JWT secret must be a non-empty string'
       );
@@ -308,9 +306,9 @@ describe('JWTHelper', () => {
 
     it('should decode valid JWT token without verification', () => {
       const token = jwt.sign(testPayload, testSecret);
-      
+
       const result = jwtHelper.decodeToken(token);
-      
+
       expect(result).toBeTruthy();
       expect(result!.sub).toBe('user123');
     });
@@ -318,22 +316,22 @@ describe('JWTHelper', () => {
     it('should decode expired token without verification', () => {
       const expiredPayload = { sub: 'user123', exp: Math.floor(Date.now() / 1000) - 3600 };
       const expiredToken = jwt.sign(expiredPayload, testSecret);
-      
+
       const result = jwtHelper.decodeToken(expiredToken);
-      
+
       expect(result).toBeTruthy();
       expect(result!.sub).toBe('user123');
     });
 
     it('should return null for invalid token', () => {
       const result = jwtHelper.decodeToken('invalid.token');
-      
+
       expect(result).toBeNull();
     });
 
     it('should return null for empty token', () => {
       const result = jwtHelper.decodeToken('');
-      
+
       expect(result).toBeNull();
     });
   });

@@ -1,4 +1,4 @@
-import type { ServerConfig, CubiclerConfig } from '../model/server-config.js';
+import type { CubiclerConfig, ServerConfig } from '../model/server-config.js';
 import { loadConfigFromSource } from '../utils/config-helper.js';
 
 /**
@@ -23,7 +23,7 @@ export class ServerConfigService {
 
     // Check if server config is specified via environment variable
     const configSource = process.env.CUBICLER_CONFIG;
-    
+
     if (!configSource) {
       console.log(`📋 [ServerConfig] Using default configuration`);
       this.config = defaultConfig;
@@ -31,8 +31,11 @@ export class ServerConfigService {
     }
 
     try {
-      const cubiclerConfig = await loadConfigFromSource<CubiclerConfig>('CUBICLER_CONFIG', 'Cubicler configuration');
-      
+      const cubiclerConfig = await loadConfigFromSource<CubiclerConfig>(
+        'CUBICLER_CONFIG',
+        'Cubicler configuration'
+      );
+
       this.config = {
         ...defaultConfig,
         ...cubiclerConfig.server,
@@ -41,9 +44,11 @@ export class ServerConfigService {
       console.log(`✅ [ServerConfig] Configuration loaded successfully`);
       return this.config;
     } catch (error) {
-      console.warn(`⚠️ [ServerConfig] Failed to load config from ${configSource}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.warn(
+        `⚠️ [ServerConfig] Failed to load config from ${configSource}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
       console.log(`📋 [ServerConfig] Falling back to default configuration`);
-      
+
       this.config = defaultConfig;
       return this.config;
     }
@@ -62,7 +67,7 @@ export class ServerConfigService {
    * @param endpoint - Endpoint name (e.g., 'dispatch', 'mcp')
    * @returns JWT configuration or null if not configured
    */
-  getEndpointJWTConfig(endpoint: string) {
+  getEndpointJwtConfig(endpoint: string) {
     const config = this.getConfig();
     if (!config) return null;
 
@@ -85,8 +90,8 @@ export class ServerConfigService {
    * @param endpoint - Endpoint name
    * @returns True if JWT is configured for the endpoint
    */
-  isJWTEnabled(endpoint: string): boolean {
-    return this.getEndpointJWTConfig(endpoint) !== null;
+  isJwtEnabled(endpoint: string): boolean {
+    return this.getEndpointJwtConfig(endpoint) !== null;
   }
 
   /**
