@@ -4,41 +4,49 @@
 
 > *A modular AI orchestration framework that connects applications to AI agents and external services*
 
-[![npm version](https://badge.fury.io/js/cubicler.svg)](https://badge.fury.io/js/cubicler)
+[![npm version](htt**For detailed configuration options, see the integration guides:**
+
+- **🤖 [Agent Integration Guide> **For complete API documentation and examples**, see [Client Integration Guide](docs/CLIENT_INTEGRATION.md).e](docs/AGENT_INTEGRATION.md)** - Complete agent setup (Direct, HTTP, SSE, Stdio)
+- **🔧 [Provider Integration Guide](docs/PROVIDER_INTEGRATION.md)** - MCP servers and REST API integration
+- **🔐 JWT Authentication** - Detailed security configuration examplesbadge.fury.io/js/cubicler.svg)](https://badge.fury.io/js/cubicler)
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://opensource.org/licenses/ISC)
-[![Tests](https://github.com/hai**Cubicler: Where AI agents go to work** 🏢/workflows/Tests/badge.svg)](https://github.com/cubicler/Cubicler/actions)
+[![Tests](https://github.com/cubicler/Cubicler/workflows/Tests/badge.svg)](https://github.com/cubicler/Cubicler/actions)
+
+**Cubicler: Where AI agents go to work** 🏢
 
 ## 🎯 What is Cubicler?
 
-Cubicler is like a **smart switchboard operator** for AI. It sits between your applications and AI agents, helping them work together with external services.
+Cubicler is a **smart AI orchestration hub** that connects your applications to AI agents and external services. Think of it as a universal translator and router for AI interactions.
 
-### Simple Example
+### The Problem It Solves
+
+- **Multiple AI models**: GPT, Claude, local models - all with different APIs
+- **Scattered tools**: Weather APIs, databases, and services that AI agents need access to
+- **Complex integration**: Each AI model needs different setup and communication patterns
+- **No standardization**: Every service speaks a different protocol
+
+### The Cubicler Solution
 
 ```text
-Your App: "What's the weather in Jakarta?"
-     ↓ 
-Cubicler: Routes to the right AI agent
-     ↓ 
-AI Agent: Discovers available weather services
-     ↓ 
-AI Agent: Calls weather API through Cubicler
-     ↓ 
-Your App: Gets back "It's 28°C and partly cloudy!"
+Your App → Cubicler → AI Agent → External Services
+    ↑                     ↓
+    └─── Response ←───────┘
 ```
 
-### What Cubicler Does
+**Simple workflow:**
 
-- 🔌 **Connects** your apps to AI agents (GPT, Claude, custom models)
-- �️ **Provides tools** so AI agents can use external APIs and services
-- � **Translates** between different API formats automatically
-- ⚡ **Routes** messages to the right AI agent for each task
+1. Your app sends a message to Cubicler
+2. Cubicler routes it to the right AI agent
+3. AI agent discovers and uses available tools/services
+4. Response flows back to your app
 
-### Why Use Cubicler?
+### Core Benefits
 
-- ✅ **One setup, multiple AIs**: Switch between AI models without changing your code
-- ✅ **Tool access**: AI agents can use weather APIs, databases, and more
-- ✅ **Simple integration**: Just send HTTP requests, get responses back
-- ✅ **Live updates**: Change configurations without restarting
+- 🔌 **Universal AI Integration**: Switch between AI models without code changes
+- 🛠️ **Rich Tool Ecosystem**: AI agents can use APIs, databases, and external services
+- ⚡ **Multiple Transports**: HTTP, SSE streaming, stdio processes, and direct models
+- 🔐 **Enterprise Security**: JWT authentication and secure communications
+- 📊 **Easy Configuration**: JSON-based setup with environment variable support
 
 ---
 
@@ -110,32 +118,27 @@ Visit: `http://localhost:1503`
 
 ## ⚙️ Configuration
 
-Cubicler needs two configuration files: one for AI agents and one for external services.
+Cubicler uses two main configuration files to connect AI agents and external services.
 
-### Environment Variables
+### Quick Configuration Overview
+
+**Environment Variables:**
 
 ```env
-# Required: Where to find your agents configuration
+# Required: Where to find your configurations
 CUBICLER_AGENTS_LIST=https://your-server.com/agents.json
-
-# Required: Where to find your services configuration  
 CUBICLER_PROVIDERS_LIST=https://your-server.com/providers.json
 
-# Optional: Server port (default: 1503)
+# Optional: Server settings
 CUBICLER_PORT=1503
-
-# Optional: Path to Cubicler server configuration file
 CUBICLER_CONFIG=./cubicler.json
 ```
 
-### Agents Configuration (`agents.json`)
-
-This tells Cubicler which AI agents are available. You can use `{{env.VARIABLE_NAME}}` to substitute environment variables:
+**Simple Agent Configuration (`agents.json`):**
 
 ```json
 {
-  "basePrompt": "You are a helpful AI assistant powered by Cubicler with access to various tools and services.",
-  "defaultPrompt": "./prompts/default-agent.md",
+  "basePrompt": "You are a helpful AI assistant.",
   "agents": [
     {
       "identifier": "gpt-4o-direct",
@@ -144,411 +147,22 @@ This tells Cubicler which AI agents are available. You can use `{{env.VARIABLE_N
       "config": {
         "provider": "openai",
         "apiKey": "${OPENAI_API_KEY}",
-        "model": "gpt-4o",
-        "temperature": 0.7,
-        "sessionMaxTokens": 4096
-      },
-      "description": "OpenAI GPT-4o powered agent running directly in Cubicler",
-      "prompt": "You are an advanced AI assistant powered by GPT-4o."
-    },
-    {
-      "identifier": "claude-3-5-sonnet",
-      "name": "Claude 3.5 Sonnet",
-      "transport": "http",
-      "config": {
-        "url": "http://localhost:3001/agent"
-      },
-      "description": "Anthropic Claude 3.5 Sonnet with excellent coding and analysis skills",
-      "prompt": "https://raw.githubusercontent.com/your-org/prompts/main/claude-specialist.md"
-    },
-    {
-      "identifier": "streaming-agent",
-      "name": "Streaming Agent",
-      "transport": "sse",
-      "config": {
-        "url": "http://localhost:3002/agent/stream"
-      },
-      "description": "Agent that supports real-time streaming responses",
-      "prompt": "You provide streaming responses for real-time interactions."
-    },
-    {
-      "identifier": "secure-agent-jwt",
-      "name": "JWT Secured Agent",
-      "transport": "http",
-      "config": {
-        "url": "https://api.example.com/agent",
-        "auth": {
-          "type": "jwt",
-          "config": {
-            "token": "${JWT_TOKEN}"
-          }
-        }
-      },
-      "description": "Agent service protected with JWT authentication",
-      "prompt": "You are a secure AI assistant running behind JWT authentication."
-    },
-    {
-      "identifier": "local-llama",
-      "name": "Local LLaMA Agent",
-      "transport": "stdio",
-      "config": {
-        "url": "/usr/local/bin/llama-agent --model llama2 --temperature 0.7"
-      },
-      "description": "Local LLaMA model running as a command-line process"
-    }
-  ]
-}
-```
-
-#### 📝 Prompt Configuration Options
-
-**Cubicler supports three flexible ways to define prompts:**
-
-1. **📄 Inline Text** (most common):
-
-   ```json
-   {
-     "basePrompt": "You are a helpful AI assistant with access to tools.",
-     "prompt": "You specialize in data analysis and provide detailed insights."
-   }
-   ```
-
-2. **📁 Local Files**:
-
-   ```json
-   {
-     "basePrompt": "./prompts/base-system.md",
-     "prompt": "../shared/specialist-prompt.txt"
-   }
-   ```
-
-3. **🌐 Remote URLs**:
-
-   ```json
-   {
-     "basePrompt": "https://your-server.com/prompts/base.md",
-     "prompt": "https://raw.githubusercontent.com/your-org/prompts/main/agent.md"
-   }
-   ```
-
-**✨ Smart Detection**: Cubicler automatically detects the prompt type:
-
-- URLs starting with `http://` or `https://` are loaded remotely
-- Paths containing `/`, `\`, `~`, or file extensions are treated as files
-- Everything else is treated as inline text content
-- **Graceful Fallback**: If file/URL loading fails, content is used as inline text
-
-> **💡 Environment Variables**: Use `{{env.VARIABLE_NAME}}` syntax in any string value to substitute environment variables. Perfect for keeping sensitive URLs and tokens secure!
-
-#### 🚀 Transport Types
-
-Cubicler supports different ways to communicate with AI agents:
-
-**Direct Transport** (`"transport": "direct"`):
-
-- Built-in AI providers running directly within Cubicler
-- No external agent server needed
-- Supports OpenAI GPT models (GPT-4o, GPT-4 Turbo, etc.)
-- Configured via `config.provider`, `config.apiKey`, `config.model`
-- Perfect for simple deployments without separate agent services
-
-**HTTP Transport** (`"transport": "http"`):
-
-- Standard REST API communication
-- Agent runs as a web server
-- `url` field contains the HTTP endpoint (e.g., `http://localhost:3000/agent`)
-- Supports JWT authentication for secure agent communication
-
-**SSE Transport** (`"transport": "sse"`):
-
-- Server-Sent Events for real-time streaming communication
-- Agent provides an SSE endpoint for streaming responses
-- `url` field contains the SSE endpoint (e.g., `http://localhost:3000/agent/stream`)
-- Perfect for streaming responses and real-time agent interactions
-- Supports JWT authentication and connection management
-
-**Stdio Transport** (`"transport": "stdio"`):
-
-- Local process-based communication via stdin/stdout
-- Perfect for command-line AI agents or local model runners
-- `url` field contains the command to execute (e.g., `/usr/local/bin/agent --model llama2`)
-- Supports command arguments and environment variables
-- Process timeout configurable via `AGENT_CALL_TIMEOUT` (default: 90000ms)
-
-**Communication Flow for Stdio Agents**:
-
-1. Cubicler spawns the process using the command in `url`
-2. Sends `AgentRequest` as JSON to the process's stdin
-3. Process responds with `AgentResponse` as JSON via stdout
-4. Process exits or continues running (agent's choice)
-
-### Providers Configuration (`providers.json`)
-
-This tells Cubicler which external services AI agents can use. You can use `{{env.VARIABLE_NAME}}` to substitute environment variables.
-
-#### 🔌 MCP Transport Types
-
-MCP servers support multiple transport protocols:
-
-**HTTP Transport** (`"transport": "http"`):
-
-- Standard HTTP-based MCP communication
-- Server provides MCP endpoints over HTTP
-- Supports headers for authentication
-
-**SSE Transport** (`"transport": "sse"`):
-
-- Server-Sent Events for streaming MCP communication
-- Perfect for real-time tool execution and streaming results
-- Maintains persistent connections for better performance
-
-**Stdio Transport** (`"transport": "stdio"`):
-
-- Local process-based MCP communication
-- Server runs as a command-line process
-- Communicates via stdin/stdout using MCP protocol
-
-```json
-{
-  "mcpServers": [
-    {
-      "identifier": "weather_service_http",
-      "name": "Weather Service (HTTP)",
-      "description": "Get weather information via HTTP MCP",
-      "transport": "http",
-      "url": "{{env.WEATHER_API_URL}}",
-      "headers": {
-        "Authorization": "Bearer {{env.WEATHER_API_KEY}}"
+        "model": "gpt-4o"
       }
     },
     {
-      "identifier": "weather_service_sse",
-      "name": "Weather Service (SSE)",
-      "description": "Get weather information via SSE MCP",
-      "transport": "sse",
-      "url": "{{env.WEATHER_SSE_URL}}",
-      "headers": {
-        "Authorization": "Bearer {{env.WEATHER_API_KEY}}"
-      }
-    },
-    {
-      "identifier": "local_mcp_service",
-      "name": "Local MCP Service",
-      "description": "Local MCP service via stdio",
-      "transport": "stdio",
-      "url": "/usr/local/bin/mcp-server --config /path/to/config"
-    }
-  ],
-  "restServers": [
-    {
-      "identifier": "user_api", 
-      "name": "User API",
-      "description": "Manage user information",
-      "url": "{{env.USER_API_BASE_URL}}",
-      "defaultHeaders": {
-        "Authorization": "Bearer {{env.USER_API_TOKEN}}"
-      },
-      "endPoints": [
-        {
-          "name": "get_user",
-          "description": "Get user by ID with optional profile data",
-          "path": "/users/{userId}",
-          "method": "GET",
-          "userId": {"type": "string"},
-          "query": {
-            "type": "object",
-            "properties": {
-              "include_profile": {"type": "boolean"},
-              "fields": {"type": "string", "description": "Comma-separated field names"}
-            }
-          }
-        },
-        {
-          "name": "create_user",
-          "description": "Create a new user",
-          "path": "/users",
-          "method": "POST",
-          "payload": {
-            "type": "object",
-            "properties": {
-              "name": {"type": "string", "description": "Full name"},
-              "email": {"type": "string", "description": "Email address"},
-              "role": {"type": "string", "enum": ["admin", "user"]}
-            },
-            "required": ["name", "email"]
-          }
-        },
-        {
-          "name": "update_user",
-          "description": "Update user information",
-          "path": "/users/{userId}",
-          "method": "PATCH",
-          "headers": {
-            "X-Update-Source": "cubicler"
-          },
-          "userId": {"type": "string"},
-          "payload": {
-            "type": "object",
-            "properties": {
-              "name": {"type": "string"},
-              "email": {"type": "string"}
-            }
-          }
-        }
-      ]
-    }
-  ]
-}
-```
-
-> **💡 Environment Variables**: Use `{{env.VARIABLE_NAME}}` syntax in any string value to substitute environment variables. For example, `{{env.API_KEY}}` will be replaced with the value of the `API_KEY` environment variable.
-
-#### 📋 REST Endpoint Configuration Explained
-
-**REST servers** allow you to integrate existing APIs with Cubicler. Here's how each parameter works:
-
-##### **Path Parameters** (`{variableName}`)
-
-Parameters in curly braces are extracted from the path and replaced with actual values:
-
-```json
-{
-  "path": "/users/{userId}/posts/{postId}",
-  "userId": {"type": "string"},
-  "postId": {"type": "string"}
-}
-```
-
-**Result**: `/users/123/posts/456` when called with `userId: "123"` and `postId: "456"`
-
-##### **Query Parameters** (`query` object)
-
-Remaining parameters become URL query parameters:
-
-```json
-{
-  "path": "/users",
-  "query": {
-    "type": "object",
-    "properties": {
-      "role": {"type": "string"},
-      "limit": {"type": "number"},
-      "tags": {"type": "array", "items": {"type": "string"}}
-    }
-  }
-}
-```
-
-**Result**: `/users?role=admin&limit=10&tags=vip,premium`
-
-**Query Parameter Conversion**:
-
-- **Strings/Numbers/Booleans**: Direct values (`role=admin`)
-- **Arrays of primitives**: Comma-separated (`tags=vip,premium`)  
-- **Objects/Complex arrays**: JSON stringified (`filter={"active":true}`)
-
-##### **Request Body** (`payload` object)
-
-Used as JSON request body for POST/PUT/PATCH requests:
-
-```json
-{
-  "method": "POST",
-  "payload": {
-    "type": "object",
-    "properties": {
-      "name": {"type": "string"},
-      "email": {"type": "string"},
-      "metadata": {"type": "object"}
-    },
-    "required": ["name", "email"]
-  }
-}
-```
-
-**Result**: JSON body `{"name": "John", "email": "john@example.com", "metadata": {...}}`
-
-##### **Headers** (endpoint-specific)
-
-Override or add to `defaultHeaders` for specific endpoints:
-
-```json
-{
-  "defaultHeaders": {
-    "Authorization": "Bearer {{env.API_TOKEN}}"
-  },
-  "endPoints": [
-    {
-      "headers": {
-        "X-Custom-Header": "special-value",
-        "Content-Type": "application/json"
+      "identifier": "my-http-agent",
+      "name": "Custom HTTP Agent", 
+      "transport": "http",
+      "config": {
+        "url": "http://localhost:3000/agent"
       }
     }
   ]
 }
 ```
 
-##### **Complete Example**
-
-```json
-{
-  "name": "get_user_posts",
-  "description": "Get posts for a user with filtering",
-  "path": "/users/{userId}/posts",
-  "method": "GET",
-  "headers": {
-    "X-Source": "cubicler"
-  },
-  "userId": {"type": "string"},
-  "query": {
-    "type": "object", 
-    "properties": {
-      "status": {"type": "string", "enum": ["published", "draft"]},
-      "limit": {"type": "number", "minimum": 1, "maximum": 100},
-      "tags": {"type": "array", "items": {"type": "string"}}
-    }
-  }
-}
-```
-
-**AI Agent Call**: `get_user_posts({"userId": "123", "status": "published", "limit": 10, "tags": ["tech", "ai"]})`
-
-**HTTP Request**: `GET /users/123/posts?status=published&limit=10&tags=tech,ai`
-
-### Environment Variable Substitution
-
-**🔄 New Feature!** Cubicler now supports environment variable substitution in both configuration files using the `{{env.VARIABLE_NAME}}` syntax.
-
-#### Using Environment Variables in Configuration
-
-Set your environment variables:
-
-```bash
-export API_TOKEN="sk-1234567890abcdef"
-export WEATHER_URL="https://api.weather.com" 
-export DATABASE_URL="postgresql://user:pass@localhost:5432/db"
-```
-
-Then use them in your configuration files:
-
-**agents.json with environment variables:**
-
-```json
-{
-  "basePrompt": "You are a helpful AI assistant.",
-  "agents": [
-    {
-      "identifier": "gpt_4o",
-      "name": "GPT-4O Agent", 
-      "transport": "http",
-      "url": "{{env.GPT_AGENT_URL}}",
-      "description": "Advanced reasoning with API key {{env.API_TOKEN}}"
-    }
-  ]
-}
-```
-
-**providers.json with environment variables:**
+**Simple Provider Configuration (`providers.json`):**
 
 ```json
 {
@@ -557,63 +171,36 @@ Then use them in your configuration files:
       "identifier": "weather_service",
       "name": "Weather Service",
       "transport": "http",
-      "url": "{{env.WEATHER_URL}}/mcp",
+      "url": "{{env.WEATHER_API_URL}}/mcp",
       "headers": {
-        "Authorization": "Bearer {{env.API_TOKEN}}",
-        "X-Database": "{{env.DATABASE_URL}}"
+        "Authorization": "Bearer {{env.WEATHER_API_KEY}}"
       }
-    }
-  ],
-  "restServers": [
-    {
-      "identifier": "user_api",
-      "name": "User API", 
-      "url": "{{env.API_BASE_URL}}/api",
-      "defaultHeaders": {
-        "Authorization": "Bearer {{env.REST_API_TOKEN}}"
-      },
-      "endPoints": [
-        {
-          "name": "get_user",
-          "description": "Get user by ID from {{env.USER_SERVICE_NAME}}",
-          "path": "/users/{userId}",
-          "method": "GET"
-        }
-      ]
     }
   ]
 }
 ```
 
-#### Benefits of Environment Variable Substitution
+> **💡 Environment Variables**: Use `{{env.VARIABLE_NAME}}` syntax to substitute environment variables securely.
 
-- 🔒 **Security**: Keep sensitive API keys out of configuration files
-- 🌍 **Flexibility**: Use different values for development, staging, and production
-- 📦 **Docker-friendly**: Perfect for containerized deployments
-- 🔄 **Dynamic**: Change configurations without editing files
+**For detailed configuration options, see the integration guides:**
 
-#### How It Works
-
-1. Cubicler loads your configuration files
-2. Scans for `{{env.VARIABLE_NAME}}` patterns
-3. Replaces them with actual environment variable values
-4. If an environment variable is not set, the placeholder remains unchanged
+- **🤖 [Agent Integration Guide](AGENT_INTEGRATION.md)** - Complete agent setup (Direct, HTTP, SSE, Stdio)
+- **� [Provider Integration Guide](PROVIDER_INTEGRATION.md)** - MCP servers and REST API integration
+- **� JWT Authentication** - Detailed security configuration examples
 
 ---
 
-## 🔐 JWT Authentication
+## 🔐 Security & Authentication
 
-Cubicler supports comprehensive JWT authentication to secure both incoming requests to Cubicler and outgoing requests to agents.
+Cubicler supports comprehensive JWT authentication for securing both incoming requests and outgoing agent communications.
 
-### Server Authentication (Protecting Cubicler Endpoints)
-
-Configure JWT authentication for `/dispatch` and `/mcp` endpoints using a server configuration file:
-
-**Environment Variable:**
+**Quick JWT Setup:**
 
 ```env
-# Optional: Path to Cubicler configuration file
-CUBICLER_CONFIG=./cubicler.json
+# Environment variables
+JWT_SECRET=your-jwt-secret
+OAUTH_CLIENT_ID=your-client-id
+OAUTH_CLIENT_SECRET=your-client-secret
 ```
 
 **Server Configuration (`cubicler.json`):**
@@ -621,133 +208,33 @@ CUBICLER_CONFIG=./cubicler.json
 ```json
 {
   "server": {
-    "port": 1503,
-    "host": "0.0.0.0",
     "auth": {
       "jwt": {
         "secret": "${JWT_SECRET}",
         "issuer": "cubicler-instance",
-        "audience": "cubicler-api",
-        "algorithms": ["HS256", "RS256"],
         "required": true
-      }
-    },
-    "endpoints": {
-      "dispatch": {
-        "path": "/dispatch",
-        "auth": {
-          "jwt": {
-            "secret": "${DISPATCH_JWT_SECRET}",
-            "audience": "dispatch-api",
-            "algorithms": ["HS256"]
-          }
-        }
-      },
-      "mcp": {
-        "path": "/mcp",
-        "auth": {
-          "jwt": {
-            "secret": "${MCP_JWT_SECRET}",
-            "audience": "mcp-api",
-            "issuer": "mcp-auth-server",
-            "algorithms": ["RS256"]
-          }
-        }
       }
     }
   }
 }
 ```
 
-**Environment Variables:**
-
-```env
-# JWT secrets for verification
-JWT_SECRET=your-global-jwt-secret
-DISPATCH_JWT_SECRET=your-dispatch-specific-secret
-MCP_JWT_SECRET=your-mcp-specific-secret
-```
-
-### Agent Authentication (Securing Outbound Requests)
-
-Configure JWT authentication for HTTP agents in your `agents.json`:
-
-**Static JWT Token:**
+**Agent Authentication (in `agents.json`):**
 
 ```json
 {
-  "agents": [
-    {
-      "identifier": "secure-agent-jwt",
-      "name": "JWT Secured Agent",
-      "transport": "http",
+  "config": {
+    "auth": {
+      "type": "jwt",
       "config": {
-        "url": "https://api.example.com/agent",
-        "auth": {
-          "type": "jwt",
-          "config": {
-            "token": "${JWT_TOKEN}"
-          }
-        }
+        "token": "${JWT_TOKEN}"
       }
     }
-  ]
+  }
 }
 ```
 
-**OAuth2 Client Credentials Flow:**
-
-```json
-{
-  "agents": [
-    {
-      "identifier": "oauth-agent", 
-      "name": "OAuth2 JWT Agent",
-      "transport": "http",
-      "config": {
-        "url": "https://secure-api.example.com/agent",
-        "auth": {
-          "type": "jwt",
-          "config": {
-            "tokenUrl": "https://auth.example.com/oauth/token",
-            "clientId": "${OAUTH_CLIENT_ID}",
-            "clientSecret": "${OAUTH_CLIENT_SECRET}",
-            "audience": "agent-api",
-            "refreshThreshold": 10
-          }
-        }
-      }
-    }
-  ]
-}
-```
-
-**Environment Variables:**
-
-```env
-# Static JWT token
-JWT_TOKEN=your-jwt-token-here
-
-# OAuth2 credentials
-OAUTH_CLIENT_ID=your-client-id
-OAUTH_CLIENT_SECRET=your-client-secret
-```
-
-### JWT Authentication Flow
-
-1. **Client to Cubicler**: Clients include JWT token in `Authorization: Bearer <token>` header
-2. **Cubicler Verification**: Validates token signature, expiry, issuer, and audience
-3. **Cubicler to Agent**: Includes JWT token in outbound requests to agents
-4. **Token Management**: Automatic token caching and refresh for OAuth2 flows
-
-### Security Features
-
-- ✅ **Bidirectional Security**: Both inbound and outbound requests are secured
-- ✅ **Flexible Configuration**: Per-endpoint or global authentication settings
-- ✅ **Multiple Algorithms**: Support for HS256, RS256, and other standard algorithms
-- ✅ **Token Refresh**: Automatic OAuth2 token refresh with configurable thresholds
-- ✅ **Environment Variables**: Secure credential management
-- ✅ **Comprehensive Validation**: Issuer, audience, expiry, and signature verification
+> **For complete security configuration**, see the [Authentication Guide](docs/AUTH_INTEGRATION.md) and integration guides.
 
 ---
 
@@ -755,27 +242,23 @@ OAUTH_CLIENT_SECRET=your-client-secret
 
 ### Main API Endpoints
 
-| Endpoint | Purpose | Use Case |
-|----------|---------|----------|
-| `POST /dispatch` | Send messages to any available agent | Most common usage |
-| `POST /dispatch/:agentId` | Send messages to a specific agent | When you need a particular AI model |
-| `GET /agents` | List all available agents | See what AI agents are connected |
-| `GET /health` | Check system health | Monitor if everything is working |
+| Endpoint | Purpose |
+|----------|---------|
+| `POST /dispatch` | Send messages to any available agent |
+| `POST /dispatch/:agentId` | Send messages to a specific agent |
+| `GET /agents` | List all available agents |
+| `GET /health` | Check system health |
 
-### Sending Messages
+### Quick Example
 
-**Basic Request:**
+**Send a message:**
 
 ```json
 POST /dispatch
-
 {
   "messages": [
     {
-      "sender": {
-        "id": "user_123",
-        "name": "John Doe"
-      },
+      "sender": {"id": "user_123", "name": "John"},
       "type": "text",
       "content": "What's the weather like in Jakarta?"
     }
@@ -783,59 +266,47 @@ POST /dispatch
 }
 ```
 
-**Response:**
+**Get response:**
 
 ```json
 {
-  "sender": {
-    "id": "gpt_4o", 
-    "name": "GPT-4O Agent"
-  },
-  "timestamp": "2025-07-28T17:45:30+07:00",
-  "type": "text", 
+  "sender": {"id": "gpt_4o", "name": "GPT-4O Agent"},
   "content": "The current weather in Jakarta is 28°C with partly cloudy conditions.",
-  "metadata": {
-    "usedToken": 150,
-    "usedTools": 2
-  }
+  "metadata": {"usedToken": 150, "usedTools": 2}
 }
 ```
 
-### Built-in Tools for AI Agents
-
-AI agents automatically get access to these Cubicler tools:
-
-#### `cubicler_available_servers`
-
-- **Purpose**: Lists all connected external services
-- **Parameters**: None
-- **Returns**: List of available APIs and their capabilities
-
-#### `cubicler_fetch_server_tools`
-
-- **Purpose**: Gets detailed information about a specific service
-- **Parameters**: `serverIdentifier` (string)
-- **Returns**: All available functions from that service
-
----
+> **For complete API documentation and examples**, see [Client Integration Guide](CLIENT_INTEGRATION.md).
 
 ---
 
 ## 📚 Integration Guides
 
-Detailed guides for different types of developers:
+Choose your integration path:
 
-### For Application Developers
+### 🚀 Application Developers
 
-- **[Client Integration Guide](CLIENT_INTEGRATION.md)** - Build chat apps, Telegram bots, web interfaces
+Connect your apps, bots, and interfaces to Cubicler:
 
-### For AI Engineers
+- **[Client Integration Guide](docs/CLIENT_INTEGRATION.md)** - Build chat apps, Telegram bots, web interfaces
 
-- **[Agent Integration Guide](AGENT_INTEGRATION.md)** - Create AI agents that work with Cubicler
+### 🤖 AI Engineers  
 
-### For Backend Developers
+Build and deploy AI agents:
 
-- **[Provider Integration Guide](PROVIDER_INTEGRATION.md)** - Connect your APIs and services
+- **[Agent Integration Overview](docs/AGENT_INTEGRATION.md)** - Start here for agent integration
+- **[HTTP Agents](docs/HTTP_AGENT_INTEGRATION.md)** - Web-based agents (most common)
+- **[Stdio Agents](docs/STDIO_AGENT_INTEGRATION.md)** - Command-line and local agents  
+- **[SSE Agents](docs/SSE_AGENT_INTEGRATION.md)** - Real-time streaming agents
+
+### 🔧 Service Providers
+
+Connect your APIs and services:
+
+- **[Provider Integration Overview](docs/PROVIDER_INTEGRATION.md)** - Start here for service integration
+- **HTTP MCP Providers** - RESTful MCP services (see overview)
+- **SSE MCP Providers** - Streaming MCP services (see overview)
+- **Stdio MCP Providers** - Command-line MCP services (see overview)
 
 ---
 
