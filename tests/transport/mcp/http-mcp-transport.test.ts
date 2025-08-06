@@ -22,10 +22,12 @@ describe('HttpMCPTransport', () => {
       name: 'Test HTTP Server',
       description: 'Test HTTP MCP server',
       transport: 'http',
-      url: 'https://api.example.com/mcp',
-      headers: {
-        Authorization: 'Bearer test-token',
-        'Content-Type': 'application/json',
+      config: {
+        url: 'https://api.example.com/mcp',
+        headers: {
+          Authorization: 'Bearer test-token',
+          'Content-Type': 'application/json',
+        },
       },
     };
 
@@ -56,7 +58,10 @@ describe('HttpMCPTransport', () => {
     });
 
     it('should throw error for missing URL', async () => {
-      const invalidServer = { ...mockServer, url: undefined };
+      const invalidServer = {
+        ...mockServer,
+        config: { ...mockServer.config, url: undefined },
+      } as unknown as MCPServer;
 
       await expect(transport.initialize(invalidServer)).rejects.toThrow(
         'HTTP transport requires URL for server test-http-server'
@@ -64,7 +69,10 @@ describe('HttpMCPTransport', () => {
     });
 
     it('should throw error for invalid URL format', async () => {
-      const invalidServer = { ...mockServer, url: 'not-a-valid-url' };
+      const invalidServer = {
+        ...mockServer,
+        config: { ...mockServer.config, url: 'not-a-valid-url' },
+      } as MCPServer;
 
       await expect(transport.initialize(invalidServer)).rejects.toThrow(
         'Invalid URL for server test-http-server: not-a-valid-url'
@@ -72,8 +80,10 @@ describe('HttpMCPTransport', () => {
     });
 
     it('should accept server config without headers', async () => {
-      const serverWithoutHeaders = { ...mockServer };
-      delete serverWithoutHeaders.headers;
+      const serverWithoutHeaders = {
+        ...mockServer,
+        config: { url: (mockServer.config as any).url },
+      } as MCPServer;
 
       await expect(transport.initialize(serverWithoutHeaders)).resolves.not.toThrow();
       expect(transport.isConnected()).toBe(true);
@@ -225,14 +235,17 @@ describe('HttpMCPTransport', () => {
     it('should include server headers in request', async () => {
       const serverWithCustomHeaders = {
         ...mockServer,
-        headers: {
-          Authorization: 'Bearer custom-token',
-          'X-Custom-Header': 'custom-value',
-          'User-Agent': 'Cubicler/1.0',
+        config: {
+          ...mockServer.config,
+          headers: {
+            Authorization: 'Bearer custom-token',
+            'X-Custom-Header': 'custom-value',
+            'User-Agent': 'Cubicler/1.0',
+          },
         },
       };
 
-      await transport.initialize(serverWithCustomHeaders);
+      await transport.initialize(serverWithCustomHeaders as MCPServer);
 
       const mockAxiosResponse: AxiosResponse = {
         data: { jsonrpc: '2.0', id: 1, result: {} },
@@ -265,8 +278,12 @@ describe('HttpMCPTransport', () => {
     });
 
     it('should work without server headers', async () => {
-      const serverWithoutHeaders = { ...mockServer };
-      delete serverWithoutHeaders.headers;
+      const serverWithoutHeaders = {
+        ...mockServer,
+        config: {
+          url: (mockServer.config as any).url,
+        },
+      } as MCPServer;
 
       await transport.initialize(serverWithoutHeaders);
 

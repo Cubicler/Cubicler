@@ -28,7 +28,8 @@ export class MCPTransportFactory {
         );
       default:
         throw new Error(
-          `Unknown transport type: ${server.transport}. Supported transports: http, stdio, sse`
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          `Unknown transport type: ${(server as any).transport}. Supported transports: http, stdio, sse`
         );
     }
   }

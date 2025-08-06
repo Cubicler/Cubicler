@@ -217,12 +217,18 @@ class ProviderMCPService implements MCPCompatible {
 
     const mcpTools = await this.getMCPTools(server.identifier);
 
+    // Get identifier string based on transport type
+    let serverIdentifierString = '';
+    if (server.transport === 'stdio') {
+      const config = server.config as { command: string };
+      serverIdentifierString = config.command || '';
+    } else {
+      const config = server.config as { url: string };
+      serverIdentifierString = config.url || '';
+    }
+
     return mcpTools.map((tool) => ({
-      name: generateFunctionName(
-        server.identifier,
-        server.url || server.command || '',
-        toSnakeCase(tool.name)
-      ),
+      name: generateFunctionName(server.identifier, serverIdentifierString, toSnakeCase(tool.name)),
       description: tool.description || `MCP tool: ${tool.name}`,
       parameters: tool.inputSchema || { type: 'object', properties: {} },
     }));
@@ -238,7 +244,16 @@ class ProviderMCPService implements MCPCompatible {
     const mcpServers = config.mcpServers || [];
 
     return mcpServers.find((s: MCPServer) => {
-      const expectedHash = generateServerHash(s.identifier, s.url || s.command || '');
+      // Get identifier string based on transport type
+      let serverIdentifierString = '';
+      if (s.transport === 'stdio') {
+        const config = s.config as { command?: string };
+        serverIdentifierString = config?.command || '';
+      } else {
+        const config = s.config as { url?: string };
+        serverIdentifierString = config?.url || '';
+      }
+      const expectedHash = generateServerHash(s.identifier, serverIdentifierString);
       return expectedHash === serverHash;
     });
   }

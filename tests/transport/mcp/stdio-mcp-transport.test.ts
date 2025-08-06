@@ -22,8 +22,10 @@ describe('StdioMCPTransport', () => {
       name: 'Test Stdio Server',
       description: 'Test stdio MCP server',
       transport: 'stdio',
-      command: 'node',
-      args: ['server.js'],
+      config: {
+        command: 'node',
+        args: ['server.js'],
+      },
     };
 
     mockProcess = {
@@ -41,14 +43,14 @@ describe('StdioMCPTransport', () => {
   });
 
   it('should throw error for invalid transport type', async () => {
-    const invalidServer = { ...mockServer, transport: 'http' as any };
+    const invalidServer = { ...mockServer, transport: 'http' as any } as MCPServer;
     await expect(transport.initialize(invalidServer)).rejects.toThrow(
       'Invalid transport for stdio transport: http'
     );
   });
 
   it('should throw error for missing command', async () => {
-    const invalidServer = { ...mockServer, command: undefined };
+    const invalidServer = { ...mockServer, config: { args: ['server.js'] } } as MCPServer;
     await expect(transport.initialize(invalidServer)).rejects.toThrow(
       'Stdio transport requires command'
     );

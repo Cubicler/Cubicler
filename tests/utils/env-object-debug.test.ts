@@ -22,9 +22,12 @@ describe('Environment Variable Object Substitution Debug', () => {
         {
           identifier: 'test_service',
           name: 'Test Service',
-          url: '{{env.SERVICE_URL}}/mcp',
-          headers: {
-            Authorization: 'Bearer {{env.API_TOKEN}}',
+          transport: 'http',
+          config: {
+            url: '{{env.SERVICE_URL}}/mcp',
+            headers: {
+              Authorization: 'Bearer {{env.API_TOKEN}}',
+            },
           },
         },
       ],
@@ -40,9 +43,12 @@ describe('Environment Variable Object Substitution Debug', () => {
         {
           identifier: 'test_service',
           name: 'Test Service',
-          url: 'http://localhost:4000/mcp',
-          headers: {
-            Authorization: 'Bearer secret-token',
+          transport: 'http',
+          config: {
+            url: 'http://localhost:4000/mcp',
+            headers: {
+              Authorization: 'Bearer secret-token',
+            },
           },
         },
       ],

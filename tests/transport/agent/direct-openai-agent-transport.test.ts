@@ -473,5 +473,51 @@ describe('DirectOpenAIAgentTransport', () => {
         new DirectOpenAIAgentTransport(validConfig, mockMcpService, mockAgent, mockServersProvider);
       }).not.toThrow();
     });
+
+    it('should pass summarizerModel to OpenAI service when provided', async () => {
+      const configWithSummarizer: DirectOpenAIConfig = {
+        ...mockConfig,
+        summarizerModel: 'gpt-4o-mini',
+      };
+
+      transport = new DirectOpenAIAgentTransport(
+        configWithSummarizer,
+        mockMcpService,
+        mockAgent,
+        mockServersProvider
+      );
+
+      const mockOpenAIServiceInstance = {
+        dispatch: vi.fn().mockResolvedValue({
+          timestamp: new Date().toISOString(),
+          type: 'text',
+          content: 'Response with summarizer',
+        }),
+      };
+      mockedOpenAIService.mockImplementation(() => mockOpenAIServiceInstance as any);
+
+      const agentRequest: AgentRequest = {
+        agent: {
+          identifier: mockAgent.identifier,
+          name: mockAgent.name,
+          description: mockAgent.description,
+          prompt: mockAgent.prompt || 'Test prompt',
+        },
+        tools: [],
+        servers: [],
+        messages: [],
+      };
+
+      await transport.dispatch(agentRequest);
+
+      // Verify OpenAI service was called with summarizerModel
+      expect(mockedOpenAIService).toHaveBeenCalledWith(
+        expect.any(Object), // CubicAgent instance
+        expect.objectContaining({
+          summarizerModel: 'gpt-4o-mini',
+        }),
+        expect.any(Object) // DispatchConfig
+      );
+    });
   });
 });

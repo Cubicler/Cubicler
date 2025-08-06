@@ -41,9 +41,11 @@ describe('Environment Variable Substitution in Config', () => {
           name: 'Test Service',
           description: 'Test service',
           transport: 'http',
-          url: '{{env.SERVICE_URL}}/mcp',
-          headers: {
-            Authorization: 'Bearer {{env.API_TOKEN}}',
+          config: {
+            url: '{{env.SERVICE_URL}}/mcp',
+            headers: {
+              Authorization: 'Bearer {{env.API_TOKEN}}',
+            },
           },
         },
       ],
@@ -62,9 +64,11 @@ describe('Environment Variable Substitution in Config', () => {
           name: 'Test Service',
           description: 'Test service',
           transport: 'http',
-          url: 'http://localhost:4000/mcp',
-          headers: {
-            Authorization: 'Bearer secret-token',
+          config: {
+            url: 'http://localhost:4000/mcp',
+            headers: {
+              Authorization: 'Bearer secret-token',
+            },
           },
         },
       ],
@@ -85,9 +89,11 @@ describe('Environment Variable Substitution in Config', () => {
           name: 'Test Service',
           description: 'Test service',
           transport: 'http',
-          url: '{{env.MISSING_URL}}/mcp',
-          headers: {
-            Authorization: 'Bearer {{env.MISSING_TOKEN}}',
+          config: {
+            url: '{{env.MISSING_URL}}/mcp',
+            headers: {
+              Authorization: 'Bearer {{env.MISSING_TOKEN}}',
+            },
           },
         },
       ],
@@ -106,9 +112,11 @@ describe('Environment Variable Substitution in Config', () => {
           name: 'Test Service',
           description: 'Test service',
           transport: 'http',
-          url: '{{env.MISSING_URL}}/mcp',
-          headers: {
-            Authorization: 'Bearer {{env.MISSING_TOKEN}}',
+          config: {
+            url: '{{env.MISSING_URL}}/mcp',
+            headers: {
+              Authorization: 'Bearer {{env.MISSING_TOKEN}}',
+            },
           },
         },
       ],

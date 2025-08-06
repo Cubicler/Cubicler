@@ -187,11 +187,12 @@ export class SseMCPTransport implements MCPTransport {
     const postUrl = this.getPostUrl();
 
     try {
+      const config = this.server.config as { headers?: Record<string, string> };
       await fetchWithDefaultTimeout(postUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...this.server.headers,
+          ...config.headers,
         },
         data: request,
       });
@@ -234,13 +235,14 @@ export class SseMCPTransport implements MCPTransport {
    * Get SSE endpoint URL for receiving responses
    */
   private getSseUrl(): string {
-    if (!this.server?.url) {
+    if (!this.server?.config) {
       throw new Error('Server URL not configured');
     }
 
     // Assume SSE endpoint is at /sse or /events relative to base URL
     // This can be customized based on the specific MCP server implementation
-    const baseUrl = this.server.url.replace(/\/$/, ''); // Remove trailing slash
+    const config = this.server.config as { url: string };
+    const baseUrl = config.url.replace(/\/$/, ''); // Remove trailing slash
     return `${baseUrl}/sse`;
   }
 
@@ -248,13 +250,18 @@ export class SseMCPTransport implements MCPTransport {
    * Get HTTP POST endpoint URL for sending requests
    */
   private getPostUrl(): string {
-    if (!this.server?.url) {
+    const config = this.server?.config as { url: string };
+    if (!config?.url) {
       throw new Error('Server URL not configured');
     }
 
     // Assume POST endpoint is at /mcp or the base URL
     // This can be customized based on the specific MCP server implementation
-    const baseUrl = this.server.url.replace(/\/$/, ''); // Remove trailing slash
+    if (!this.server?.config) {
+      throw new Error('Server config not available');
+    }
+    const serverConfig = this.server.config as { url: string };
+    const baseUrl = serverConfig.url.replace(/\/$/, ''); // Remove trailing slash
     return `${baseUrl}/mcp`;
   }
 
@@ -268,14 +275,19 @@ export class SseMCPTransport implements MCPTransport {
       throw new Error(`Invalid transport for SSE transport: ${server.transport}`);
     }
 
-    if (!server.url) {
+    if (!server.config) {
+      throw new Error(`SSE transport requires config for server ${server.identifier}`);
+    }
+
+    const config = server.config as { url?: string };
+    if (!config.url) {
       throw new Error(`SSE transport requires URL for server ${server.identifier}`);
     }
 
     try {
-      new URL(server.url);
+      new URL(config.url);
     } catch {
-      throw new Error(`Invalid URL for server ${server.identifier}: ${server.url}`);
+      throw new Error(`Invalid URL for server ${server.identifier}: ${config.url}`);
     }
   }
 }

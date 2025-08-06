@@ -5,9 +5,11 @@
       "name": "Weather Service",
       "description": "Provides weather information via MCP",
       "transport": "http",
-      "url": "http://localhost:4000/mcp",
-      "headers": {
-        "Authorization": "Bearer your-api-key"
+      "config": {
+        "url": "http://localhost:4000/mcp",
+        "headers": {
+          "Authorization": "Bearer your-api-key"
+        }
       }
     }
   ],
@@ -16,9 +18,12 @@
       "identifier": "legacy_api",
       "name": "Legacy API",
       "description": "Legacy REST API without MCP",
-      "url": "http://localhost:5000/api",
-      "defaultHeaders": {
-        "Authorization": "Bearer your-api-key"
+      "transport": "http",
+      "config": {
+        "url": "http://localhost:5000/api",
+        "defaultHeaders": {
+          "Authorization": "Bearer your-api-key"
+        }
       },
       "endPoints": [
         {
@@ -51,7 +56,38 @@
               }
             },
             "required": ["filters"]
-          }
+          },
+          "response_transform": [
+            {
+              "path": "status",
+              "transform": "map",
+              "map": {
+                "0": "Offline",
+                "1": "Online",
+                "2": "Away"
+              }
+            },
+            {
+              "path": "last_login",
+              "transform": "date_format",
+              "format": "YYYY-MM-DD HH:mm:ss"
+            },
+            {
+              "path": "profile.bio",
+              "transform": "template",
+              "template": "Bio: {value}"
+            },
+            {
+              "path": "profile.description",
+              "transform": "regex_replace",
+              "pattern": "\\s+",
+              "replacement": " "
+            },
+            {
+              "path": "debug_info",
+              "transform": "remove"
+            }
+          ]
         },
         {
           "name": "create_user",
@@ -66,7 +102,45 @@
               "role": {"type": "string", "enum": ["admin", "user"]}
             },
             "required": ["name", "email"]
-          }
+          },
+          "response_transform": [
+            {
+              "path": "created_at",
+              "transform": "date_format",
+              "format": "YYYY-MM-DD HH:mm:ss"
+            },
+            {
+              "path": "permissions[]",
+              "transform": "template",
+              "template": "Permission: {value}"
+            }
+          ]
+        },
+        {
+          "name": "get_users_list",
+          "description": "Get list of users with status transformation",
+          "path": "/users",
+          "method": "GET",
+          "response_transform": [
+            {
+              "path": "_root[].status",
+              "transform": "map",
+              "map": {
+                "0": "Inactive",
+                "1": "Active",
+                "2": "Suspended"
+              }
+            },
+            {
+              "path": "_root[].profile.tags[]",
+              "transform": "template",
+              "template": "Tag: {value}"
+            },
+            {
+              "path": "_root[].internal_notes",
+              "transform": "remove"
+            }
+          ]
         }
       ]
     }

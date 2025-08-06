@@ -77,8 +77,10 @@ describe('SseMCPTransport', () => {
     name: 'Test SSE Server',
     description: 'Test SSE MCP Server',
     transport: 'sse',
-    url: 'http://localhost:3000',
-    headers: { 'Custom-Header': 'test-value' },
+    config: {
+      url: 'http://localhost:3000',
+      headers: { 'Custom-Header': 'test-value' },
+    },
   };
 
   let transport: SseMCPTransport;
@@ -101,7 +103,7 @@ describe('SseMCPTransport', () => {
     });
 
     it('should throw error for invalid transport type', async () => {
-      const invalidServer = { ...mockServer, transport: 'http' as any };
+      const invalidServer = { ...mockServer, transport: 'http' as any } as MCPServer;
 
       await expect(transport.initialize(invalidServer)).rejects.toThrow(
         'Invalid transport for SSE transport: http'
@@ -109,8 +111,10 @@ describe('SseMCPTransport', () => {
     });
 
     it('should throw error for missing URL', async () => {
-      const serverWithoutUrl = { ...mockServer };
-      delete serverWithoutUrl.url;
+      const serverWithoutUrl = {
+        ...mockServer,
+        config: { headers: mockServer.config.headers },
+      } as MCPServer;
 
       await expect(transport.initialize(serverWithoutUrl)).rejects.toThrow(
         'SSE transport requires URL for server test-sse-server'
@@ -118,7 +122,10 @@ describe('SseMCPTransport', () => {
     });
 
     it('should throw error for invalid URL', async () => {
-      const serverWithInvalidUrl = { ...mockServer, url: 'invalid-url' };
+      const serverWithInvalidUrl = {
+        ...mockServer,
+        config: { ...mockServer.config, url: 'invalid-url' },
+      };
 
       await expect(transport.initialize(serverWithInvalidUrl)).rejects.toThrow(
         'Invalid URL for server test-sse-server: invalid-url'

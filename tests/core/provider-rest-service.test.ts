@@ -30,9 +30,11 @@ describe('ProviderRESTService', () => {
     identifier: 'user_api',
     name: 'User API',
     description: 'Legacy REST API for user management',
-    url: 'http://localhost:5000/api',
-    defaultHeaders: {
-      Authorization: 'Bearer api-token',
+    config: {
+      url: 'http://localhost:5000/api',
+      defaultHeaders: {
+        Authorization: 'Bearer api-token',
+      },
     },
     endPoints: [
       {
@@ -83,6 +85,7 @@ describe('ProviderRESTService', () => {
         },
       },
     ],
+    transport: 'http',
   };
 
   const mockProvidersConfig: ProvidersConfig = {
@@ -475,6 +478,73 @@ describe('ProviderRESTService', () => {
           data: expect.anything(),
         })
       );
+    });
+  });
+
+  describe('response transformations', () => {
+    const mockRestServerWithTransforms: RESTServer = {
+      identifier: 'transform_api',
+      name: 'Transform API',
+      description: 'API with response transformations',
+      config: { url: 'http://localhost:5000/api' },
+      endPoints: [
+        {
+          name: 'get_status',
+          description: 'Get status with transformations',
+          path: '/status',
+          method: 'GET',
+          response_transform: [
+            {
+              path: 'status',
+              transform: 'map',
+              map: { '0': 'Offline', '1': 'Online', '2': 'Away' },
+            },
+            {
+              path: 'last_seen',
+              transform: 'date_format',
+              format: 'YYYY-MM-DD HH:mm:ss',
+            },
+            {
+              path: 'debug_info',
+              transform: 'remove',
+            },
+          ],
+        },
+      ],
+      transport: 'http',
+    };
+
+    beforeEach(() => {
+      const configWithTransforms = {
+        restServers: [mockRestServerWithTransforms],
+        mcpServers: [],
+      };
+      mockProviderConfig.getProvidersConfig = vi.fn().mockResolvedValue(configWithTransforms);
+    });
+
+    it('should apply transformations to response data', async () => {
+      const mockResponse = {
+        status: '1',
+        last_seen: '2023-12-25T10:30:45.000Z',
+        debug_info: { trace: 'sensitive' },
+        message: 'Hello',
+      };
+      mockFetch.mockResolvedValue(createMockAxiosResponse(mockResponse));
+
+      // Get the correct function name from tools list
+      const tools = await providerRESTService.toolsList();
+      const statusTool = tools.find((tool) => tool.name.includes('get_status'));
+      expect(statusTool).toBeDefined();
+
+      const result = await providerRESTService.toolsCall(statusTool!.name, {});
+
+      expect(result).toEqual({
+        status: 'Online',
+        last_seen: '2023-12-25 10:30:45',
+        message: 'Hello',
+        // debug_info should be removed
+      });
+      expect(result).not.toHaveProperty('debug_info');
     });
   });
 });

@@ -146,16 +146,24 @@ class ProviderRepository implements ProvidersConfigProviding {
     if (config.mcpServers) {
       for (const mcpServer of config.mcpServers) {
         const identifier = toSnakeCase(mcpServer.identifier); // Store as snake_case
-        const hash = generateServerHash(
-          mcpServer.identifier,
-          mcpServer.url || mcpServer.command || ''
-        );
+
+        // Get identifier string based on transport type
+        let serverIdentifierString = '';
+        if (mcpServer.transport === 'stdio') {
+          const config = mcpServer.config as { command?: string };
+          serverIdentifierString = config?.command || '';
+        } else {
+          const config = mcpServer.config as { url?: string };
+          serverIdentifierString = config?.url || '';
+        }
+
+        const hash = generateServerHash(mcpServer.identifier, serverIdentifierString);
 
         metadata.push({
           identifier,
           name: mcpServer.name,
           description: mcpServer.description,
-          url: mcpServer.url || mcpServer.command || '',
+          url: serverIdentifierString,
           hash,
           toolsCount: 0, // Will be updated when tools are loaded
           type: 'mcp',
@@ -169,13 +177,13 @@ class ProviderRepository implements ProvidersConfigProviding {
     if (config.restServers) {
       for (const restServer of config.restServers) {
         const identifier = toSnakeCase(restServer.identifier); // Store as snake_case
-        const hash = generateServerHash(restServer.identifier, restServer.url);
+        const hash = generateServerHash(restServer.identifier, restServer.config.url);
 
         metadata.push({
           identifier,
           name: restServer.name,
           description: restServer.description,
-          url: restServer.url,
+          url: restServer.config.url,
           hash,
           toolsCount: restServer.endPoints.length,
           type: 'rest',

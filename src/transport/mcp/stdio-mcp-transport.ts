@@ -122,18 +122,24 @@ export class StdioMCPTransport implements MCPTransport {
         return;
       }
       const server = this.server;
+      const config = server.config as {
+        command: string;
+        args?: string[];
+        cwd?: string;
+        env?: Record<string, string>;
+      };
       console.log(
-        `🔄 [StdioMCPTransport] Starting MCP server: ${server.command} ${(server.args || []).join(' ')}`
+        `🔄 [StdioMCPTransport] Starting MCP server: ${config.command} ${(config.args || []).join(' ')}`
       );
 
-      if (!server.command) {
+      if (!config.command) {
         reject(new Error('Server command not specified'));
         return;
       }
-      this.process = spawn(server.command, server.args || [], {
+      this.process = spawn(config.command, config.args || [], {
         stdio: ['pipe', 'pipe', 'pipe'],
-        cwd: server.cwd,
-        env: { ...process.env, ...server.env },
+        cwd: config.cwd,
+        env: { ...process.env, ...config.env },
       });
 
       if (!this.process.stdout || !this.process.stdin || !this.process.stderr) {
@@ -286,21 +292,30 @@ export class StdioMCPTransport implements MCPTransport {
       throw new Error(`Invalid transport for stdio transport: ${server.transport}`);
     }
 
-    if (!server.command) {
+    if (!server.config) {
+      throw new Error(`Stdio transport requires config for server ${server.identifier}`);
+    }
+
+    const config = server.config as {
+      command?: string;
+      args?: string[];
+      env?: Record<string, string>;
+    };
+    if (!config.command) {
       throw new Error(`Stdio transport requires command for server ${server.identifier}`);
     }
 
-    if (typeof server.command !== 'string' || server.command.trim() === '') {
+    if (typeof config.command !== 'string' || config.command.trim() === '') {
       throw new Error(
         `Invalid command for server ${server.identifier}: must be a non-empty string`
       );
     }
 
-    if (server.args && !Array.isArray(server.args)) {
+    if (config.args && !Array.isArray(config.args)) {
       throw new Error(`Invalid args for server ${server.identifier}: must be an array of strings`);
     }
 
-    if (server.env && typeof server.env !== 'object') {
+    if (config.env && typeof config.env !== 'object') {
       throw new Error(`Invalid env for server ${server.identifier}: must be an object`);
     }
   }

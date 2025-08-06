@@ -10,9 +10,12 @@ const mockConfig = {
       identifier: 'open_meteo_api',
       name: 'Open-Meteo Weather API',
       description: 'Free weather API service - no API key required',
-      url: 'https://api.open-meteo.com/v1',
-      defaultHeaders: {
-        'Content-Type': 'application/json',
+      transport: 'http',
+      config: {
+        url: 'https://api.open-meteo.com/v1',
+        defaultHeaders: {
+          'Content-Type': 'application/json',
+        },
       },
       endPoints: [
         {
@@ -52,9 +55,12 @@ const mockConfig = {
       identifier: 'jsonplaceholder_api',
       name: 'JSONPlaceholder API',
       description: 'Free fake REST API for testing and prototyping',
-      url: 'https://jsonplaceholder.typicode.com',
-      defaultHeaders: {
-        'Content-Type': 'application/json',
+      transport: 'http',
+      config: {
+        url: 'https://jsonplaceholder.typicode.com',
+        defaultHeaders: {
+          'Content-Type': 'application/json',
+        },
       },
       endPoints: [
         {

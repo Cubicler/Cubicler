@@ -10,11 +10,22 @@
         "provider": "openai",
         "apiKey": "${OPENAI_API_KEY}",
         "model": "gpt-4o",
+        "summarizerModel": "gpt-4o-mini",
         "temperature": 0.7,
         "sessionMaxTokens": 4096
       },
-      "description": "OpenAI GPT-4o powered agent running directly in Cubicler",
-      "prompt": "You are an advanced AI assistant powered by GPT-4o. You excel at complex reasoning, analysis, and problem-solving tasks. Always provide detailed explanations and cite your reasoning process."
+      "description": "OpenAI GPT-4o powered agent running directly in Cubicler with AI summarization",
+      "prompt": "You are an advanced AI assistant powered by GPT-4o. You excel at complex reasoning, analysis, and problem-solving tasks. Always provide detailed explanations and cite your reasoning process. You have access to summarizer tools that can provide concise insights from complex tool responses when needed."
+    },
+    {
+      "identifier": "claude-3-5-sonnet",
+      "name": "Claude 3.5 Sonnet",
+      "transport": "http",
+      "config": {
+        "url": "http://localhost:3001/agent"
+      },
+      "description": "Anthropic Claude 3.5 Sonnet with excellent coding and analysis skills",
+      "prompt": "https://raw.githubusercontent.com/your-org/prompts/main/claude-specialist.md"
     },
     {
       "identifier": "gpt-4-turbo-direct",
@@ -24,11 +35,12 @@
         "provider": "openai",
         "apiKey": "${OPENAI_API_KEY}",
         "model": "gpt-4-turbo",
+        "summarizerModel": "gpt-4o-mini",
         "temperature": 0.5,
         "sessionMaxTokens": 8192,
         "organization": "${OPENAI_ORG_ID}"
       },
-      "description": "OpenAI GPT-4 Turbo agent for complex tasks requiring higher context",
+      "description": "OpenAI GPT-4 Turbo agent for complex tasks requiring higher context with AI summarization",
       "prompt": "./prompts/technical-specialist.md"
     },
     {

@@ -8,6 +8,7 @@ import {
   replacePathParameters,
   toSnakeCase,
 } from '../utils/parameter-helper.js';
+import { transformResponse } from '../utils/response-transformer.js';
 import type { ProvidersConfigProviding } from '../interface/providers-config-providing.js';
 import type { ServersProviding } from '../interface/servers-providing.js';
 import providersRepository from '../repository/provider-repository.js';
@@ -127,7 +128,10 @@ class ProviderRESTService implements MCPCompatible {
     const restServers = config.restServers || [];
 
     return restServers.find((server) => {
-      const expectedHash = generateServerHash(server.identifier, server.url);
+      if (!server.config) {
+        return false;
+      }
+      const expectedHash = generateServerHash(server.identifier, server.config.url);
       return expectedHash === serverHash;
     });
   }
@@ -156,10 +160,17 @@ class ProviderRESTService implements MCPCompatible {
    * @returns Tool definition for the endpoint
    */
   private createToolDefinition(restServer: RESTServer, endpoint: RESTEndpoint): ToolDefinition {
+    if (!restServer.config) {
+      throw new Error(`REST server ${restServer.identifier} missing config`);
+    }
     const { properties, required } = this.buildToolParameters(endpoint);
 
     return {
-      name: generateFunctionName(restServer.identifier, restServer.url, toSnakeCase(endpoint.name)),
+      name: generateFunctionName(
+        restServer.identifier,
+        restServer.config.url,
+        toSnakeCase(endpoint.name)
+      ),
       description: endpoint.description,
       parameters: {
         type: 'object',
@@ -286,6 +297,16 @@ class ProviderRESTService implements MCPCompatible {
       const response = await this.executeHttpRequest(requestConfig);
 
       console.log(`✅ [RESTService] REST call successful`);
+
+      // Apply response transformations if configured
+      if (endpoint.response_transform && endpoint.response_transform.length > 0) {
+        console.log(
+          `🔄 [RESTService] Applying ${endpoint.response_transform.length} response transformations`
+        );
+        const transformedData = transformResponse(response.data, endpoint.response_transform);
+        return transformedData;
+      }
+
       return response.data;
     } catch (error) {
       console.error(`❌ [RESTService] REST call failed:`, error);
@@ -406,7 +427,7 @@ class ProviderRESTService implements MCPCompatible {
     remainingParams: Record<string, JSONValue>
   ): string {
     const pathWithParams = replacePathParameters(endpoint.path, pathParams);
-    const fullUrl = `${restServer.url}${pathWithParams}`;
+    const fullUrl = `${restServer.config.url}${pathWithParams}`;
 
     const queryParams = this.extractQueryParameters(remainingParams);
     const queryString = this.buildQueryString(queryParams);
@@ -455,7 +476,7 @@ class ProviderRESTService implements MCPCompatible {
   ): Record<string, string> {
     return {
       'Content-Type': 'application/json',
-      ...restServer.defaultHeaders,
+      ...restServer.config.defaultHeaders,
       ...endpoint.headers,
     };
   }

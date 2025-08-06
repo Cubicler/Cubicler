@@ -41,6 +41,7 @@ export class DirectOpenAIAgentTransport extends DirectAgentTransport {
     const openaiServiceConfig: OpenAIConfig = {
       apiKey: expandEnvVariable(openaiConfig.apiKey),
       model: openaiConfig.model || 'gpt-4o',
+      summarizerModel: openaiConfig.summarizerModel,
       temperature: openaiConfig.temperature ?? 0.7,
       sessionMaxTokens: openaiConfig.sessionMaxTokens ?? 4000,
       organization: openaiConfig.organization,

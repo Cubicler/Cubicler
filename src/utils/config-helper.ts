@@ -199,10 +199,15 @@ function validateMcpServer(server: unknown, index: number): void {
     throw new Error(`Invalid MCP server at index ${index}: must be an object`);
   }
 
-  const typedServer = server as { identifier?: unknown; url?: unknown };
+  const typedServer = server as {
+    identifier?: unknown;
+    transport?: unknown;
+    config?: unknown;
+  };
 
   validateServerIdentifier(typedServer.identifier, index, 'MCP');
-  validateServerUrl(typedServer.url, index, 'MCP');
+  validateServerTransport(typedServer.transport, index, 'MCP');
+  validateMcpServerConfig(typedServer.config, typedServer.transport, index);
 }
 
 /**
@@ -231,10 +236,15 @@ function validateRestServer(server: unknown, index: number): void {
     throw new Error(`Invalid REST server at index ${index}: must be an object`);
   }
 
-  const typedServer = server as { identifier?: unknown; url?: unknown };
+  const typedServer = server as {
+    identifier?: unknown;
+    transport?: unknown;
+    config?: unknown;
+  };
 
   validateServerIdentifier(typedServer.identifier, index, 'REST');
-  validateServerUrl(typedServer.url, index, 'REST');
+  validateServerTransport(typedServer.transport, index, 'REST');
+  validateRestServerConfig(typedServer.config, index);
 }
 
 /**
@@ -265,15 +275,70 @@ function validateServerIdentifier(identifier: unknown, index: number, serverType
 }
 
 /**
- * Validate server URL
- * @param url - URL to validate
+ * Validate server transport type
+ * @param transport - Transport to validate
  * @param index - Array index for error messages
  * @param serverType - Type of server (MCP/REST) for error messages
- * @throws Error if URL is invalid
+ * @throws Error if transport is invalid
  */
-function validateServerUrl(url: unknown, index: number, serverType: string): void {
-  if (!url || typeof url !== 'string') {
-    throw new Error(`Invalid ${serverType} server at index ${index}: missing or invalid url`);
+function validateServerTransport(transport: unknown, index: number, serverType: string): void {
+  if (!transport || typeof transport !== 'string') {
+    throw new Error(`Invalid ${serverType} server at index ${index}: missing or invalid transport`);
+  }
+
+  const validTransports = serverType === 'MCP' ? ['http', 'sse', 'websocket', 'stdio'] : ['http'];
+
+  if (!validTransports.includes(transport)) {
+    throw new Error(
+      `Invalid ${serverType} server at index ${index}: unsupported transport "${transport}"`
+    );
+  }
+}
+
+/**
+ * Validate MCP server config object
+ * @param config - Config to validate
+ * @param transport - Transport type for context
+ * @param index - Array index for error messages
+ * @throws Error if config is invalid
+ */
+function validateMcpServerConfig(config: unknown, transport: unknown, index: number): void {
+  if (!config || typeof config !== 'object' || Array.isArray(config)) {
+    throw new Error(`Invalid MCP server at index ${index}: config must be an object`);
+  }
+
+  const typedConfig = config as Record<string, unknown>;
+
+  if (transport === 'stdio') {
+    if (!typedConfig.command || typeof typedConfig.command !== 'string') {
+      throw new Error(
+        `Invalid MCP server at index ${index}: stdio transport requires config.command`
+      );
+    }
+  } else {
+    if (!typedConfig.url || typeof typedConfig.url !== 'string') {
+      throw new Error(
+        `Invalid MCP server at index ${index}: ${transport} transport requires config.url`
+      );
+    }
+  }
+}
+
+/**
+ * Validate REST server config object
+ * @param config - Config to validate
+ * @param index - Array index for error messages
+ * @throws Error if config is invalid
+ */
+function validateRestServerConfig(config: unknown, index: number): void {
+  if (!config || typeof config !== 'object' || Array.isArray(config)) {
+    throw new Error(`Invalid REST server at index ${index}: config must be an object`);
+  }
+
+  const typedConfig = config as Record<string, unknown>;
+
+  if (!typedConfig.url || typeof typedConfig.url !== 'string') {
+    throw new Error(`Invalid REST server at index ${index}: config.url is required`);
   }
 }
 

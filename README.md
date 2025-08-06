@@ -176,7 +176,98 @@ CUBICLER_CONFIG=./cubicler.json
         "Authorization": "Bearer {{env.WEATHER_API_KEY}}"
       }
     }
+  ],
+  "restServers": [
+    {
+      "identifier": "user_api",
+      "name": "User Management API",
+      "url": "https://api.example.com",
+      "endPoints": [
+        {
+          "name": "get_user_status",
+          "path": "/users/{userId}/status",
+          "method": "GET",
+          "response_transform": [
+            {
+              "path": "status",
+              "transform": "map",
+              "map": { "0": "Offline", "1": "Online", "2": "Away" }
+            },
+            {
+              "path": "last_login",
+              "transform": "date_format",
+              "format": "YYYY-MM-DD HH:mm:ss"
+            },
+            {
+              "path": "internal_data",
+              "transform": "remove"
+            }
+          ]
+        }
+      ]
+    }
   ]
+}
+```
+
+### 🔄 Response Transformations
+
+Cubicler can automatically clean and transform API responses before sending them to AI agents. This makes legacy APIs much easier for AI agents to understand and work with.
+
+**Supported Transformations:**
+
+| Type | Purpose | Example |
+|------|---------|---------|
+| `map` | Transform values using key-value mapping | `{"0": "Offline", "1": "Online"}` |
+| `date_format` | Format dates with custom patterns | `"YYYY-MM-DD HH:mm:ss"` |
+| `template` | Apply string templates | `"User: {value}"` |
+| `regex_replace` | Replace text using regex | `{"pattern": "\\s+", "replacement": " "}` |
+| `remove` | Remove sensitive/unnecessary fields | Removes debug info, internal IDs |
+
+**Advanced Path Syntax:**
+
+```json
+{
+  "response_transform": [
+    {
+      "path": "users[].status",
+      "transform": "map",
+      "map": { "1": "Active", "0": "Inactive" }
+    },
+    {
+      "path": "_root[].metadata.internal",
+      "transform": "remove"
+    },
+    {
+      "path": "timestamps.created",
+      "transform": "date_format", 
+      "format": "YYYY-MM-DD"
+    }
+  ]
+}
+```
+
+**Before transformation:**
+
+```json
+{
+  "users": [
+    {"id": 1, "status": "1", "metadata": {"internal": "secret"}},
+    {"id": 2, "status": "0", "metadata": {"internal": "secret"}}
+  ],
+  "timestamps": {"created": "2023-12-25T10:30:45.000Z"}
+}
+```
+
+**After transformation:**
+
+```json
+{
+  "users": [
+    {"id": 1, "status": "Active"},
+    {"id": 2, "status": "Inactive"}
+  ],
+  "timestamps": {"created": "2023-12-25"}
 }
 ```
 
@@ -339,6 +430,12 @@ The AI agent uses built-in tools to discover available services:
 
 AI agent calls: `1r2dj4_get_current_weather({"city": "Paris"})`
 
+Raw API response: `{"temp": "22", "condition": "01", "debug_trace": "..."}`
+
+After transformation: `{"temperature": "22°C", "condition": "Sunny"}`
+
+> **💡 Response Transformations**: Cubicler automatically cleans API responses using configured transformations. In this example, the weather service maps condition codes ("01" → "Sunny") and formats temperatures, while removing debug information that would confuse the AI agent.
+
 > **💡 Function Naming**: The function name `1r2dj4_get_current_weather` follows Cubicler's hash-based naming convention. The `1r2dj4` part is a 6-character hash derived from the server identifier and URL (`weather_service:http://localhost:4000/mcp`). This ensures function names are:
 >
 > - **Collision-resistant**: No conflicts between services
@@ -362,6 +459,7 @@ AI agent calls: `1r2dj4_get_current_weather({"city": "Paris"})`
 - 🎯 **Flexible Agent Configuration**: Multiple AI models, custom prompts  
 - ⚡ **Direct AI Integration**: Built-in OpenAI GPT support without separate agent services
 - 🔐 **REST API Integration**: Use any HTTP API as an AI tool
+- 🧩 **Response Transformations**: Clean and transform API responses automatically
 - 🛡️ **Comprehensive JWT Authentication**: Secure both inbound and outbound requests
 - 🛠️ **Built-in Discovery Tools**: AI agents can explore available services
 - 🧩 **Modular Architecture**: Clean, maintainable service separation

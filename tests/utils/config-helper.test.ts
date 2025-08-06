@@ -199,7 +199,9 @@ describe('Config Helper', () => {
               name: 'Weather Service',
               description: 'Weather API',
               transport: 'http',
-              url: 'http://localhost:4000/mcp',
+              config: {
+                url: 'http://localhost:4000/mcp',
+              },
             },
           ],
         };
@@ -240,11 +242,13 @@ describe('Config Helper', () => {
             {
               identifier: 'test',
               name: 'Test',
+              transport: 'http',
+              config: {},
             },
           ],
         };
         expect(() => validateProvidersConfig(config)).toThrow(
-          'Invalid MCP server at index 0: missing or invalid url'
+          'Invalid MCP server at index 0: http transport requires config.url'
         );
       });
 
@@ -278,7 +282,10 @@ describe('Config Helper', () => {
               {
                 identifier,
                 name: 'Test',
-                url: 'http://localhost:4000',
+                transport: 'http',
+                config: {
+                  url: 'http://localhost:4000',
+                },
               },
             ],
           };
@@ -310,8 +317,9 @@ describe('Config Helper', () => {
               identifier: 'user-api',
               name: 'User API',
               description: 'User management API',
-              url: 'http://localhost:5000/api',
+              config: { url: 'http://localhost:5000/api' },
               endPoints: [],
+              transport: 'http',
             },
           ],
         };
@@ -352,11 +360,13 @@ describe('Config Helper', () => {
             {
               identifier: 'test',
               name: 'Test',
+              transport: 'http',
+              config: {},
             },
           ],
         };
         expect(() => validateProvidersConfig(config)).toThrow(
-          'Invalid REST server at index 0: missing or invalid url'
+          'Invalid REST server at index 0: config.url is required'
         );
       });
 

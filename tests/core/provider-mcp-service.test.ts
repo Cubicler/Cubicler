@@ -33,9 +33,11 @@ describe('ProviderMCPService', () => {
         name: 'Weather Service',
         description: 'Provides weather information via MCP',
         transport: 'http',
-        url: 'http://localhost:4000/mcp',
-        headers: {
-          Authorization: 'Bearer test-token',
+        config: {
+          url: 'http://localhost:4000/mcp',
+          headers: {
+            Authorization: 'Bearer test-token',
+          },
         },
       },
       {
@@ -43,7 +45,9 @@ describe('ProviderMCPService', () => {
         name: 'File Service',
         description: 'File management via MCP',
         transport: 'http',
-        url: 'http://localhost:4001/mcp',
+        config: {
+          url: 'http://localhost:4001/mcp',
+        },
       },
     ],
     restServers: [
@@ -51,9 +55,12 @@ describe('ProviderMCPService', () => {
         identifier: 'user_api',
         name: 'User API',
         description: 'Legacy REST API for user management',
-        url: 'http://localhost:5000/api',
-        defaultHeaders: {
-          Authorization: 'Bearer api-token',
+        transport: 'http',
+        config: {
+          url: 'http://localhost:5000/api',
+          defaultHeaders: {
+            Authorization: 'Bearer api-token',
+          },
         },
         endPoints: [
           {

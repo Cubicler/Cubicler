@@ -39,14 +39,14 @@ export class HttpMCPTransport implements MCPTransport {
     );
 
     try {
-      if (!this.server.url) {
+      if (!('url' in this.server.config) || !this.server.config.url) {
         throw new Error('Server URL not available');
       }
-      const response = await fetchWithDefaultTimeout(this.server.url, {
+      const response = await fetchWithDefaultTimeout(this.server.config.url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...this.server.headers,
+          ...('headers' in this.server.config ? this.server.config.headers : {}),
         },
         data: request,
       });
@@ -95,14 +95,14 @@ export class HttpMCPTransport implements MCPTransport {
       throw new Error(`Invalid transport for HTTP transport: ${server.transport}`);
     }
 
-    if (!server.url) {
+    if (!server.config.url) {
       throw new Error(`HTTP transport requires URL for server ${server.identifier}`);
     }
 
     try {
-      new URL(server.url);
+      new URL(server.config.url);
     } catch {
-      throw new Error(`Invalid URL for server ${server.identifier}: ${server.url}`);
+      throw new Error(`Invalid URL for server ${server.identifier}: ${server.config.url}`);
     }
   }
 
