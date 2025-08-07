@@ -25,7 +25,7 @@ describe('Response Transformer', () => {
       const result = transformResponse(data, transforms);
 
       expect(data.test).toBe('value'); // Original unchanged
-      expect(result.test).toBe('Transformed: value'); // Result transformed
+      expect((result as typeof data).test).toBe('Transformed: value'); // Result transformed
     });
   });
 
@@ -40,7 +40,7 @@ describe('Response Transformer', () => {
         },
       ];
 
-      const result = transformResponse(data, transforms);
+      const result = transformResponse(data, transforms) as typeof data;
       expect(result.status).toBe('Online');
     });
 
@@ -54,7 +54,7 @@ describe('Response Transformer', () => {
         },
       ];
 
-      const result = transformResponse(data, transforms);
+      const result = transformResponse(data, transforms) as typeof data;
       expect(result.status).toBe('Offline');
     });
 
@@ -68,7 +68,7 @@ describe('Response Transformer', () => {
         },
       ];
 
-      const result = transformResponse(data, transforms);
+      const result = transformResponse(data, transforms) as typeof data;
       expect(result.status).toBe('99');
     });
 
@@ -82,7 +82,7 @@ describe('Response Transformer', () => {
         },
       ];
 
-      const result = transformResponse(data, transforms);
+      const result = transformResponse(data, transforms) as typeof data;
       expect(result.user.profile.status).toBe('Active');
     });
   });
@@ -98,7 +98,7 @@ describe('Response Transformer', () => {
         },
       ];
 
-      const result = transformResponse(data, transforms);
+      const result = transformResponse(data, transforms) as typeof data;
       expect(result.timestamp).toMatch(/2023-12-25 \d{2}:\d{2}:\d{2}/);
     });
 
@@ -113,7 +113,7 @@ describe('Response Transformer', () => {
         },
       ];
 
-      const result = transformResponse(data, transforms);
+      const result = transformResponse(data as any, transforms) as { created_at: string };
       expect(result.created_at).toMatch(/2023-12-25/);
     });
 
@@ -127,7 +127,7 @@ describe('Response Transformer', () => {
         },
       ];
 
-      const result = transformResponse(data, transforms);
+      const result = transformResponse(data, transforms) as { timestamp: string };
       expect(result.timestamp).toBe('invalid-date');
     });
   });
@@ -143,7 +143,7 @@ describe('Response Transformer', () => {
         },
       ];
 
-      const result = transformResponse(data, transforms);
+      const result = transformResponse(data, transforms) as { temperature: string };
       expect(result.temperature).toBe('Temperature: 25°C');
     });
 
@@ -157,7 +157,7 @@ describe('Response Transformer', () => {
         },
       ];
 
-      const result = transformResponse(data, transforms);
+      const result = transformResponse(data, transforms) as { code: string };
       expect(result.code).toBe('Code: ABC (ref: ABC)');
     });
 
@@ -171,7 +171,7 @@ describe('Response Transformer', () => {
         },
       ];
 
-      const result = transformResponse(data, transforms);
+      const result = transformResponse(data, transforms) as { count: string };
       expect(result.count).toBe('Total: 42 items');
     });
   });
@@ -188,7 +188,7 @@ describe('Response Transformer', () => {
         },
       ];
 
-      const result = transformResponse(data, transforms);
+      const result = transformResponse(data, transforms) as { description: string };
       expect(result.description).toBe('This has multiple spaces');
     });
 
@@ -203,7 +203,7 @@ describe('Response Transformer', () => {
         },
       ];
 
-      const result = transformResponse(data, transforms);
+      const result = transformResponse(data, transforms) as { text: string };
       expect(result.text).toBe('foo_bar_baz');
     });
 
@@ -218,7 +218,7 @@ describe('Response Transformer', () => {
         },
       ];
 
-      const result = transformResponse(data, transforms);
+      const result = transformResponse(data, transforms) as { text: string };
       expect(result.text).toBe('test');
     });
   });
@@ -232,12 +232,15 @@ describe('Response Transformer', () => {
       };
       const transforms: ResponseTransform[] = [{ path: 'debug_info', transform: 'remove' }];
 
-      const result = transformResponse(data, transforms);
+      const result = transformResponse(data, transforms) as {
+        username: string;
+        email: string;
+      };
       expect(result).toEqual({
         username: 'john',
         email: 'john@example.com',
       });
-      expect('debug_info' in result).toBe(false);
+      expect('debug_info' in (result as any)).toBe(false);
     });
 
     it('should remove nested properties', () => {
@@ -250,12 +253,17 @@ describe('Response Transformer', () => {
       };
       const transforms: ResponseTransform[] = [{ path: 'user.sensitive', transform: 'remove' }];
 
-      const result = transformResponse(data, transforms);
+      const result = transformResponse(data, transforms) as {
+        user: {
+          name: string;
+          profile: { bio: string };
+        };
+      };
       expect(result.user).toEqual({
         name: 'john',
         profile: { bio: 'hello' },
       });
-      expect('sensitive' in result.user).toBe(false);
+      expect('sensitive' in (result.user as any)).toBe(false);
     });
   });
 
@@ -273,7 +281,10 @@ describe('Response Transformer', () => {
         },
       ];
 
-      const result = transformResponse(data, transforms);
+      const result = transformResponse(data, transforms) as Array<{
+        status: string;
+        name: string;
+      }>;
       expect(result).toEqual([
         { status: 'Active', name: 'user1' },
         { status: 'Inactive', name: 'user2' },
@@ -292,7 +303,9 @@ describe('Response Transformer', () => {
         },
       ];
 
-      const result = transformResponse(data, transforms);
+      const result = transformResponse(data, transforms) as {
+        users: Array<{ status: string }>;
+      };
       expect(result.users).toEqual([{ status: 'Online' }, { status: 'Offline' }]);
     });
 
@@ -313,7 +326,12 @@ describe('Response Transformer', () => {
         },
       ];
 
-      const result = transformResponse(data, transforms);
+      const result = transformResponse(data, transforms) as {
+        groups: Array<{
+          name: string;
+          users: Array<{ role: string }>;
+        }>;
+      };
       expect(result.groups[0].users).toEqual([{ role: 'Role: admin' }, { role: 'Role: user' }]);
     });
 
@@ -324,7 +342,7 @@ describe('Response Transformer', () => {
       ];
       const transforms: ResponseTransform[] = [{ path: '_root[].debug', transform: 'remove' }];
 
-      const result = transformResponse(data, transforms);
+      const result = transformResponse(data, transforms) as Array<{ name: string }>;
       expect(result).toEqual([{ name: 'user1' }, { name: 'user2' }]);
     });
   });
@@ -353,10 +371,13 @@ describe('Response Transformer', () => {
         },
       ];
 
-      const result = transformResponse(data, transforms);
+      const result = transformResponse(data, transforms) as {
+        status: string;
+        created_at: string;
+      };
       expect(result.status).toBe('Active');
       expect(result.created_at).toMatch(/2023-12-25/);
-      expect('debug_info' in result).toBe(false);
+      expect('debug_info' in (result as any)).toBe(false);
     });
 
     it('should handle transforms on non-existent paths gracefully', () => {
@@ -374,9 +395,9 @@ describe('Response Transformer', () => {
         },
       ];
 
-      const result = transformResponse(data, transforms);
+      const result = transformResponse(data, transforms) as { existing: string };
       expect(result.existing).toBe('Found: value');
-      expect('non_existent' in result).toBe(false);
+      expect('non_existent' in (result as any)).toBe(false);
     });
   });
 
@@ -417,12 +438,20 @@ describe('Response Transformer', () => {
         },
       ];
 
-      const result = transformResponse(data, transforms);
+      const result = transformResponse(data, transforms) as {
+        users: Array<{
+          profile: {
+            status: string;
+            tags: string[];
+            last_login: string;
+          };
+        }>;
+      };
 
       expect(result.users[0].profile.status).toBe('Online');
       expect(result.users[0].profile.tags).toEqual(['Tag: admin', 'Tag: user']);
       expect(result.users[0].profile.last_login).toMatch(/2023-12-25/);
-      expect('debug' in result.users[0]).toBe(false);
+      expect('debug' in (result.users[0] as any)).toBe(false);
     });
   });
 });
