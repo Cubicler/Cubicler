@@ -3,12 +3,19 @@ import type { MCPRequest } from '../../../src/model/types.js';
 import type { MCPServer } from '../../../src/model/providers.js';
 import { HttpMCPTransport } from '../../../src/transport/mcp/http-mcp-transport.js';
 import { fetchWithDefaultTimeout } from '../../../src/utils/fetch-helper.js';
+import jwtHelper from '../../../src/utils/jwt-helper.js';
 import type { AxiosResponse } from 'axios';
 
 // Mock dependencies
 vi.mock('../../../src/utils/fetch-helper.js');
+vi.mock('../../../src/utils/jwt-helper.js', () => ({
+  default: {
+    getToken: vi.fn(),
+  },
+}));
 
 const mockedFetchWithDefaultTimeout = vi.mocked(fetchWithDefaultTimeout);
+const mockedJwtHelper = vi.mocked(jwtHelper.getToken);
 
 describe('HttpMCPTransport', () => {
   let transport: HttpMCPTransport;
@@ -429,6 +436,215 @@ describe('HttpMCPTransport', () => {
       const response = await transport.sendRequest(request);
 
       expect(response.error?.message).toBe('HTTP request failed: Unknown error');
+    });
+  });
+
+  describe('JWT Authentication', () => {
+    const mockJwtServer: MCPServer = {
+      identifier: 'jwt-mcp-server',
+      name: 'JWT MCP Server',
+      description: 'JWT secured MCP server',
+      transport: 'http',
+      config: {
+        url: 'https://secure-mcp.example.com/mcp',
+        auth: {
+          type: 'jwt',
+          config: {
+            token: 'static-jwt-token',
+          },
+        },
+      },
+    };
+
+    const mockOAuthServer: MCPServer = {
+      identifier: 'oauth-mcp-server',
+      name: 'OAuth MCP Server',
+      description: 'OAuth2 JWT MCP server',
+      transport: 'http',
+      config: {
+        url: 'https://oauth-mcp.example.com/mcp',
+        auth: {
+          type: 'jwt',
+          config: {
+            tokenUrl: 'https://auth.example.com/oauth/token',
+            clientId: 'mcp-client',
+            clientSecret: 'mcp-secret',
+            audience: 'mcp-api',
+            refreshThreshold: 10,
+          },
+        },
+        headers: {
+          'X-API-Version': '1.0',
+        },
+      },
+    };
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('should include JWT token in headers for static token auth', async () => {
+      const jwtTransport = new HttpMCPTransport();
+      await jwtTransport.initialize(mockJwtServer);
+
+      mockedJwtHelper.mockResolvedValue('test-jwt-token');
+
+      const mockAxiosResponse: AxiosResponse = {
+        data: { jsonrpc: '2.0', id: 1, result: { tools: [] } },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: {},
+      } as AxiosResponse;
+
+      mockedFetchWithDefaultTimeout.mockResolvedValue(mockAxiosResponse);
+
+      const request: MCPRequest = {
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/list',
+      };
+
+      const response = await jwtTransport.sendRequest(request);
+
+      expect(mockedJwtHelper).toHaveBeenCalledWith({
+        token: 'static-jwt-token',
+      });
+
+      expect(mockedFetchWithDefaultTimeout).toHaveBeenCalledWith(
+        'https://secure-mcp.example.com/mcp',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer test-jwt-token',
+          },
+          data: request,
+        }
+      );
+
+      expect(response).toEqual({ jsonrpc: '2.0', id: 1, result: { tools: [] } });
+    });
+
+    it('should include JWT token in headers for OAuth2 auth with additional headers', async () => {
+      const jwtTransport = new HttpMCPTransport();
+      await jwtTransport.initialize(mockOAuthServer);
+
+      mockedJwtHelper.mockResolvedValue('oauth-jwt-token');
+
+      const mockAxiosResponse: AxiosResponse = {
+        data: { jsonrpc: '2.0', id: 2, result: { capabilities: {} } },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: {},
+      } as AxiosResponse;
+
+      mockedFetchWithDefaultTimeout.mockResolvedValue(mockAxiosResponse);
+
+      const request: MCPRequest = {
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'initialize',
+        params: { protocolVersion: '0.1.0' },
+      };
+
+      const response = await jwtTransport.sendRequest(request);
+
+      expect(mockedJwtHelper).toHaveBeenCalledWith({
+        tokenUrl: 'https://auth.example.com/oauth/token',
+        clientId: 'mcp-client',
+        clientSecret: 'mcp-secret',
+        audience: 'mcp-api',
+        refreshThreshold: 10,
+      });
+
+      expect(mockedFetchWithDefaultTimeout).toHaveBeenCalledWith(
+        'https://oauth-mcp.example.com/mcp',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer oauth-jwt-token',
+            'X-API-Version': '1.0',
+          },
+          data: request,
+        }
+      );
+
+      expect(response).toEqual({ jsonrpc: '2.0', id: 2, result: { capabilities: {} } });
+    });
+
+    it('should handle JWT token generation errors', async () => {
+      const jwtTransport = new HttpMCPTransport();
+      await jwtTransport.initialize(mockJwtServer);
+
+      mockedJwtHelper.mockRejectedValue(new Error('Token expired'));
+
+      const request: MCPRequest = {
+        jsonrpc: '2.0',
+        id: 3,
+        method: 'ping',
+      };
+
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const response = await jwtTransport.sendRequest(request);
+
+      expect(mockedJwtHelper).toHaveBeenCalledWith({
+        token: 'static-jwt-token',
+      });
+
+      expect(mockedFetchWithDefaultTimeout).not.toHaveBeenCalled();
+
+      expect(response).toEqual({
+        jsonrpc: '2.0',
+        id: 3,
+        error: {
+          code: -32603,
+          message: 'HTTP request failed: Token expired',
+        },
+      });
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '❌ [HttpMCPTransport] HTTP request to jwt-mcp-server failed:',
+        expect.any(Error)
+      );
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('should work without JWT auth when not configured', async () => {
+      const regularTransport = new HttpMCPTransport();
+      await regularTransport.initialize(mockServer);
+
+      const mockAxiosResponse: AxiosResponse = {
+        data: { jsonrpc: '2.0', id: 4, result: {} },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: {},
+      } as AxiosResponse;
+
+      mockedFetchWithDefaultTimeout.mockResolvedValue(mockAxiosResponse);
+
+      const request: MCPRequest = {
+        jsonrpc: '2.0',
+        id: 4,
+        method: 'test',
+      };
+
+      await regularTransport.sendRequest(request);
+
+      expect(mockedJwtHelper).not.toHaveBeenCalled();
+      expect(mockedFetchWithDefaultTimeout).toHaveBeenCalledWith('https://api.example.com/mcp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer test-token', // From original mockServer headers
+        },
+        data: request,
+      });
     });
   });
 });

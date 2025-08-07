@@ -15,6 +15,7 @@ import providersRepository from '../repository/provider-repository.js';
 import { MCPCompatible } from '../interface/mcp-compatible.js';
 import { ToolDefinition } from '../model/tools.js';
 import type { RESTEndpoint, RESTServer } from '../model/providers.js';
+import jwtHelper from '../utils/jwt-helper.js';
 
 /**
  * REST Provider Service for Cubicler
@@ -293,7 +294,7 @@ class ProviderRESTService implements MCPCompatible {
     );
 
     try {
-      const requestConfig = this.buildRequestConfiguration(endpoint, restServer, parameters);
+      const requestConfig = await this.buildRequestConfiguration(endpoint, restServer, parameters);
       const response = await this.executeHttpRequest(requestConfig);
 
       console.log(`✅ [RESTService] REST call successful`);
@@ -347,21 +348,21 @@ class ProviderRESTService implements MCPCompatible {
    * @param endpoint - The endpoint configuration
    * @param restServer - The REST server configuration
    * @param parameters - The request parameters
-   * @returns Request configuration object
+   * @returns Promise resolving to request configuration object
    */
-  private buildRequestConfiguration(
+  private async buildRequestConfiguration(
     endpoint: RESTEndpoint,
     restServer: RESTServer,
     parameters: Record<string, JSONValue>
-  ): {
+  ): Promise<{
     url: string;
     method: string;
     headers: Record<string, string>;
     data?: Record<string, JSONValue>;
-  } {
+  }> {
     const { pathParams, remainingParams } = this.extractPathParameters(endpoint, parameters);
     const url = this.buildRequestUrl(endpoint, restServer, pathParams, remainingParams);
-    const headers = this.buildRequestHeaders(endpoint, restServer);
+    const headers = await this.buildRequestHeaders(endpoint, restServer);
     const body = this.extractRequestBody(endpoint, remainingParams);
 
     const requestConfig: {
@@ -468,17 +469,25 @@ class ProviderRESTService implements MCPCompatible {
    * Build request headers from endpoint and server configurations
    * @param endpoint - The endpoint configuration
    * @param restServer - The REST server configuration
-   * @returns Headers object
+   * @returns Promise resolving to headers object
    */
-  private buildRequestHeaders(
+  private async buildRequestHeaders(
     endpoint: RESTEndpoint,
     restServer: RESTServer
-  ): Record<string, string> {
-    return {
+  ): Promise<Record<string, string>> {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...restServer.config.defaultHeaders,
       ...endpoint.headers,
     };
+
+    // Add JWT authentication if configured
+    if (restServer.config.auth?.type === 'jwt') {
+      const token = await jwtHelper.getToken(restServer.config.auth.config);
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    return headers;
   }
 
   /**

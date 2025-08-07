@@ -4,11 +4,7 @@
 
 > *A modular AI orchestration framework that connects applications to AI agents and external services*
 
-[![npm version](htt**For detailed configuration options, see the integration guides:**
-
-- **🤖 [Agent Integration Guide> **For complete API documentation and examples**, see [Client Integration Guide](docs/CLIENT_INTEGRATION.md).e](docs/AGENT_INTEGRATION.md)** - Complete agent setup (Direct, HTTP, SSE, Stdio)
-- **🔧 [Provider Integration Guide](docs/PROVIDER_INTEGRATION.md)** - MCP servers and REST API integration
-- **🔐 JWT Authentication** - Detailed security configuration examplesbadge.fury.io/js/cubicler.svg)](https://badge.fury.io/js/cubicler)
+[![npm version](https://badge.fury.io/js/cubicler.svg)](https://badge.fury.io/js/cubicler)
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://opensource.org/licenses/ISC)
 [![Tests](https://github.com/cubicler/Cubicler/workflows/Tests/badge.svg)](https://github.com/cubicler/Cubicler/actions)
 
@@ -147,15 +143,23 @@ CUBICLER_CONFIG=./cubicler.json
       "config": {
         "provider": "openai",
         "apiKey": "${OPENAI_API_KEY}",
-        "model": "gpt-4o"
-      }
+        "model": "gpt-4o",
+        "summarizerModel": "gpt-4o-mini"
+      },
+      "description": "OpenAI GPT-4o with AI summarization for complex tool responses"
     },
     {
       "identifier": "my-http-agent",
       "name": "Custom HTTP Agent", 
       "transport": "http",
       "config": {
-        "url": "http://localhost:3000/agent"
+        "url": "http://localhost:3000/agent",
+        "auth": {
+          "type": "jwt",
+          "config": {
+            "token": "${AGENT_JWT_TOKEN}"
+          }
+        }
       }
     }
   ]
@@ -171,9 +175,11 @@ CUBICLER_CONFIG=./cubicler.json
       "identifier": "weather_service",
       "name": "Weather Service",
       "transport": "http",
-      "url": "{{env.WEATHER_API_URL}}/mcp",
-      "headers": {
-        "Authorization": "Bearer {{env.WEATHER_API_KEY}}"
+      "config": {
+        "url": "{{env.WEATHER_API_URL}}/mcp",
+        "headers": {
+          "Authorization": "Bearer {{env.WEATHER_API_KEY}}"
+        }
       }
     }
   ],
@@ -181,7 +187,10 @@ CUBICLER_CONFIG=./cubicler.json
     {
       "identifier": "user_api",
       "name": "User Management API",
-      "url": "https://api.example.com",
+      "transport": "http",
+      "config": {
+        "url": "https://api.example.com"
+      },
       "endPoints": [
         {
           "name": "get_user_status",
@@ -270,6 +279,94 @@ Cubicler can automatically clean and transform API responses before sending them
   "timestamps": {"created": "2023-12-25"}
 }
 ```
+
+### 🔐 JWT Authentication for Providers
+
+Secure your MCP servers and REST APIs with JWT authentication:
+
+**Static JWT Token:**
+
+```json
+{
+  "mcpServers": [
+    {
+      "identifier": "secure_mcp",
+      "name": "Secure MCP Server", 
+      "transport": "http",
+      "config": {
+        "url": "https://secure-api.example.com/mcp",
+        "auth": {
+          "type": "jwt",
+          "config": {
+            "token": "${MCP_JWT_TOKEN}"
+          }
+        }
+      }
+    }
+  ],
+  "restServers": [
+    {
+      "identifier": "secure_api",
+      "name": "Secure REST API",
+      "transport": "http",
+      "config": {
+        "url": "https://secure-api.example.com/api",
+        "auth": {
+          "type": "jwt",
+          "config": {
+            "tokenUrl": "https://auth.example.com/oauth/token",
+            "clientId": "${OAUTH_CLIENT_ID}",
+            "clientSecret": "${OAUTH_CLIENT_SECRET}",
+            "audience": "api-audience",
+            "refreshThreshold": 10
+          }
+        }
+      },
+      "endPoints": [
+        {
+          "name": "get_secure_data",
+          "path": "/secure/data/{id}",
+          "method": "GET"
+        }
+      ]
+    }
+  ]
+}
+```
+
+**JWT Features:**
+
+- 🔐 **Static tokens** - Simple API key-style authentication
+- 🔄 **OAuth2 client credentials flow** - Enterprise-grade authentication
+- ⏰ **Automatic token refresh** - Configurable refresh thresholds
+- 💾 **Token caching** - Improved performance and reduced API calls
+- 🌍 **Environment variable support** - Keep secrets secure
+
+### 🤖 AI Agent Summarization
+
+Direct agents (OpenAI integration) support intelligent task delegation to specialized summarizer agents:
+
+```json
+{
+  "identifier": "smart-agent",
+  "transport": "direct",
+  "config": {
+    "provider": "openai",
+    "model": "gpt-4o",
+    "summarizerModel": "gpt-4o-mini",
+    "sessionMaxTokens": 8192
+  }
+}
+```
+
+**How it works:**
+
+- The main GPT agent can delegate specific tasks to the `summarizerModel` with focused prompts
+- The summarizer calls tools independently with smaller token overhead and specialized instructions
+- Example: Main agent says *"summarize error log that might be related to memory issues"*
+- The `gpt-4o-mini` summarizer then calls the error log tool and provides a focused summary
+- More efficient than the main agent processing large datasets with its full context
+- Enables specialized task processing while keeping the main conversation lightweight
 
 > **💡 Environment Variables**: Use `{{env.VARIABLE_NAME}}` syntax to substitute environment variables securely.
 
@@ -439,7 +536,7 @@ After transformation: `{"temperature": "22°C", "condition": "Sunny"}`
 > **💡 Function Naming**: The function name `1r2dj4_get_current_weather` follows Cubicler's hash-based naming convention. The `1r2dj4` part is a 6-character hash derived from the server identifier and URL (`weather_service:http://localhost:4000/mcp`). This ensures function names are:
 >
 > - **Collision-resistant**: No conflicts between services
-> - **Config-order independent**: Same server always gets same hash
+> - **Config-order independent**: Same server always gets same hash  
 > - **Deterministic**: Predictable and stable across deployments
 
 ### 4. Final Response
@@ -458,9 +555,11 @@ After transformation: `{"temperature": "22°C", "condition": "Sunny"}`
 - 🔌 **MCP Protocol Support**: Connect to standardized AI services
 - 🎯 **Flexible Agent Configuration**: Multiple AI models, custom prompts  
 - ⚡ **Direct AI Integration**: Built-in OpenAI GPT support without separate agent services
+- 🤖 **AI Agent Summarization**: GPT can delegate focused tasks to specialized summarizer agents
 - 🔐 **REST API Integration**: Use any HTTP API as an AI tool
 - 🧩 **Response Transformations**: Clean and transform API responses automatically
-- 🛡️ **Comprehensive JWT Authentication**: Secure both inbound and outbound requests
+- 🛡️ **Comprehensive JWT Authentication**: Secure agents, MCP servers, and REST APIs
+- 🔐 **OAuth2 & Static Tokens**: Enterprise authentication with automatic refresh
 - 🛠️ **Built-in Discovery Tools**: AI agents can explore available services
 - 🧩 **Modular Architecture**: Clean, maintainable service separation
 - 📘 **TypeScript**: Full type safety and excellent developer experience

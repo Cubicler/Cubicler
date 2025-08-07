@@ -11,6 +11,40 @@
           "Authorization": "Bearer your-api-key"
         }
       }
+    },
+    {
+      "identifier": "secure_mcp_jwt",
+      "name": "JWT Secured MCP Server",
+      "description": "MCP server protected with JWT authentication (static token)",
+      "transport": "http",
+      "config": {
+        "url": "https://secure-api.example.com/mcp",
+        "auth": {
+          "type": "jwt",
+          "config": {
+            "token": "${MCP_JWT_TOKEN}"
+          }
+        }
+      }
+    },
+    {
+      "identifier": "oauth_mcp_server",
+      "name": "OAuth2 MCP Server",
+      "description": "MCP server using OAuth2 client credentials for JWT",
+      "transport": "sse",
+      "config": {
+        "url": "https://enterprise-api.example.com/mcp",
+        "auth": {
+          "type": "jwt",
+          "config": {
+            "tokenUrl": "https://auth.example.com/oauth/token",
+            "clientId": "${MCP_OAUTH_CLIENT_ID}",
+            "clientSecret": "${MCP_OAUTH_CLIENT_SECRET}",
+            "audience": "mcp-api",
+            "refreshThreshold": 5
+          }
+        }
+      }
     }
   ],
   "restServers": [
@@ -141,6 +175,69 @@
               "transform": "remove"
             }
           ]
+        }
+      ]
+    },
+    {
+      "identifier": "secure_rest_api",
+      "name": "JWT Secured REST API",
+      "description": "REST API protected with JWT authentication (static token)",
+      "transport": "http",
+      "config": {
+        "url": "https://secure-api.example.com/api",
+        "auth": {
+          "type": "jwt",
+          "config": {
+            "token": "${REST_JWT_TOKEN}"
+          }
+        }
+      },
+      "endPoints": [
+        {
+          "name": "get_secure_data",
+          "description": "Get secure data with JWT authentication",
+          "path": "/secure/data/{id}",
+          "method": "GET",
+          "id": {
+            "type": "string",
+            "description": "Data ID to retrieve"
+          }
+        }
+      ]
+    },
+    {
+      "identifier": "oauth_rest_api",
+      "name": "OAuth2 REST API",
+      "description": "REST API using OAuth2 client credentials for JWT",
+      "transport": "http",
+      "config": {
+        "url": "https://enterprise-api.example.com/api",
+        "auth": {
+          "type": "jwt",
+          "config": {
+            "tokenUrl": "https://auth.example.com/oauth/token",
+            "clientId": "${REST_OAUTH_CLIENT_ID}",
+            "clientSecret": "${REST_OAUTH_CLIENT_SECRET}",
+            "audience": "rest-api",
+            "refreshThreshold": 10
+          }
+        }
+      },
+      "endPoints": [
+        {
+          "name": "create_enterprise_resource",
+          "description": "Create a new enterprise resource with OAuth2 JWT",
+          "path": "/resources",
+          "method": "POST",
+          "payload": {
+            "type": "object",
+            "properties": {
+              "name": {"type": "string", "description": "Resource name"},
+              "type": {"type": "string", "description": "Resource type"},
+              "metadata": {"type": "object", "description": "Additional metadata"}
+            },
+            "required": ["name", "type"]
+          }
         }
       ]
     }

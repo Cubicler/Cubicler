@@ -1,7 +1,8 @@
 import type { MCPRequest, MCPResponse } from '../../model/types.js';
-import type { MCPServer } from '../../model/providers.js';
+import type { MCPServer, ProviderJwtAuthConfig } from '../../model/providers.js';
 import type { MCPTransport } from '../../interface/mcp-transport.js';
 import { fetchWithDefaultTimeout } from '../../utils/fetch-helper.js';
+import jwtHelper from '../../utils/jwt-helper.js';
 
 /**
  * SSE MCP Transport implementation
@@ -187,13 +188,10 @@ export class SseMCPTransport implements MCPTransport {
     const postUrl = this.getPostUrl();
 
     try {
-      const config = this.server.config as { headers?: Record<string, string> };
+      const headers = await this.buildHeaders();
       await fetchWithDefaultTimeout(postUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...config.headers,
-        },
+        headers,
         data: request,
       });
 
@@ -263,6 +261,34 @@ export class SseMCPTransport implements MCPTransport {
     const serverConfig = this.server.config as { url: string };
     const baseUrl = serverConfig.url.replace(/\/$/, ''); // Remove trailing slash
     return `${baseUrl}/mcp`;
+  }
+
+  /**
+   * Build HTTP headers including JWT authentication if configured
+   * @returns Promise that resolves to headers object
+   * @throws Error if JWT token cannot be obtained
+   */
+  private async buildHeaders(): Promise<Record<string, string>> {
+    if (!this.server) {
+      throw new Error('Server not configured');
+    }
+
+    const config = this.server.config as {
+      headers?: Record<string, string>;
+      auth?: { type: 'jwt'; config: ProviderJwtAuthConfig };
+    };
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...config.headers,
+    };
+
+    if (config.auth?.type === 'jwt') {
+      const token = await jwtHelper.getToken(config.auth.config);
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    return headers;
   }
 
   /**

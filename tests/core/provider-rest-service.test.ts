@@ -5,10 +5,18 @@ import type { ServersProviding } from '../../src/interface/servers-providing.js'
 import type { ProvidersConfig, RESTServer } from '../../src/model/providers.js';
 import type { AxiosResponse } from 'axios';
 import * as fetchHelper from '../../src/utils/fetch-helper.js';
+import jwtHelper from '../../src/utils/jwt-helper.js';
 
 // Mock fetch helper
 vi.mock('../../src/utils/fetch-helper.js', () => ({
   fetchWithDefaultTimeout: vi.fn(),
+}));
+
+// Mock JWT helper
+vi.mock('../../src/utils/jwt-helper.js', () => ({
+  default: {
+    getToken: vi.fn(),
+  },
 }));
 
 // Helper to create mock AxiosResponse
@@ -25,6 +33,7 @@ describe('ProviderRESTService', () => {
   let mockServersProvider: ServersProviding;
   let providerRESTService: ProviderRESTService;
   let mockFetch: MockedFunction<typeof fetchHelper.fetchWithDefaultTimeout>;
+  let mockJwtHelper: MockedFunction<typeof jwtHelper.getToken>;
 
   const mockRestServer: RESTServer = {
     identifier: 'user_api',
@@ -116,6 +125,7 @@ describe('ProviderRESTService', () => {
     providerRESTService.setServersProvider(mockServersProvider);
 
     mockFetch = vi.mocked(fetchHelper.fetchWithDefaultTimeout);
+    mockJwtHelper = vi.mocked(jwtHelper.getToken);
   });
 
   describe('initialize', () => {
@@ -545,6 +555,192 @@ describe('ProviderRESTService', () => {
         // debug_info should be removed
       });
       expect(result).not.toHaveProperty('debug_info');
+    });
+  });
+
+  describe('JWT Authentication', () => {
+    const mockJwtRestServer: RESTServer = {
+      identifier: 'secure_api',
+      name: 'Secure API',
+      description: 'JWT secured REST API',
+      transport: 'http',
+      config: {
+        url: 'https://secure-api.example.com/api',
+        auth: {
+          type: 'jwt',
+          config: {
+            token: 'static-jwt-token',
+          },
+        },
+      },
+      endPoints: [
+        {
+          name: 'get_secure_data',
+          description: 'Get secure data',
+          path: '/secure/data',
+          method: 'GET',
+        },
+      ],
+    };
+
+    const mockOAuthRestServer: RESTServer = {
+      identifier: 'oauth_api',
+      name: 'OAuth API',
+      description: 'OAuth2 JWT REST API',
+      transport: 'http',
+      config: {
+        url: 'https://oauth-api.example.com/api',
+        auth: {
+          type: 'jwt',
+          config: {
+            tokenUrl: 'https://auth.example.com/oauth/token',
+            clientId: 'client123',
+            clientSecret: 'secret456',
+            audience: 'api-audience',
+            refreshThreshold: 5,
+          },
+        },
+      },
+      endPoints: [
+        {
+          name: 'create_resource',
+          description: 'Create resource with OAuth JWT',
+          path: '/resources',
+          method: 'POST',
+          payload: {
+            type: 'object',
+            properties: {
+              name: { type: 'string' },
+            },
+            required: ['name'],
+          },
+        },
+      ],
+    };
+
+    it('should include JWT token in headers for static token auth', async () => {
+      const mockConfig = {
+        restServers: [mockJwtRestServer],
+        mcpServers: [],
+      };
+      mockProviderConfig.getProvidersConfig = vi.fn().mockResolvedValue(mockConfig);
+      mockJwtHelper.mockResolvedValue('test-jwt-token');
+
+      const mockResponse = { data: 'secure data' };
+      mockFetch.mockResolvedValue(createMockAxiosResponse(mockResponse));
+
+      // Get tools and execute
+      const tools = await providerRESTService.toolsList();
+      const secureDataTool = tools.find((tool) => tool.name.includes('get_secure_data'));
+      expect(secureDataTool).toBeDefined();
+
+      const result = await providerRESTService.toolsCall(secureDataTool!.name, {});
+
+      expect(mockJwtHelper).toHaveBeenCalledWith({
+        token: 'static-jwt-token',
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://secure-api.example.com/api/secure/data',
+        expect.objectContaining({
+          method: 'GET',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-jwt-token',
+            'Content-Type': 'application/json',
+          }),
+        })
+      );
+
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should include JWT token in headers for OAuth2 auth', async () => {
+      const mockConfig = {
+        restServers: [mockOAuthRestServer],
+        mcpServers: [],
+      };
+      mockProviderConfig.getProvidersConfig = vi.fn().mockResolvedValue(mockConfig);
+      mockJwtHelper.mockResolvedValue('oauth-jwt-token');
+
+      const mockResponse = { id: '123', name: 'Test Resource' };
+      mockFetch.mockResolvedValue(createMockAxiosResponse(mockResponse));
+
+      // Get tools and execute
+      const tools = await providerRESTService.toolsList();
+      const createResourceTool = tools.find((tool) => tool.name.includes('create_resource'));
+      expect(createResourceTool).toBeDefined();
+
+      const result = await providerRESTService.toolsCall(createResourceTool!.name, {
+        payload: { name: 'Test Resource' },
+      });
+
+      expect(mockJwtHelper).toHaveBeenCalledWith({
+        tokenUrl: 'https://auth.example.com/oauth/token',
+        clientId: 'client123',
+        clientSecret: 'secret456',
+        audience: 'api-audience',
+        refreshThreshold: 5,
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://oauth-api.example.com/api/resources',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer oauth-jwt-token',
+            'Content-Type': 'application/json',
+          }),
+          data: { name: 'Test Resource' },
+        })
+      );
+
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should handle JWT token generation errors', async () => {
+      const mockConfig = {
+        restServers: [mockJwtRestServer],
+        mcpServers: [],
+      };
+      mockProviderConfig.getProvidersConfig = vi.fn().mockResolvedValue(mockConfig);
+      mockJwtHelper.mockRejectedValue(new Error('Token generation failed'));
+
+      const tools = await providerRESTService.toolsList();
+      const secureDataTool = tools.find((tool) => tool.name.includes('get_secure_data'));
+      expect(secureDataTool).toBeDefined();
+
+      await expect(providerRESTService.toolsCall(secureDataTool!.name, {})).rejects.toThrow(
+        'Token generation failed'
+      );
+
+      expect(mockJwtHelper).toHaveBeenCalledWith({
+        token: 'static-jwt-token',
+      });
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('should work without JWT auth when not configured', async () => {
+      const mockResponse = { users: [] };
+      mockFetch.mockResolvedValue(createMockAxiosResponse(mockResponse));
+
+      // Use original server without JWT auth
+      const result = await providerRESTService.toolsCall('sft7he_create_user', {
+        payload: { name: 'Test', email: 'test@example.com' },
+      });
+
+      expect(mockJwtHelper).not.toHaveBeenCalled();
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/users',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer api-token', // From defaultHeaders
+          }),
+        })
+      );
+
+      expect(result).toEqual(mockResponse);
     });
   });
 });

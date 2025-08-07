@@ -1,7 +1,8 @@
 import type { MCPRequest, MCPResponse } from '../../model/types.js';
-import type { MCPServer } from '../../model/providers.js';
+import type { MCPServer, ProviderJwtAuthConfig } from '../../model/providers.js';
 import type { MCPTransport } from '../../interface/mcp-transport.js';
 import { fetchWithDefaultTimeout } from '../../utils/fetch-helper.js';
+import jwtHelper from '../../utils/jwt-helper.js';
 
 /**
  * HTTP MCP Transport implementation
@@ -42,12 +43,10 @@ export class HttpMCPTransport implements MCPTransport {
       if (!('url' in this.server.config) || !this.server.config.url) {
         throw new Error('Server URL not available');
       }
+      const headers = await this.buildHeaders();
       const response = await fetchWithDefaultTimeout(this.server.config.url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...('headers' in this.server.config ? this.server.config.headers : {}),
-        },
+        headers,
         data: request,
       });
 
@@ -83,6 +82,34 @@ export class HttpMCPTransport implements MCPTransport {
    */
   getServerIdentifier(): string {
     return this.server?.identifier || 'unknown';
+  }
+
+  /**
+   * Build HTTP headers including JWT authentication if configured
+   * @returns Promise that resolves to headers object
+   * @throws Error if JWT token cannot be obtained
+   */
+  private async buildHeaders(): Promise<Record<string, string>> {
+    if (!this.server) {
+      throw new Error('Server not configured');
+    }
+
+    const config = this.server.config as {
+      headers?: Record<string, string>;
+      auth?: { type: 'jwt'; config: ProviderJwtAuthConfig };
+    };
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...config.headers,
+    };
+
+    if (config.auth?.type === 'jwt') {
+      const token = await jwtHelper.getToken(config.auth.config);
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    return headers;
   }
 
   /**

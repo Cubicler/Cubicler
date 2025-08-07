@@ -1,4 +1,16 @@
 /**
+ * JWT authentication configuration for providers
+ */
+export interface ProviderJwtAuthConfig {
+  token?: string; // Static token
+  tokenUrl?: string; // URL to fetch token
+  clientId?: string; // For OAuth2 client credentials
+  clientSecret?: string; // For OAuth2 client credentials
+  audience?: string; // JWT audience claim
+  refreshThreshold?: number; // Minutes before expiry to refresh (default: 5)
+}
+
+/**
  * Response transformation configuration
  */
 export interface ResponseTransform {
@@ -17,6 +29,10 @@ export interface ResponseTransform {
 export interface McpHttpTransportConfig {
   url: string;
   headers?: Record<string, string>;
+  auth?: {
+    type: 'jwt';
+    config: ProviderJwtAuthConfig;
+  };
 }
 
 /**
@@ -25,6 +41,10 @@ export interface McpHttpTransportConfig {
 export interface McpSseTransportConfig {
   url: string;
   headers?: Record<string, string>;
+  auth?: {
+    type: 'jwt';
+    config: ProviderJwtAuthConfig;
+  };
 }
 
 /**
@@ -33,6 +53,10 @@ export interface McpSseTransportConfig {
 export interface McpWebSocketTransportConfig {
   url: string;
   headers?: Record<string, string>;
+  auth?: {
+    type: 'jwt';
+    config: ProviderJwtAuthConfig;
+  };
 }
 
 /**
@@ -106,6 +130,10 @@ export type MCPServer = HttpMcpServer | SseMcpServer | WebSocketMcpServer | Stdi
 export interface RestHttpTransportConfig {
   url: string; // base URL
   defaultHeaders?: Record<string, string>;
+  auth?: {
+    type: 'jwt';
+    config: ProviderJwtAuthConfig;
+  };
 }
 
 /**

@@ -12,8 +12,19 @@ export interface MessageSender {
 export interface Message {
   sender: MessageSender;
   timestamp?: string; // ISO 8601, optional
-  type: 'text' | 'null'; // text (image/video support planned), null for no content
-  content: string | null;
+  type: 'text' | 'image' | 'url' | 'null'; // text content, image data, url reference, or null for no content
+  content: string | null; // text content, image base64, or url string
+  metadata?: MessageMetadata; // metadata for images and files
+}
+
+/**
+ * Metadata for image and file content in messages
+ */
+export interface MessageMetadata {
+  fileName?: string; // optional file name for images/files
+  fileSize?: number; // optional file size in bytes
+  fileExtension?: string; // optional file extension (e.g., 'jpg', 'png', 'pdf')
+  format: 'base64' | 'url'; // base64 encoded data or URL reference
 }
 
 /**
@@ -60,8 +71,9 @@ export interface AgentRequest {
  */
 export interface AgentResponse {
   timestamp: string;
-  type: 'text' | 'null';
-  content: string | null;
+  type: 'text' | 'image' | 'null';
+  content: string | null; // text content or image base64
+  contentMetadata?: MessageMetadata; // optional metadata for images
   metadata: {
     usedToken?: number; // Optional since some agents might not track tokens
     usedTools?: number; // Optional since some agents might not track tools
@@ -72,8 +84,9 @@ export interface AgentResponse {
 export interface DispatchResponse {
   sender: MessageSender;
   timestamp: string;
-  type: 'text' | 'null'; // null when agent provides no response
-  content: string | null; // null when agent provides no response
+  type: 'text' | 'image' | 'null'; // null when agent provides no response
+  content: string | null; // null when agent provides no response, or image base64
+  contentMetadata?: MessageMetadata; // optional metadata for images
   metadata: {
     usedToken?: number; // Optional since some agents might not track tokens
     usedTools?: number; // Optional since some agents might not track tools
