@@ -40,6 +40,7 @@ Your App → Cubicler → AI Agent → External Services
 
 - 🔌 **Universal AI Integration**: Switch between AI models without code changes
 - 🛠️ **Rich Tool Ecosystem**: AI agents can use APIs, databases, and external services
+- 📱 **Rich Message Support**: Text, images, URLs with comprehensive metadata
 - ⚡ **Multiple Transports**: HTTP, SSE streaming, stdio processes, and direct models
 - 🔐 **Enterprise Security**: JWT authentication and secure communications
 - 📊 **Easy Configuration**: JSON-based setup with environment variable support
@@ -439,7 +440,7 @@ OAUTH_CLIENT_SECRET=your-client-secret
 
 ### Quick Example
 
-**Send a message:**
+**Send a text message:**
 
 ```json
 POST /dispatch
@@ -459,10 +460,120 @@ POST /dispatch
 ```json
 {
   "sender": {"id": "gpt_4o", "name": "GPT-4O Agent"},
+  "type": "text",
   "content": "The current weather in Jakarta is 28°C with partly cloudy conditions.",
   "metadata": {"usedToken": 150, "usedTools": 2}
 }
 ```
+
+### 📱 Rich Message Support
+
+Cubicler supports rich messaging with text, images, URLs, and comprehensive metadata:
+
+#### Message Types
+
+| Type | Purpose | Content Field | Metadata |
+|------|---------|---------------|----------|
+| `text` | Text messages and responses | String content | Optional |
+| `image` | Base64 encoded images | Base64 image data | Required (format, fileName, etc.) |
+| `url` | Image/file URLs | URL string | Required (format, fileExtension, etc.) |
+| `null` | Empty or system messages | null | Optional |
+
+#### Image Messages
+
+**Send an image (Base64):**
+
+```json
+POST /dispatch
+{
+  "messages": [
+    {
+      "sender": {"id": "user_123", "name": "John"},
+      "type": "image",
+      "content": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAY...",
+      "metadata": {
+        "format": "base64",
+        "fileName": "vacation-photo.jpg",
+        "fileExtension": "jpg",
+        "fileSize": 2048576
+      }
+    }
+  ]
+}
+```
+
+**Send an image (URL):**
+
+```json
+POST /dispatch
+{
+  "messages": [
+    {
+      "sender": {"id": "user_123", "name": "John"},
+      "type": "url",
+      "content": "https://example.com/images/vacation-photo.jpg",
+      "metadata": {
+        "format": "url",
+        "fileName": "vacation-photo.jpg",
+        "fileExtension": "jpg"
+      }
+    }
+  ]
+}
+```
+
+**AI Agent Image Response:**
+
+```json
+{
+  "sender": {"id": "gpt_4o_vision", "name": "GPT-4O Vision Agent"},
+  "type": "image",
+  "content": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB...",
+  "contentMetadata": {
+    "format": "base64",
+    "fileName": "generated-diagram.png",
+    "fileExtension": "png",
+    "fileSize": 1024768
+  },
+  "metadata": {"usedToken": 2500, "usedTools": 1}
+}
+```
+
+#### Message Metadata Fields
+
+| Field | Type | Description | Required |
+|-------|------|-------------|----------|
+| `format` | `"base64" \| "url"` | How content is encoded/referenced | ✅ |
+| `fileName` | `string` | Original filename | Optional |
+| `fileExtension` | `string` | File extension (jpg, png, pdf, etc.) | Optional |
+| `fileSize` | `number` | File size in bytes | Optional |
+
+#### Multi-Message Conversations
+
+```json
+POST /dispatch
+{
+  "messages": [
+    {
+      "sender": {"id": "user_123", "name": "John"},
+      "type": "text",
+      "content": "Can you analyze this image?"
+    },
+    {
+      "sender": {"id": "user_123", "name": "John"},
+      "type": "image",
+      "content": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD...",
+      "metadata": {
+        "format": "base64",
+        "fileName": "chart.jpg",
+        "fileExtension": "jpg"
+      }
+    }
+  ]
+}
+```
+
+> **💡 Vision-Enabled Agents**: Use GPT-4 Vision or other vision-capable agents to analyze images, extract text from documents, describe visual content, and generate image-based insights.
 
 > **For complete API documentation and examples**, see [Client Integration Guide](CLIENT_INTEGRATION.md).
 
@@ -556,7 +667,8 @@ After transformation: `{"temperature": "22°C", "condition": "Sunny"}`
 - 🎯 **Flexible Agent Configuration**: Multiple AI models, custom prompts  
 - ⚡ **Direct AI Integration**: Built-in OpenAI GPT support without separate agent services
 - 🤖 **AI Agent Summarization**: GPT can delegate focused tasks to specialized summarizer agents
-- 🔐 **REST API Integration**: Use any HTTP API as an AI tool
+- � **Rich Message Support**: Text, images, URLs with metadata for multimedia conversations
+- �🔐 **REST API Integration**: Use any HTTP API as an AI tool
 - 🧩 **Response Transformations**: Clean and transform API responses automatically
 - 🛡️ **Comprehensive JWT Authentication**: Secure agents, MCP servers, and REST APIs
 - 🔐 **OAuth2 & Static Tokens**: Enterprise authentication with automatic refresh
@@ -604,7 +716,8 @@ This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENS
 
 Cubicler is designed for future expansion:
 
-- **Multi-transport Support**: WebSocket, Server-Sent Events
+- **Advanced Vision AI**: Enhanced image analysis and generation capabilities
+- **Multi-transport Support**: WebSocket support for real-time communication
 - **Enhanced MCP Features**: Advanced protocol capabilities  
 - **Multi-agent Workflows**: Coordinated AI agent interactions
 - **Advanced Orchestration**: Complex routing and processing
