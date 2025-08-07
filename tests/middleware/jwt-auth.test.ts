@@ -6,7 +6,7 @@ import {
   createOptionalJwtMiddleware,
   extractJwtToken,
   type AuthenticatedRequest,
-} from '../../src/middleware/jwt-auth.js';
+} from '../../src/middleware/jwt-middleware.js';
 import * as jwtHelper from '../../src/utils/jwt-helper.js';
 
 // Mock the JWT helper
