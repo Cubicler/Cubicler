@@ -33,6 +33,7 @@ Cubicler is a **modular AI orchestration framework** that connects applications 
 **Core Principles**:
 
 - Follow SOLID principles
+- Avoid using `any` type - use specific types
 - Break long methods into focused smaller methods
 - Throw errors, don't catch and ignore - let them bubble up unless expected
 - Prefer simple code over forced reuse - avoid complex abstractions
@@ -283,3 +284,4 @@ Follow these steps for each interaction:
 - If you encounter an issue during task completion, update the checklist with the issue as another task
 - Don't add new tasks to the checklist unless explicitly asked
 - Stop only after all tasks are done or you cannot proceed due to an issue
+- when creating a checklist, there will be no formatting available, so use simple text format

@@ -91,6 +91,9 @@ CUBICLER_PROVIDERS_LIST=https://your-cloud.com/providers.json
 # Required - Source of agents list (local file or remote URL) 
 CUBICLER_AGENTS_LIST=https://your-cloud.com/agents.json
 
+# Optional - Source of webhooks configuration (local file or remote URL)
+CUBICLER_WEBHOOKS_LIST=./webhooks.json
+
 # Optional - Server port (default: 1503)
 CUBICLER_PORT=1503
 
@@ -435,6 +438,7 @@ OAUTH_CLIENT_SECRET=your-client-secret
 |----------|---------|
 | `POST /dispatch` | Send messages to any available agent |
 | `POST /dispatch/:agentId` | Send messages to a specific agent |
+| `POST /webhook/:identifier/:agentId` | Webhook endpoint for external triggers |
 | `GET /agents` | List all available agents |
 | `GET /health` | Check system health |
 
@@ -577,6 +581,45 @@ POST /dispatch
 
 > **For complete API documentation and examples**, see [Client Integration Guide](CLIENT_INTEGRATION.md).
 
+### 🔗 Webhook Integration
+
+Cubicler supports webhooks for event-driven AI interactions. External systems can trigger AI agents automatically through webhook endpoints.
+
+**Webhook Endpoint:**
+
+```text
+POST /webhook/:identifier/:agentId
+```
+
+**Quick Example:**
+
+```json
+POST /webhook/calendar-events/scheduler-agent
+{
+  "event": {
+    "title": "Team Meeting",
+    "start_time": "2025-08-07T14:00:00Z", 
+    "priority": "3"
+  }
+}
+```
+
+**Key Features:**
+
+- 🎯 **Event-driven AI**: External systems trigger agents automatically
+- 🔐 **Secure Authentication**: Signature validation and bearer tokens
+- 🔄 **Payload Transformations**: Clean and normalize webhook data for agents
+- ⚡ **Agent Authorization**: Only configured agents can receive specific webhooks
+
+**Use Cases:**
+
+- **Calendar Integration**: Meeting reminders and schedule management
+- **System Monitoring**: Automated alert analysis and response
+- **IoT Events**: Smart environment control and automation
+- **CI/CD Integration**: Build status analysis and deployment assistance
+
+> **For complete webhook setup and configuration**, see [Webhook Integration Guide](docs/WEBHOOK_INTEGRATION.md).
+
 ---
 
 ## 📚 Integration Guides
@@ -606,6 +649,12 @@ Connect your APIs and services:
 - **HTTP MCP Providers** - RESTful MCP services (see overview)
 - **SSE MCP Providers** - Streaming MCP services (see overview)
 - **Stdio MCP Providers** - Command-line MCP services (see overview)
+
+### 🔗 System Integrators
+
+Connect external systems to trigger AI agents automatically:
+
+- **[Webhook Integration Guide](docs/WEBHOOK_INTEGRATION.md)** - Event-driven AI with calendar systems, monitoring tools, IoT devices
 
 ---
 

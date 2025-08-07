@@ -143,6 +143,10 @@ All Cubicler agents use standardized message formats regardless of transport typ
 
 ### AgentRequest (What Your Agent Receives)
 
+Agents receive different request formats depending on how they're triggered:
+
+#### User Dispatch Call
+
 ```json
 {
   "agent": {
@@ -173,6 +177,67 @@ All Cubicler agents use standardized message formats regardless of transport typ
       "content": "What's the weather in Paris?"
     }
   ]
+}
+```
+
+#### Webhook Trigger Call
+
+```json
+{
+  "agent": {
+    "identifier": "my_agent",
+    "name": "My AI Agent", 
+    "description": "Agent description",
+    "prompt": "System prompt enhanced with webhook context"
+  },
+  "tools": [
+    {
+      "name": "cubicler_available_servers",
+      "description": "Discover available services",
+      "parameters": {...}
+    }
+  ],
+  "servers": [
+    {
+      "identifier": "weather_service",
+      "name": "Weather Service",
+      "description": "Weather information provider"
+    }
+  ],
+  "trigger": {
+    "type": "webhook",
+    "identifier": "calendar-events",
+    "name": "Calendar Events",
+    "description": "Calendar event notifications and reminders from external calendar systems",
+    "triggeredAt": "2025-08-06T10:30:00Z",
+    "payload": {
+      "event": {
+        "title": "Team Meeting",
+        "start_time": "2025-08-06 14:00:00",
+        "priority": "High"
+      }
+    }
+  }
+}
+```
+
+#### Handling Both Request Types
+
+Your agent should check for the presence of `messages` vs `trigger` to determine the request type:
+
+```typescript
+function handleAgentRequest(request: AgentRequest) {
+  if (request.messages) {
+    // Handle user conversation
+    console.log('Processing user messages:', request.messages.length);
+    // Process conversational interaction
+  } 
+  else if (request.trigger) {
+    // Handle webhook trigger
+    console.log(`Webhook triggered: ${request.trigger.name} at ${request.trigger.triggeredAt}`);
+    console.log('Webhook payload:', request.trigger.payload);
+    // Process automated event trigger
+  }
 }
 ```
 
@@ -224,7 +289,9 @@ Your agent calls external services via Cubicler's `/mcp` endpoint:
 }
 ```
 
-**👉 Each transport guide shows specific implementation examples for calling tools**
+### Implementation Examples
+
+Each transport guide shows specific implementation examples for calling tools.
 
 ---
 
