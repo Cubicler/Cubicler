@@ -437,6 +437,84 @@ describe('DirectOpenAIAgentTransport', () => {
       expect(mockedCubicAgent).toHaveBeenCalledTimes(2);
       expect(mockedOpenAIService).toHaveBeenCalledTimes(2);
     });
+
+    it('should transform image and url messages to text for CubicAgentKit compatibility', async () => {
+      const mockResponse: AgentResponse = {
+        timestamp: new Date().toISOString(),
+        type: 'text',
+        content: 'OpenAI response',
+        metadata: { usedToken: 150 },
+      };
+
+      const mockOpenAIServiceInstance = {
+        dispatch: vi.fn().mockResolvedValue(mockResponse),
+      };
+      mockedOpenAIService.mockImplementation(() => mockOpenAIServiceInstance as any);
+
+      const agentRequest: AgentRequest = {
+        agent: {
+          identifier: mockAgent.identifier,
+          name: mockAgent.name,
+          description: mockAgent.description,
+          prompt: mockAgent.prompt || 'Test prompt',
+        },
+        tools: [],
+        servers: [],
+        messages: [
+          {
+            sender: { id: 'user', name: 'Test User' },
+            timestamp: new Date().toISOString(),
+            type: 'text',
+            content: 'Hello text message',
+          },
+          {
+            sender: { id: 'user', name: 'Test User' },
+            timestamp: new Date().toISOString(),
+            type: 'image',
+            content: 'base64imagedatahere',
+            metadata: { fileName: 'test.jpg', format: 'base64' },
+          },
+          {
+            sender: { id: 'user', name: 'Test User' },
+            timestamp: new Date().toISOString(),
+            type: 'url',
+            content: 'https://example.com/image.jpg',
+          },
+          {
+            sender: { id: 'user', name: 'Test User' },
+            timestamp: new Date().toISOString(),
+            type: 'null',
+            content: null,
+          },
+        ],
+      };
+
+      await transport.dispatch(agentRequest);
+
+      // Verify that the OpenAI service received the transformed request
+      expect(mockOpenAIServiceInstance.dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          messages: [
+            expect.objectContaining({
+              type: 'text',
+              content: 'Hello text message',
+            }),
+            expect.objectContaining({
+              type: 'text',
+              content: '[Image content]: base64imagedatahere (test.jpg)',
+            }),
+            expect.objectContaining({
+              type: 'text',
+              content: '[URL reference]: https://example.com/image.jpg',
+            }),
+            expect.objectContaining({
+              type: 'null',
+              content: null,
+            }),
+          ],
+        })
+      );
+    });
   });
 
   describe('config validation edge cases', () => {
