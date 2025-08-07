@@ -1,3 +1,5 @@
+import type { JSONValue } from './types.js';
+
 /**
  * Sender information for messages
  */
@@ -48,6 +50,18 @@ export interface AgentTool {
 }
 
 /**
+ * Webhook trigger context for AgentRequest
+ */
+export interface WebhookTrigger {
+  type: 'webhook';
+  identifier: string; // webhook identifier
+  name: string; // webhook name
+  description: string; // webhook description
+  triggeredAt: string; // ISO timestamp
+  payload: JSONValue; // Webhook payloads are JSON structures
+}
+
+/**
  * Request sent to agents for processing
  */
 export interface AgentRequest {
@@ -63,7 +77,8 @@ export interface AgentRequest {
     name: string;
     description: string;
   }>;
-  messages: Message[];
+  messages?: Message[]; // Present for dispatch calls
+  trigger?: WebhookTrigger; // Present for webhook calls
 }
 
 /**

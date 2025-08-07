@@ -65,14 +65,52 @@ export class DirectOpenAIAgentTransport extends DirectAgentTransport {
     const openaiService = new OpenAIService(cubicAgent, openaiServiceConfig, dispatchConfig);
 
     try {
+      // Transform AgentRequest to match CubicAgentKit expectations
+      const transformedRequest = this.transformAgentRequest(agentRequest);
+
       // Dispatch the request to the OpenAI service
-      const response = await openaiService.dispatch(agentRequest);
+      const response = await openaiService.dispatch(transformedRequest);
       console.log(`✅ [DirectOpenAIAgentTransport] OpenAI dispatch completed`);
       return response;
     } catch (error) {
       console.error(`❌ [DirectOpenAIAgentTransport] OpenAI dispatch failed:`, error);
       throw error;
     }
+  }
+
+  /**
+   * Transform local AgentRequest to CubicAgentKit-compatible format
+   * Converts unsupported message types (image, url) to text descriptions
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- CubicAgentKit types not compatible with local types
+  private transformAgentRequest(agentRequest: AgentRequest): any {
+    return {
+      ...agentRequest,
+      messages:
+        agentRequest.messages?.map((message) => {
+          // Convert unsupported message types to CubicAgentKit-compatible format
+          if (message.type === 'image') {
+            return {
+              ...message,
+              type: 'text' as const,
+              content: `[Image content]: ${message.content || 'Image data provided'}${
+                message.metadata?.fileName ? ` (${message.metadata.fileName})` : ''
+              }`,
+            };
+          }
+
+          if (message.type === 'url') {
+            return {
+              ...message,
+              type: 'text' as const,
+              content: `[URL reference]: ${message.content || 'URL provided'}`,
+            };
+          }
+
+          // text and null types are already compatible
+          return message;
+        }) || [],
+    };
   }
 
   /**
