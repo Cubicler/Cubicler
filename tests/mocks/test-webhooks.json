@@ -1,0 +1,48 @@
+{
+  "webhooks": [
+    {
+      "identifier": "github_push",
+      "name": "GitHub Push Webhook",
+      "description": "Handle GitHub push events",
+      "config": {
+        "authentication": {
+          "type": "signature",
+          "secret": "github-webhook-secret"
+        },
+        "allowedOrigins": ["github.com"]
+      },
+      "agents": ["code_reviewer", "deployment_agent"],
+      "payload_transform": [
+        {
+          "path": "repository.name",
+          "transform": "map",
+          "value": "repo_name"
+        },
+        {
+          "path": "commits[]",
+          "transform": "map",
+          "value": "commit_list"
+        }
+      ]
+    },
+    {
+      "identifier": "slack_command",
+      "name": "Slack Command Webhook",
+      "description": "Handle Slack slash commands",
+      "config": {
+        "authentication": {
+          "type": "bearer",
+          "token": "slack-webhook-token"
+        }
+      },
+      "agents": ["slack_bot"]
+    },
+    {
+      "identifier": "internal_trigger",
+      "name": "Internal System Trigger",
+      "description": "Internal system notifications",
+      "config": {},
+      "agents": ["system_monitor", "alert_handler"]
+    }
+  ]
+}
