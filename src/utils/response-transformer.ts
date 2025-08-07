@@ -1,13 +1,13 @@
 import type { ResponseTransform } from '../model/providers.js';
+import type { JSONValue } from '../model/types.js';
 
 /**
  * Transform response data based on response_transform configuration
  */
 export function transformResponse(
-  data: any, // eslint-disable-line @typescript-eslint/no-explicit-any -- Handles arbitrary JSON structures
+  data: JSONValue, // Handles JSON structures
   transforms: ResponseTransform[]
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Returns transformed JSON structures
-): any {
+): JSONValue {
   if (!transforms || transforms.length === 0) {
     return data;
   }

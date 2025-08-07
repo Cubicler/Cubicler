@@ -307,7 +307,7 @@ function validateMcpServerConfig(config: unknown, transport: unknown, index: num
     throw new Error(`Invalid MCP server at index ${index}: config must be an object`);
   }
 
-  const typedConfig = config as Record<string, unknown>;
+  const typedConfig = config as JSONObject;
 
   if (transport === 'stdio') {
     if (!typedConfig.command || typeof typedConfig.command !== 'string') {
@@ -335,7 +335,7 @@ function validateRestServerConfig(config: unknown, index: number): void {
     throw new Error(`Invalid REST server at index ${index}: config must be an object`);
   }
 
-  const typedConfig = config as Record<string, unknown>;
+  const typedConfig = config as JSONObject;
 
   if (!typedConfig.url || typeof typedConfig.url !== 'string') {
     throw new Error(`Invalid REST server at index ${index}: config.url is required`);
@@ -437,7 +437,7 @@ function validateAgentTransportConfig(
   index: number
 ): void {
   const transport = agent.transport as string;
-  const config = agent.config as Record<string, unknown>;
+  const config = agent.config as JSONObject;
 
   switch (transport) {
     case 'http':
