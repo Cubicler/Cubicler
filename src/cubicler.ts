@@ -3,6 +3,7 @@ export * from './model/types.js';
 export * from './model/providers.js';
 export * from './model/agents.js';
 export * from './model/dispatch.js';
+export * from './model/webhooks.js';
 export * from './model/tools.js';
 export * from './model/server-config.js';
 
@@ -22,17 +23,23 @@ export {
   default as serverConfigService,
 } from './core/server-config-service.js';
 export { SseAgentService, default as sseAgentService } from './core/sse-agent-service.js';
+export { WebhookService, default as webhookService } from './core/webhook-service.js';
 
 // Export utilities and protocols
 export { Cache, createEnvCache } from './utils/cache.js';
 export { default as providersRepository } from './repository/provider-repository.js';
+export {
+  WebhookRepository,
+  default as webhookRepository,
+} from './repository/webhook-repository.js';
 export * from './utils/env-helper.js';
 export * from './utils/fetch-helper.js';
 export * from './utils/parameter-helper.js';
 export { JwtHelper, default as jwtHelper } from './utils/jwt-helper.js';
 
 // Export middleware
-export * from './middleware/jwt-auth.js';
+export * from './middleware/jwt-middleware.js';
+export * from './middleware/auth-middleware.js';
 
 // Export the Express app
 export { app } from './index.js';

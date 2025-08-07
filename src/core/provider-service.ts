@@ -1,7 +1,6 @@
 import { config } from 'dotenv';
 import type { ServersProviding } from '../interface/servers-providing.js';
 import type { ProvidersConfigProviding } from '../interface/providers-config-providing.js';
-import { ToolsListProviding } from '../interface/tools-list-providing.js';
 import { AvailableServersResponse } from '../model/server.js';
 
 config();
@@ -13,16 +12,13 @@ config();
  */
 class ProviderService implements ServersProviding {
   private readonly configProvider: ProvidersConfigProviding;
-  private toolsProviders: ToolsListProviding[];
 
   /**
    * Creates a new ProviderService instance
    * @param configProvider - Provider configuration service for accessing server configurations
-   * @param toolsProviders - Array of tools list providers for MCP and REST servers
    */
-  constructor(configProvider: ProvidersConfigProviding, toolsProviders: ToolsListProviding[]) {
+  constructor(configProvider: ProvidersConfigProviding) {
     this.configProvider = configProvider;
-    this.toolsProviders = toolsProviders;
   }
 
   /**
@@ -50,10 +46,7 @@ import providerRestService from './provider-rest-service.js';
 import configProvider from '../repository/provider-repository.js';
 
 // Create the provider service instance
-const providerServiceInstance = new ProviderService(configProvider, [
-  providerMcpService,
-  providerRestService,
-]);
+const providerServiceInstance = new ProviderService(configProvider);
 
 // Set up circular dependencies
 providerMcpService.setServersProvider(providerServiceInstance);

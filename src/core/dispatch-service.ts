@@ -1,5 +1,6 @@
 import type { MCPHandling } from '../interface/mcp-handling.js';
 import { AgentsProviding } from '../interface/agents-providing.js';
+import type { DispatchHandling } from '../interface/dispatch-handling.js';
 import type { Agent, AgentInfo } from '../model/agents.js';
 import type { AgentServerInfo, AvailableServersResponse } from '../model/server.js';
 import type { ToolDefinition } from '../model/tools.js';
@@ -22,7 +23,7 @@ import sseAgentService from './sse-agent-service.js';
  * Handles message dispatching to agents with enhanced message format
  * Uses dependency injection for MCP service and agent provider
  */
-export class DispatchService {
+export class DispatchService implements DispatchHandling {
   private readonly transportFactory: AgentTransportFactory;
 
   /**
@@ -86,8 +87,26 @@ export class DispatchService {
    * @throws Error if request is invalid
    */
   private validateDispatchRequest(request: DispatchRequest): void {
-    if (!request.messages || !Array.isArray(request.messages) || request.messages.length === 0) {
+    if (!request) {
+      throw new Error('Invalid JSON in request body');
+    }
+
+    if (!request.messages) {
+      throw new Error('Messages array is required');
+    }
+
+    if (!Array.isArray(request.messages) || request.messages.length === 0) {
       throw new Error('Messages array is required and must not be empty');
+    }
+
+    // Validate message format
+    for (let i = 0; i < request.messages.length; i++) {
+      const message = request.messages[i];
+      if (!message || !message.sender || !message.type || !message.content) {
+        throw new Error(
+          `Invalid message format: missing required fields (sender, type, content) at index ${i}`
+        );
+      }
     }
   }
 
@@ -236,6 +255,33 @@ export class DispatchService {
         usedTools: 0,
       },
     };
+  }
+
+  /**
+   * Dispatch a webhook trigger to a specific agent
+   * @param agentId - The agent identifier
+   * @param agentRequest - Complete agent request with webhook trigger context
+   * @returns Promise resolving to dispatch response
+   */
+  async dispatchWebhook(agentId: string, agentRequest: AgentRequest): Promise<DispatchResponse> {
+    console.log(`🪝 [DispatchService] Dispatching webhook to agent: ${agentId}`);
+
+    // Get agent configuration
+    const agent = await this.agentProvider.getAgent(agentId);
+    const agentInfo = await this.agentProvider.getAgentInfo(agentId);
+
+    // Create sender object for response
+    const sender = { id: agentInfo.identifier, name: agentInfo.name };
+
+    console.log(`🚀 [DispatchService] Calling agent ${agentInfo.name} via ${agent.transport}`);
+
+    try {
+      const response = await this.callAgent(agent, agentRequest);
+      return await this.handleAgentResponse(response, sender, agentInfo.name);
+    } catch (error) {
+      console.error(`❌ [DispatchService] Webhook agent call failed:`, error);
+      return this.createErrorResponse(sender, error);
+    }
   }
 }
 

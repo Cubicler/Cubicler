@@ -1,10 +1,12 @@
+import { ServerConfigProviding } from '../interface/server-config-providing.js';
 import type { CubiclerConfig, ServerConfig } from '../model/server-config.js';
+import type { JSONObject } from '../model/types.js';
 import { loadConfigFromSource } from '../utils/config-helper.js';
 
 /**
  * Service for loading and managing server configuration
  */
-export class ServerConfigService {
+export class ServerConfigService implements ServerConfigProviding {
   private config: ServerConfig | null = null;
 
   /**
@@ -67,19 +69,19 @@ export class ServerConfigService {
    * @param endpoint - Endpoint name (e.g., 'dispatch', 'mcp')
    * @returns JWT configuration or null if not configured
    */
-  getEndpointJwtConfig(endpoint: string) {
+  getEndpointJwtConfig(endpoint: string): JSONObject | null {
     const config = this.getConfig();
     if (!config) return null;
 
     // Check endpoint-specific config first
     const endpointConfig = config.endpoints?.[endpoint];
     if (endpointConfig?.auth?.jwt) {
-      return endpointConfig.auth.jwt;
+      return endpointConfig.auth.jwt as unknown as JSONObject;
     }
 
     // Fall back to global auth config
     if (config.auth?.jwt) {
-      return config.auth.jwt;
+      return config.auth.jwt as unknown as JSONObject;
     }
 
     return null;

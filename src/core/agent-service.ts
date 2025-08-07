@@ -153,68 +153,31 @@ export class AgentService implements AgentsProviding {
     const baseSections = this.createBaseTechnicalSections();
     const serverSections = await this.createServerSpecificSections(agent);
 
-    return [...baseSections, ...serverSections].join('\n');
+    return [baseSections, serverSections].filter(Boolean).join('\n\n');
   }
 
   /**
    * Create base technical instruction sections
-   * @returns Array of base instruction sections
+   * @returns Base instruction sections as string
    */
-  private createBaseTechnicalSections(): string[] {
-    return [
-      '## How You Operate as an AI Agent in Cubicler',
-      '',
-      "You're an AI agent running in **Cubicler**, a smart orchestration system. Cubicler connects you to external services (weather, databases, etc.) via **function calls** — **never** through direct API requests.",
-      '',
-      '### ✅ Capabilities',
-      '',
-      '**1. Discover Services**',
-      '',
-      'Call `cubicler_available_servers()` - Lists available services (with IDs, names, descriptions)',
-      '',
-      '**2. Discover Tools in a Service**',
-      '',
-      'Call `cubicler_fetch_server_tools({ "serverIdentifier": "service_id" })` - Lists tools/functions for a specific service',
-      '',
-      '**3. Execute External Tools**',
-      '',
-      'Call `abc123_get_weather({ "city": "Jakarta" })` - Use exactly the names and parameter structures returned by discovery',
-      '',
-      '**4. Handle Rich Messages**',
-      '',
-      '- **Text**: Process and respond to text messages normally',
-      '- **Images**: Analyze images when provided (base64 or URL format)',
-      '- **URLs**: Access and analyze content from URLs when appropriate',
-      '- **Metadata**: Use file information (name, size, type) for context',
-      '',
-      '### 🧠 Workflow',
-      '',
-      '1. Understand the request (e.g., weather, user data, image analysis)',
-      '2. Discover services if unsure: `cubicler_available_servers()`',
-      '3. Fetch tools from the relevant service: `cubicler_fetch_server_tools({ "serverIdentifier": "weather_service" })`',
-      '4. Call the tool with correct params: `abc123_get_current_weather({ "city": "Jakarta" })`',
-      '5. Return a clean, helpful response to the user',
-      '',
-      '### ⚠️ Rules',
-      '',
-      '**✅ DO:**',
-      '',
-      '- Only use listed tools',
-      '- Copy function names and parameters exactly',
-      '- Keep responses clear and non-technical',
-      '- Use file metadata when analyzing images/documents',
-      '- Provide helpful responses for image analysis requests',
-      '',
-      "**❌ DON'T:**",
-      '',
-      '- Guess or make up tool names',
-      '- Modify function names or params',
-      '- Expose technical details to users',
-      '- Assume a service exists without checking',
-      '- Ignore image content when provided',
-      '',
-      this.createExampleSection(),
-    ];
+  private createBaseTechnicalSections(): string {
+    return `## Cubicler Agent Operations
+
+You operate in **Cubicler**, an orchestration system connecting you to external services via function calls (never direct API requests).
+
+**Core Functions:**
+• \`cubicler_available_servers()\` - Discover available services
+• \`cubicler_fetch_server_tools({"serverIdentifier": "id"})\` - Get service tools
+• \`hash_tool_name({params})\` - Execute tools with exact names/params
+
+**Message Handling:**
+• Text, images (base64/URL), URLs, file metadata
+
+**Workflow:** Request → Discover servers → Fetch tools → Execute → Respond
+
+**Rules:** Use exact tool names/params, keep responses user-friendly, never guess tools.
+
+${this.createExampleSection()}`;
   }
 
   /**
@@ -222,36 +185,19 @@ export class AgentService implements AgentsProviding {
    * @returns Example section as string
    */
   private createExampleSection(): string {
-    return [
-      '### 💡 Examples',
-      '',
-      '**Weather Request:**',
-      'User asks: **"What\'s the weather in Jakarta?"**',
-      '',
-      'You:',
-      '1. `cubicler_available_servers()`',
-      '2. `cubicler_fetch_server_tools({ "serverIdentifier": "weather_service" })`',
-      '3. `abc123_get_current_weather({ "city": "Jakarta" })`',
-      '4. Respond: _"The weather in Jakarta is 28°C and partly cloudy."_',
-      '',
-      '**Image Analysis:**',
-      'User asks: **"What do you see in this image?"** (with attached image)',
-      '',
-      'You:',
-      '1. Analyze the provided image content (base64 or URL)',
-      '2. Use image metadata (filename: "vacation-photo.jpg", size: 2MB) for context',
-      '3. Respond: _"I can see a beautiful beach scene with palm trees and clear blue water. This appears to be a tropical vacation photo."_',
-      '',
-      '**Goal:** Solve user problems by coordinating the right external tools via Cubicler with accuracy and clarity.',
-    ].join('\n');
+    return `**Examples:**
+Weather: "Jakarta weather?" → discover servers → fetch weather tools → call weather function → respond
+Images: Analyze content + metadata → provide descriptive response
+
+**Goal:** Coordinate external tools through Cubicler for accurate, helpful responses.`;
   }
 
   /**
    * Create server-specific sections based on available servers
    * @param agent - Optional agent to apply restrictions
-   * @returns Array of server-specific sections
+   * @returns Server-specific sections as string
    */
-  private async createServerSpecificSections(agent?: Agent): Promise<string[]> {
+  private async createServerSpecificSections(agent?: Agent): Promise<string> {
     try {
       const serversResponse = await this.serversProvider.getAvailableServers();
 
@@ -275,49 +221,32 @@ export class AgentService implements AgentsProviding {
       }
     } catch (error) {
       console.warn('⚠️ [AgentService] Failed to fetch server information:', error);
-      return [];
+      return '';
     }
   }
 
   /**
    * Create available servers section
    * @param serversResponse - Response containing available servers
-   * @returns Array of section strings
+   * @returns Available servers section as string
    */
-  private createAvailableServersSection(serversResponse: AvailableServersResponse): string[] {
-    const sections = [
-      '',
-      '## Currently Available Servers',
-      '',
-      'Right now, you have access to these external servers:',
-      '',
-    ];
+  private createAvailableServersSection(serversResponse: AvailableServersResponse): string {
+    const serverList = serversResponse.servers
+      .map(
+        (server: ServerInfo) =>
+          `**${server.name}** (\`${server.identifier}\`) - ${server.description} (${server.toolsCount} tools)`
+      )
+      .join('\n');
 
-    serversResponse.servers.forEach((server: ServerInfo) => {
-      sections.push(`**${server.name}** (\`${server.identifier}\`)`);
-      sections.push(`- ${server.description}`);
-      sections.push(`- Available tools: ${server.toolsCount}`);
-      sections.push('');
-    });
-
-    sections.push(
-      'Remember: Use `cubicler_fetch_server_tools({"serverIdentifier": "service_identifier"})` to see exactly what functions each service provides.'
-    );
-
-    return sections;
+    return `## Currently Available Servers\n\n${serverList}\n\nUse \`cubicler_fetch_server_tools({"serverIdentifier": "id"})\` for tool details.`;
   }
 
   /**
    * Create no servers available section
-   * @returns Array of section strings
+   * @returns No servers section as string
    */
-  private createNoServersSection(): string[] {
-    return [
-      '',
-      '## No External Services Currently Available',
-      '',
-      "No external services are currently configured. You can still help users with questions that don't require external data.",
-    ];
+  private createNoServersSection(): string {
+    return `## No External Services Available\n\nNo external services configured. Can assist with general questions.`;
   }
 
   /**
