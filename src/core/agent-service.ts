@@ -1,5 +1,5 @@
 import { config } from 'dotenv';
-import type { Agent, AgentInfo, AgentsConfig, HttpAgent, StdioAgent } from '../model/agents.js';
+import type { AgentConfig, AgentInfo, AgentsConfig, HttpAgentConfig } from '../model/agents.js';
 import type { AgentsProviding } from '../interface/agents-providing.js';
 import type { ServersProviding } from '../interface/servers-providing.js';
 import type { AgentsConfigProviding } from '../interface/agents-config-providing.js';
@@ -96,8 +96,8 @@ export class AgentService implements AgentsProviding {
   async getAllAgents(): Promise<AgentInfo[]> {
     const config = await this.agentsConfigProvider.getAgentsConfig();
 
-    return config.agents.map((agent: Agent) => ({
-      identifier: agent.identifier,
+    return Object.entries(config.agents).map(([agentId, agent]: [string, AgentConfig]) => ({
+      identifier: agentId,
       name: agent.name,
       description: agent.description,
     }));
@@ -110,7 +110,7 @@ export class AgentService implements AgentsProviding {
    */
   async hasAgent(agentIdentifier: string): Promise<boolean> {
     const config = await this.agentsConfigProvider.getAgentsConfig();
-    return config.agents.some((a) => a.identifier === agentIdentifier);
+    return agentIdentifier in config.agents;
   }
 
   /**
@@ -125,13 +125,13 @@ export class AgentService implements AgentsProviding {
 
     switch (agent.transport) {
       case 'http':
-        return (agent as HttpAgent).config.url;
+        return (agent as HttpAgentConfig).url;
       case 'stdio':
-        return (agent as StdioAgent).config.url;
+        throw new Error(`STDIO transport agents don't have URLs. They use command execution.`);
       case 'direct':
         throw new Error(`Direct transport agents don't have URLs. Use agent factory instead.`);
       default:
-        throw new Error(`Unsupported transport type: ${(agent as Agent).transport}`);
+        throw new Error(`Unsupported transport type: ${agent.transport}`);
     }
   }
 
@@ -140,7 +140,7 @@ export class AgentService implements AgentsProviding {
    * @param agentIdentifier - Optional agent identifier. If not provided, uses default agent
    * @returns The full agent configuration object
    */
-  async getAgent(agentIdentifier?: string): Promise<Agent> {
+  async getAgent(agentIdentifier?: string): Promise<AgentConfig & { identifier: string }> {
     const config = await this.agentsConfigProvider.getAgentsConfig();
     return await this.resolveAgent(agentIdentifier, config);
   }
@@ -149,7 +149,9 @@ export class AgentService implements AgentsProviding {
    * Generate technical section about available servers and how to access their tools
    * This is inlined as it's only used in getAgentPrompt()
    */
-  private async buildTechnicalSection(agent?: Agent): Promise<string> {
+  private async buildTechnicalSection(
+    agent?: AgentConfig & { identifier: string }
+  ): Promise<string> {
     const baseSections = this.createBaseTechnicalSections();
     const serverSections = await this.createServerSpecificSections(agent);
 
@@ -197,7 +199,9 @@ Images: Analyze content + metadata → provide descriptive response
    * @param agent - Optional agent to apply restrictions
    * @returns Server-specific sections as string
    */
-  private async createServerSpecificSections(agent?: Agent): Promise<string> {
+  private async createServerSpecificSections(
+    agent?: AgentConfig & { identifier: string }
+  ): Promise<string> {
     try {
       const serversResponse = await this.serversProvider.getAvailableServers();
 
@@ -259,22 +263,28 @@ Images: Analyze content + metadata → provide descriptive response
   private async resolveAgent(
     agentIdentifier: string | undefined,
     config: AgentsConfig
-  ): Promise<Agent> {
+  ): Promise<AgentConfig & { identifier: string }> {
     if (agentIdentifier) {
-      const agent = config.agents.find((a: Agent) => a.identifier === agentIdentifier);
+      const agent = config.agents[agentIdentifier];
       if (!agent) {
         throw new Error(`Agent not found: ${agentIdentifier}`);
       }
-      return agent;
+      return { ...agent, identifier: agentIdentifier };
     }
 
     // Return default agent (first available)
-    if (config.agents.length === 0) {
+    const agentEntries = Object.entries(config.agents);
+    if (agentEntries.length === 0) {
       throw new Error('No agents available');
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Safe: we just checked length > 0
-    return config.agents[0]!;
+    const firstEntry = agentEntries[0];
+    if (!firstEntry) {
+      throw new Error('No agents available');
+    }
+
+    const [firstAgentId, firstAgent] = firstEntry;
+    return { ...firstAgent, identifier: firstAgentId };
   }
 }
 

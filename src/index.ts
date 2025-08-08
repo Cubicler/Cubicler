@@ -83,7 +83,7 @@ app.get('/endpoints', (_req: Request, res: Response) => {
     { method: 'POST', path: '/dispatch/:agentId', service: 'DispatchService' },
     { method: 'POST', path: '/mcp', service: 'MCPService' },
     { method: 'GET', path: '/sse/:agentId', service: 'SSEAgentService' },
-    { method: 'POST', path: '/sse/:agentId/response', service: 'SSEAgentService' },
+    { method: 'POST', path: '/sse/:agentId', service: 'SSEAgentService' },
     { method: 'GET', path: '/sse/status', service: 'SSEAgentService' },
     {
       method: 'POST',
@@ -174,14 +174,20 @@ app.get(
   })
 );
 
-// SSE response handling - SSEAgentService
+// SSE response handling (unified endpoint) - SSEAgentService
+// POST /sse/:agentId now accepts agent responses while GET /sse/:agentId establishes the stream
 app.post(
-  '/sse/:agentId/response',
+  '/sse/:agentId',
   validateAgentId,
   await withJWT('sse', async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { agentId } = req.params;
       const { requestId, response } = req.body;
+
+      if (!requestId || !response) {
+        res.status(400).json({ error: 'Missing requestId or response in body' });
+        return;
+      }
 
       const handled = sseAgentService.handleAgentResponse(agentId!, requestId, response); // eslint-disable-line @typescript-eslint/no-non-null-assertion -- Safe: agentId is validated by validateAgentId middleware
       if (!handled) {

@@ -1,6 +1,6 @@
 import type { JSONObject, JSONValue, MCPRequest } from '../model/types.js';
 import type { MCPTool, ToolDefinition } from '../model/tools.js';
-import type { MCPServer } from '../model/providers.js';
+import type { McpServerConfig } from '../model/providers.js';
 import {
   generateFunctionName,
   generateServerHash,
@@ -49,16 +49,13 @@ class ProviderMCPService implements MCPCompatible {
 
     // Initialize all MCP servers
     const config = await this.providerConfig.getProvidersConfig();
-    const mcpServers = config.mcpServers || [];
+    const mcpServers = config.mcpServers || {};
 
-    for (const server of mcpServers) {
+    for (const [serverId, server] of Object.entries(mcpServers)) {
       try {
-        await this.initializeMCPServer(server);
+        await this.initializeMCPServer(serverId, server);
       } catch (error) {
-        console.warn(
-          `⚠️ [ProviderMCPService] Failed to initialize MCP server ${server.identifier}:`,
-          error
-        );
+        console.warn(`⚠️ [ProviderMCPService] Failed to initialize MCP server ${serverId}:`, error);
       }
     }
 
@@ -71,7 +68,7 @@ class ProviderMCPService implements MCPCompatible {
    */
   async toolsList(): Promise<ToolDefinition[]> {
     const config = await this.providerConfig.getProvidersConfig();
-    const mcpServers = config.mcpServers || [];
+    const mcpServers = config.mcpServers || {};
     const allMCPTools: ToolDefinition[] = [];
 
     if (!this.serversProvider) {
@@ -79,19 +76,16 @@ class ProviderMCPService implements MCPCompatible {
       return allMCPTools;
     }
 
-    for (const server of mcpServers) {
+    for (const [serverId, server] of Object.entries(mcpServers)) {
       try {
-        console.log(`🔧 [ProviderMCPService] Loading MCP tools from ${server.identifier}...`);
-        const tools = await this.loadToolsFromServer(server);
+        console.log(`🔧 [ProviderMCPService] Loading MCP tools from ${serverId}...`);
+        const tools = await this.loadToolsFromServer(serverId, server);
         allMCPTools.push(...tools);
         console.log(
-          `✅ [ProviderMCPService] Loaded ${tools.length} tools from MCP server ${server.identifier}`
+          `✅ [ProviderMCPService] Loaded ${tools.length} tools from MCP server ${serverId}`
         );
       } catch (error) {
-        console.warn(
-          `⚠️ [ProviderMCPService] Failed to get MCP tools from ${server.identifier}:`,
-          error
-        );
+        console.warn(`⚠️ [ProviderMCPService] Failed to get MCP tools from ${serverId}:`, error);
         // Continue with other servers
       }
     }
@@ -107,8 +101,8 @@ class ProviderMCPService implements MCPCompatible {
   async canHandleRequest(toolName: string): Promise<boolean> {
     try {
       const { serverHash } = parseFunctionName(toolName);
-      const server = await this.findServerByHash(serverHash);
-      return server !== undefined;
+      const result = await this.findServerByHash(serverHash);
+      return result !== undefined;
     } catch {
       return false;
     }
@@ -125,42 +119,45 @@ class ProviderMCPService implements MCPCompatible {
     console.log(`⚙️ [ProviderMCPService] Executing MCP tool: ${toolName}`);
 
     const { serverHash, functionName } = parseFunctionName(toolName);
-    const server = await this.findServerByHash(serverHash);
+    const result = await this.findServerByHash(serverHash);
 
-    if (!server) {
+    if (!result) {
       throw new Error(`Server not found for hash: ${serverHash}`);
     }
 
+    const { serverId, server } = result;
+
     // Ensure transport exists for this server
-    if (!this.transports.has(server.identifier)) {
+    if (!this.transports.has(serverId)) {
       try {
-        const transport = MCPTransportFactory.createTransport(server);
-        await transport.initialize(server);
-        this.transports.set(server.identifier, transport);
+        const transport = MCPTransportFactory.createTransport(serverId, server);
+        await transport.initialize(serverId, server);
+        this.transports.set(serverId, transport);
       } catch (error) {
         throw new Error(
-          `Failed to create transport for ${server.identifier}: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to create transport for ${serverId}: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
       }
     }
 
-    const result = await this.executeMCPTool(server.identifier, functionName, parameters);
-    return result as JSONValue;
+    const toolResult = await this.executeMCPTool(serverId, functionName, parameters);
+    return toolResult as JSONValue;
   }
 
   /**
    * Initialize a single MCP server
+   * @param serverId - Server identifier
    * @param server - Server configuration
    */
-  private async initializeMCPServer(server: MCPServer): Promise<void> {
-    console.log(`🔄 [ProviderMCPService] Initializing MCP server: ${server.identifier}`);
+  private async initializeMCPServer(serverId: string, server: McpServerConfig): Promise<void> {
+    console.log(`🔄 [ProviderMCPService] Initializing MCP server: ${serverId}`);
 
     // Create and initialize transport
-    const transport = MCPTransportFactory.createTransport(server);
-    await transport.initialize(server);
+    const transport = MCPTransportFactory.createTransport(serverId, server);
+    await transport.initialize(serverId, server);
 
     // Store transport (even if initialization fails, we keep it for tool operations)
-    this.transports.set(server.identifier, transport);
+    this.transports.set(serverId, transport);
 
     // Send initialize request
     const request: MCPRequest = {
@@ -191,7 +188,7 @@ class ProviderMCPService implements MCPCompatible {
       );
     }
 
-    console.log(`✅ [ProviderMCPService] MCP server ${server.identifier} initialized`);
+    console.log(`✅ [ProviderMCPService] MCP server ${serverId} initialized`);
   }
 
   /**
@@ -199,36 +196,36 @@ class ProviderMCPService implements MCPCompatible {
    * @param server - Server configuration
    * @returns Array of tool definitions
    */
-  private async loadToolsFromServer(server: MCPServer): Promise<ToolDefinition[]> {
+  private async loadToolsFromServer(
+    serverId: string,
+    server: McpServerConfig
+  ): Promise<ToolDefinition[]> {
     // Ensure transport exists for this server
-    if (!this.transports.has(server.identifier)) {
+    if (!this.transports.has(serverId)) {
       try {
-        const transport = MCPTransportFactory.createTransport(server);
-        await transport.initialize(server);
-        this.transports.set(server.identifier, transport);
+        const transport = MCPTransportFactory.createTransport(serverId, server);
+        await transport.initialize(serverId, server);
+        this.transports.set(serverId, transport);
       } catch (error) {
-        console.warn(
-          `⚠️ [ProviderMCPService] Failed to create transport for ${server.identifier}:`,
-          error
-        );
+        console.warn(`⚠️ [ProviderMCPService] Failed to create transport for ${serverId}:`, error);
         return [];
       }
     }
 
-    const mcpTools = await this.getMCPTools(server.identifier);
+    const mcpTools = await this.getMCPTools(serverId);
 
-    // Get identifier string based on transport type
+    // Get identifier string based on server type
     let serverIdentifierString = '';
-    if (server.transport === 'stdio') {
-      const config = server.config as { command: string };
-      serverIdentifierString = config.command || '';
-    } else {
-      const config = server.config as { url: string };
-      serverIdentifierString = config.url || '';
+    if ('command' in server) {
+      // STDIO server
+      serverIdentifierString = server.command;
+    } else if ('url' in server) {
+      // HTTP/SSE server
+      serverIdentifierString = server.url;
     }
 
     return mcpTools.map((tool) => ({
-      name: generateFunctionName(server.identifier, serverIdentifierString, toSnakeCase(tool.name)),
+      name: generateFunctionName(serverId, serverIdentifierString, toSnakeCase(tool.name)),
       description: tool.description || `MCP tool: ${tool.name}`,
       parameters: tool.inputSchema || { type: 'object', properties: {} },
     }));
@@ -239,23 +236,30 @@ class ProviderMCPService implements MCPCompatible {
    * @param serverHash - Server hash to find
    * @returns Server configuration or undefined if not found
    */
-  private async findServerByHash(serverHash: string): Promise<MCPServer | undefined> {
+  private async findServerByHash(
+    serverHash: string
+  ): Promise<{ serverId: string; server: McpServerConfig } | undefined> {
     const config = await this.providerConfig.getProvidersConfig();
-    const mcpServers = config.mcpServers || [];
+    const mcpServers = config.mcpServers || {};
 
-    return mcpServers.find((s: MCPServer) => {
-      // Get identifier string based on transport type
+    for (const [serverId, server] of Object.entries(mcpServers)) {
+      // Get identifier string based on server type
       let serverIdentifierString = '';
-      if (s.transport === 'stdio') {
-        const config = s.config as { command?: string };
-        serverIdentifierString = config?.command || '';
-      } else {
-        const config = s.config as { url?: string };
-        serverIdentifierString = config?.url || '';
+      if ('command' in server) {
+        // STDIO server
+        serverIdentifierString = server.command;
+      } else if ('url' in server) {
+        // HTTP/SSE server
+        serverIdentifierString = server.url;
       }
-      const expectedHash = generateServerHash(s.identifier, serverIdentifierString);
-      return expectedHash === serverHash;
-    });
+
+      const expectedHash = generateServerHash(serverId, serverIdentifierString);
+      if (expectedHash === serverHash) {
+        return { serverId, server };
+      }
+    }
+
+    return undefined;
   }
 
   /**

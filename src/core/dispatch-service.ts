@@ -1,7 +1,7 @@
 import type { MCPHandling } from '../interface/mcp-handling.js';
 import { AgentsProviding } from '../interface/agents-providing.js';
 import type { DispatchHandling } from '../interface/dispatch-handling.js';
-import type { Agent, AgentInfo } from '../model/agents.js';
+import type { AgentConfig, AgentInfo } from '../model/agents.js';
 import type { AgentServerInfo, AvailableServersResponse } from '../model/server.js';
 import type { ToolDefinition } from '../model/tools.js';
 import {
@@ -73,7 +73,7 @@ export class DispatchService implements DispatchHandling {
     console.log(`🚀 [DispatchService] Calling agent ${agentInfo.name} via ${agent.transport}`);
 
     try {
-      const response = await this.callAgent(agent, agentRequest);
+      const response = await this.callAgent(agentInfo.identifier, agent, agentRequest);
       return await this.handleAgentResponse(response, sender, agentInfo.name);
     } catch (error) {
       console.error(`❌ [DispatchService] Agent call failed:`, error);
@@ -116,12 +116,16 @@ export class DispatchService implements DispatchHandling {
    * @param agentRequest - Prepared agent request
    * @returns Agent response
    */
-  private async callAgent(agent: Agent, agentRequest: AgentRequest): Promise<AgentResponse> {
-    const transport = this.transportFactory.createTransport(agent);
+  private async callAgent(
+    agentId: string,
+    agent: AgentConfig,
+    agentRequest: AgentRequest
+  ): Promise<AgentResponse> {
+    const transport = this.transportFactory.createTransport(agentId, agent);
 
     // Register SSE transports with the SSE agent service for connection management
     if (transport instanceof SseAgentTransport) {
-      sseAgentService.registerAgent(agent.identifier, transport);
+      sseAgentService.registerAgent(agentId, transport);
     }
 
     return await transport.dispatch(agentRequest);
@@ -132,7 +136,7 @@ export class DispatchService implements DispatchHandling {
    */
   private async gatherAgentData(
     agentId: string | undefined
-  ): Promise<[AgentInfo, Agent, string, AgentServerInfo[], ToolDefinition[]]> {
+  ): Promise<[AgentInfo, AgentConfig, string, AgentServerInfo[], ToolDefinition[]]> {
     const [agentInfo, agent, prompt, serversInfo, allTools] = await Promise.all([
       this.agentProvider.getAgentInfo(agentId),
       this.agentProvider.getAgent(agentId),
@@ -276,7 +280,7 @@ export class DispatchService implements DispatchHandling {
     console.log(`🚀 [DispatchService] Calling agent ${agentInfo.name} via ${agent.transport}`);
 
     try {
-      const response = await this.callAgent(agent, agentRequest);
+      const response = await this.callAgent(agentId, agent, agentRequest);
       return await this.handleAgentResponse(response, sender, agentInfo.name);
     } catch (error) {
       console.error(`❌ [DispatchService] Webhook agent call failed:`, error);

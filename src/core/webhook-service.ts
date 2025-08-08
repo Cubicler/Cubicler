@@ -8,6 +8,7 @@ import { ProcessedWebhook, WebhookConfig, WebhookRequest } from '../model/webhoo
 import { DispatchResponse, WebhookTrigger } from '../model/dispatch.js';
 import { transformResponse } from '../utils/response-transformer.js';
 import { filterAllowedServers, filterAllowedTools } from '../utils/restriction-helper.js';
+import jwtHelper from '../utils/jwt-helper.js';
 import type { AvailableServersResponse } from '../model/server.js';
 import type { JSONValue } from '../model/types.js';
 import type { ToolDefinition } from '../model/tools.js';
@@ -169,6 +170,7 @@ class WebhookService {
     const transformedPayload = this.transformPayload(webhook, webhookRequest.payload);
 
     const processedWebhook: ProcessedWebhook = {
+      webhookId: webhookRequest.identifier,
       webhook,
       transformedPayload,
       triggeredAt: new Date().toISOString(),
@@ -187,7 +189,7 @@ class WebhookService {
   createTriggerContext(processedWebhook: ProcessedWebhook): WebhookTrigger {
     return {
       type: 'webhook',
-      identifier: processedWebhook.webhook.identifier,
+      identifier: processedWebhook.webhookId,
       name: processedWebhook.webhook.name,
       description: processedWebhook.webhook.description,
       triggeredAt: processedWebhook.triggeredAt,
@@ -205,12 +207,12 @@ class WebhookService {
     webhook: WebhookConfig,
     webhookRequest: WebhookRequest
   ): Promise<void> {
-    if (!webhook.config.authentication) {
+    if (!webhook.auth) {
       // No authentication required
       return;
     }
 
-    const auth = webhook.config.authentication;
+    const auth = webhook.auth;
 
     switch (auth.type) {
       case 'signature':
@@ -225,6 +227,13 @@ class WebhookService {
           throw new Error('Bearer authentication requires a token');
         }
         await this.validateBearerToken(auth.token, webhookRequest);
+        break;
+
+      case 'jwt':
+        if (!auth.config) {
+          throw new Error('JWT authentication requires config');
+        }
+        await this.validateJwtToken(auth.config, webhookRequest);
         break;
 
       default:
@@ -301,6 +310,48 @@ class WebhookService {
     console.log(
       `🔐 [WebhookService] Bearer token validation successful for webhook ${webhookRequest.identifier}`
     );
+  }
+
+  /**
+   * Validate JWT token authentication
+   * @param jwtConfig - JWT authentication configuration
+   * @param webhookRequest - The webhook request data
+   * @throws Error if JWT validation fails
+   */
+  private async validateJwtToken(
+    jwtConfig: import('../model/providers.js').ProviderJwtAuthConfig,
+    webhookRequest: WebhookRequest
+  ): Promise<void> {
+    const authHeader = webhookRequest.headers.authorization;
+
+    if (!authHeader) {
+      throw new Error('Missing Authorization header');
+    }
+
+    const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : authHeader;
+
+    try {
+      // Get valid token from JWT helper (handles static tokens and OAuth2 refresh)
+      const validToken = await jwtHelper.getToken(jwtConfig);
+
+      // For webhooks with JWT, we expect the incoming token to match our valid token
+      // Use constant-time comparison to prevent timing attacks
+      const isValid = crypto.timingSafeEqual(
+        Buffer.from(token, 'utf8'),
+        Buffer.from(validToken, 'utf8')
+      );
+
+      if (!isValid) {
+        throw new Error('Invalid JWT token');
+      }
+
+      console.log(
+        `🔐 [WebhookService] JWT validation successful for webhook ${webhookRequest.identifier}`
+      );
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown JWT validation error';
+      throw new Error(`JWT validation failed: ${errorMessage}`);
+    }
   }
 
   /**

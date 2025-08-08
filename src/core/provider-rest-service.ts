@@ -14,7 +14,7 @@ import type { ServersProviding } from '../interface/servers-providing.js';
 import providersRepository from '../repository/provider-repository.js';
 import { MCPCompatible } from '../interface/mcp-compatible.js';
 import { ToolDefinition } from '../model/tools.js';
-import type { RESTEndpoint, RESTServer } from '../model/providers.js';
+import type { RESTEndpoint, RESTServerConfig } from '../model/providers.js';
 import jwtHelper from '../utils/jwt-helper.js';
 
 /**
@@ -58,7 +58,7 @@ class ProviderRESTService implements MCPCompatible {
    */
   async toolsList(): Promise<ToolDefinition[]> {
     const config = await this.configProvider.getProvidersConfig();
-    const restServers = config.restServers || [];
+    const restServers = Object.entries(config.restServers || {});
     const allTools: ToolDefinition[] = [];
 
     if (!this.serversProvider) {
@@ -66,15 +66,12 @@ class ProviderRESTService implements MCPCompatible {
       return allTools;
     }
 
-    for (const server of restServers) {
+    for (const [serverId, _server] of restServers) {
       try {
-        const serverTools = await this.getRESTTools(server.identifier);
+        const serverTools = await this.getRESTTools(serverId);
         allTools.push(...serverTools);
       } catch (error) {
-        console.warn(
-          `⚠️ [RESTService] Failed to get tools from REST server ${server.identifier}:`,
-          error
-        );
+        console.warn(`⚠️ [RESTService] Failed to get tools from REST server ${serverId}:`, error);
         // Continue with other servers
       }
     }
@@ -91,13 +88,13 @@ class ProviderRESTService implements MCPCompatible {
    */
   async toolsCall(toolName: string, parameters: JSONObject): Promise<JSONValue> {
     const { serverHash, functionName } = parseFunctionName(toolName);
-    const server = await this.findRestServerByHash(serverHash);
+    const serverEntry = await this.findRestServerByHash(serverHash);
 
-    if (!server) {
+    if (!serverEntry) {
       throw new Error(`REST server not found for hash: ${serverHash}`);
     }
 
-    return await this.executeRESTTool(server.identifier, functionName, parameters);
+    return await this.executeRESTTool(serverEntry.serverId, functionName, parameters);
   }
 
   /**
@@ -122,19 +119,21 @@ class ProviderRESTService implements MCPCompatible {
   /**
    * Find REST server configuration by hash
    * @param serverHash - Server hash to find
-   * @returns Server configuration or undefined if not found
+   * @returns Server entry or undefined if not found
    */
-  private async findRestServerByHash(serverHash: string): Promise<RESTServer | undefined> {
+  private async findRestServerByHash(
+    serverHash: string
+  ): Promise<{ serverId: string; server: RESTServerConfig } | undefined> {
     const config = await this.configProvider.getProvidersConfig();
-    const restServers = config.restServers || [];
+    const restServers = Object.entries(config.restServers || {});
 
-    return restServers.find((server) => {
-      if (!server.config) {
-        return false;
+    for (const [serverId, server] of restServers) {
+      const expectedHash = generateServerHash(serverId, server.url);
+      if (expectedHash === serverHash) {
+        return { serverId, server };
       }
-      const expectedHash = generateServerHash(server.identifier, server.config.url);
-      return expectedHash === serverHash;
-    });
+    }
+    return undefined;
   }
 
   /**
@@ -145,33 +144,33 @@ class ProviderRESTService implements MCPCompatible {
    */
   private async getRESTTools(serverIdentifier: string): Promise<ToolDefinition[]> {
     const config = await this.configProvider.getProvidersConfig();
-    const restServer = config.restServers?.find((s) => s.identifier === serverIdentifier);
+    const restServer = config.restServers?.[serverIdentifier];
 
     if (!restServer) {
       throw new Error(`REST server not found: ${serverIdentifier}`);
     }
 
-    return restServer.endPoints.map((endpoint) => this.createToolDefinition(restServer, endpoint));
+    return Object.entries(restServer.endpoints || {}).map(([_endpointId, endpoint]) =>
+      this.createToolDefinition(serverIdentifier, restServer, endpoint)
+    );
   }
 
   /**
    * Create a tool definition from REST server and endpoint configuration
+   * @param serverId - The server identifier
    * @param restServer - The REST server configuration
    * @param endpoint - The endpoint configuration
    * @returns Tool definition for the endpoint
    */
-  private createToolDefinition(restServer: RESTServer, endpoint: RESTEndpoint): ToolDefinition {
-    if (!restServer.config) {
-      throw new Error(`REST server ${restServer.identifier} missing config`);
-    }
+  private createToolDefinition(
+    serverId: string,
+    restServer: RESTServerConfig,
+    endpoint: RESTEndpoint
+  ): ToolDefinition {
     const { properties, required } = this.buildToolParameters(endpoint);
 
     return {
-      name: generateFunctionName(
-        restServer.identifier,
-        restServer.config.url,
-        toSnakeCase(endpoint.name)
-      ),
+      name: generateFunctionName(serverId, restServer.url, toSnakeCase(endpoint.name)),
       description: endpoint.description,
       parameters: {
         type: 'object',
@@ -244,15 +243,7 @@ class ProviderRESTService implements MCPCompatible {
       };
     }
 
-    // Add general parameters as query object if endpoint has parameters field
-    // This is for backward compatibility and simpler endpoint definitions
-    if (endpoint.parameters?.properties) {
-      properties.query = {
-        type: 'object',
-        properties: endpoint.parameters.properties,
-        required: endpoint.parameters.required || [],
-      };
-    }
+    // Note: 'parameters' field removed in new schema - use 'query' instead
   }
 
   /**
@@ -327,15 +318,17 @@ class ProviderRESTService implements MCPCompatible {
   private async getServerAndEndpoint(
     serverIdentifier: string,
     functionName: string
-  ): Promise<{ restServer: RESTServer; endpoint: RESTEndpoint }> {
+  ): Promise<{ restServer: RESTServerConfig; endpoint: RESTEndpoint }> {
     const config = await this.configProvider.getProvidersConfig();
-    const restServer = config.restServers?.find((s) => s.identifier === serverIdentifier);
+    const restServer = config.restServers?.[serverIdentifier];
 
     if (!restServer) {
       throw new Error(`REST server not found: ${serverIdentifier}`);
     }
 
-    const endpoint = restServer.endPoints.find((ep) => toSnakeCase(ep.name) === functionName);
+    const endpoint = Object.values(restServer.endpoints || {}).find(
+      (ep: RESTEndpoint) => toSnakeCase(ep.name) === functionName
+    );
     if (!endpoint) {
       throw new Error(`REST endpoint not found: ${functionName} in server ${serverIdentifier}`);
     }
@@ -352,7 +345,7 @@ class ProviderRESTService implements MCPCompatible {
    */
   private async buildRequestConfiguration(
     endpoint: RESTEndpoint,
-    restServer: RESTServer,
+    restServer: RESTServerConfig,
     parameters: Record<string, JSONValue>
   ): Promise<{
     url: string;
@@ -423,12 +416,12 @@ class ProviderRESTService implements MCPCompatible {
    */
   private buildRequestUrl(
     endpoint: RESTEndpoint,
-    restServer: RESTServer,
+    restServer: RESTServerConfig,
     pathParams: Record<string, string>,
     remainingParams: Record<string, JSONValue>
   ): string {
     const pathWithParams = replacePathParameters(endpoint.path, pathParams);
-    const fullUrl = `${restServer.config.url}${pathWithParams}`;
+    const fullUrl = `${restServer.url}${pathWithParams}`;
 
     const queryParams = this.extractQueryParameters(remainingParams);
     const queryString = this.buildQueryString(queryParams);
@@ -473,17 +466,17 @@ class ProviderRESTService implements MCPCompatible {
    */
   private async buildRequestHeaders(
     endpoint: RESTEndpoint,
-    restServer: RESTServer
+    restServer: RESTServerConfig
   ): Promise<Record<string, string>> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...restServer.config.defaultHeaders,
+      ...restServer.defaultHeaders,
       ...endpoint.headers,
     };
 
     // Add JWT authentication if configured
-    if (restServer.config.auth?.type === 'jwt') {
-      const token = await jwtHelper.getToken(restServer.config.auth.config);
+    if (restServer.auth?.type === 'jwt') {
+      const token = await jwtHelper.getToken(restServer.auth.config);
       headers.Authorization = `Bearer ${token}`;
     }
 
