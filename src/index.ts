@@ -6,6 +6,7 @@ import { type AuthenticatedRequest, withJWT } from './middleware/jwt-middleware.
 import healthService from './core/health-service.js';
 import dispatchService from './core/dispatch-service.js';
 import mcpService from './core/mcp-service.js';
+import mcpSseService from './core/mcp-sse-service.js';
 import agentService from './core/agent-service.js';
 import sseAgentService from './core/sse-agent-service.js';
 import webhookService from './core/webhook-service.js';
@@ -82,6 +83,7 @@ app.get('/endpoints', (_req: Request, res: Response) => {
     { method: 'POST', path: '/dispatch', service: 'DispatchService' },
     { method: 'POST', path: '/dispatch/:agentId', service: 'DispatchService' },
     { method: 'POST', path: '/mcp', service: 'MCPService' },
+    { method: 'GET', path: '/mcp/sse', service: 'MCPService (SSE Stream)' },
     { method: 'GET', path: '/sse/:agentId', service: 'SSEAgentService' },
     { method: 'POST', path: '/sse/:agentId', service: 'SSEAgentService' },
     { method: 'GET', path: '/sse/status', service: 'SSEAgentService' },
@@ -141,12 +143,48 @@ app.post(
   await withJWT('mcp', async (req: AuthenticatedRequest, res: Response) => {
     try {
       const result = await mcpService.handleMCPRequest(req.body);
+
+      // If an SSE client is connected, stream the response and return 202
+      const clientId =
+        (req.headers['x-mcp-client-id'] as string | undefined) ||
+        (req.body && (req.body.clientId as string | undefined));
+
+      if (clientId && mcpSseService.getConnectedIds().includes(clientId)) {
+        const streamed = mcpSseService.send(clientId, result);
+        if (streamed) {
+          res.status(202).json({ streamed: true, id: req.body.id });
+          return;
+        }
+      }
+
+      // Fallback: respond inline over HTTP
       formatMCPSuccess(result, res);
     } catch (error) {
       handleMCPError(error, req.body.id || null, req, res, () => {});
     }
   })
 );
+
+// MCP SSE stream - opens persistent SSE channel for MCP responses
+app.get('/mcp/sse', async (req: Request, res: Response) => {
+  try {
+    const clientId = (req.query.clientId as string) || '';
+    const token = (req.query.token as string) || undefined;
+
+    if (!clientId) {
+      res.status(400).json({ error: 'Missing clientId query parameter' });
+      return;
+    }
+
+    const user = await mcpSseService.verifyQueryToken(token);
+    mcpSseService.register(clientId, res, user);
+  } catch (error) {
+    console.error('❌ [Server] MCP SSE connect error:', error);
+    res.status(401).json({
+      error: error instanceof Error ? error.message : 'Unauthorized',
+    });
+  }
+});
 
 // SSE connection - SSEAgentService
 app.get(

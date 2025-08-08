@@ -2,8 +2,7 @@ import type { AgentRequest, AgentResponse } from '../../model/dispatch.js';
 import type { DirectOpenAIAgentConfig } from '../../model/agents.js';
 import type { MCPHandling } from '../../interface/mcp-handling.js';
 import type { ServersProviding } from '../../interface/servers-providing.js';
-import { OpenAIService } from '@cubicler/cubicagent-openai';
-import { CubicAgent } from '@cubicler/cubicagentkit';
+import { createOpenAIServiceBasic } from '@cubicler/cubicagent-openai';
 import type {
   DispatchConfig,
   OpenAIConfig,
@@ -34,9 +33,6 @@ export class DirectOpenAIAgentTransport extends DirectAgentTransport {
 
     const openaiConfig = this.config as DirectOpenAIAgentConfig;
 
-    // Create a fresh CubicAgent instance for this request
-    const cubicAgent = new CubicAgent(this, this);
-
     // Build OpenAI config from our DirectOpenAIConfig
     const openaiServiceConfig: OpenAIConfig = {
       apiKey: expandEnvVariable(openaiConfig.apiKey),
@@ -61,10 +57,18 @@ export class DirectOpenAIAgentTransport extends DirectAgentTransport {
       agentPort: 3000,
     };
 
-    // Create OpenAI service instance
-    const openaiService = new OpenAIService(cubicAgent, openaiServiceConfig, dispatchConfig);
+    // Create OpenAI service instance via factory (2.4+ API)
+    const openaiService = createOpenAIServiceBasic(
+      this, // AgentClient implementation (DirectAgentTransport)
+      this, // AgentServer implementation (DirectAgentTransport)
+      openaiServiceConfig,
+      dispatchConfig
+    );
 
     try {
+      // Start the OpenAI service first (required in 2.4.0+)
+      await openaiService.start();
+
       // Transform AgentRequest to match CubicAgentKit expectations
       const transformedRequest = this.transformAgentRequest(agentRequest);
 

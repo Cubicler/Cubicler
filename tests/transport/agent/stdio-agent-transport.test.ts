@@ -110,16 +110,25 @@ describe('StdioAgentTransport', () => {
     it('should call agent successfully', async () => {
       const promise = transport.dispatch(mockAgentRequest);
 
-      // Simulate successful response
+      // Simulate successful response in bidirectional format
       setTimeout(() => {
-        mockChild.stdout.emit('data', JSON.stringify(mockAgentResponse));
+        const responseMessage =
+          JSON.stringify({
+            type: 'agent_response',
+            data: mockAgentResponse,
+          }) + '\n';
+        mockChild.stdout.emit('data', responseMessage);
         mockChild.emit('close', 0);
       }, 10);
 
       const result = await promise;
 
-      expect(mockChild.stdin.write).toHaveBeenCalledWith(JSON.stringify(mockAgentRequest));
-      expect(mockChild.stdin.end).toHaveBeenCalled();
+      const expectedMessage =
+        JSON.stringify({
+          type: 'agent_request',
+          data: mockAgentRequest,
+        }) + '\n';
+      expect(mockChild.stdin.write).toHaveBeenCalledWith(expectedMessage, expect.any(Function));
       expect(result).toEqual(mockAgentResponse);
     });
 
@@ -128,34 +137,48 @@ describe('StdioAgentTransport', () => {
 
       setTimeout(() => {
         mockChild.stderr.emit('data', 'Process failed');
-        mockChild.emit('close', 1);
+        mockChild.emit('exit', 1, null);
       }, 10);
 
-      await expect(promise).rejects.toThrow('Agent process failed: Process failed');
+      await expect(promise).rejects.toThrow('Agent process exited with code 1');
     });
 
     it('should handle invalid JSON response', async () => {
       const promise = transport.dispatch(mockAgentRequest);
 
       setTimeout(() => {
-        mockChild.stdout.emit('data', 'invalid json');
+        // Send invalid JSON - this will be ignored and logged as error
+        mockChild.stdout.emit('data', 'invalid json\n');
+        // Then send a valid response
+        const responseMessage =
+          JSON.stringify({
+            type: 'agent_response',
+            data: mockAgentResponse,
+          }) + '\n';
+        mockChild.stdout.emit('data', responseMessage);
         mockChild.emit('close', 0);
       }, 10);
 
-      await expect(promise).rejects.toThrow('Invalid JSON response from agent');
+      const result = await promise;
+      expect(result).toEqual(mockAgentResponse);
     });
 
     it('should handle missing required fields in response', async () => {
       const invalidResponse = {
         timestamp: '2025-08-03T10:00:00Z',
-        // missing type, content, metadata
+        type: 'text',
+        // missing content and metadata
       };
 
       const promise = transport.dispatch(mockAgentRequest);
 
       setTimeout(() => {
-        mockChild.stdout.emit('data', JSON.stringify(invalidResponse));
-        mockChild.emit('close', 0);
+        const responseMessage =
+          JSON.stringify({
+            type: 'agent_response',
+            data: invalidResponse,
+          }) + '\n';
+        mockChild.stdout.emit('data', responseMessage);
       }, 10);
 
       await expect(promise).rejects.toThrow(
@@ -188,10 +211,10 @@ describe('StdioAgentTransport', () => {
       const promise = transport.dispatch(mockAgentRequest);
 
       setTimeout(() => {
-        mockChild.emit('close', null, 'SIGTERM');
+        mockChild.emit('exit', null, 'SIGTERM');
       }, 10);
 
-      await expect(promise).rejects.toThrow('Agent process killed with signal SIGTERM');
+      await expect(promise).rejects.toThrow('Agent process exited with code null, signal SIGTERM');
     });
 
     it('should handle stdin write error', async () => {

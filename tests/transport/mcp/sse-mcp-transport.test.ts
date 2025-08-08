@@ -158,6 +158,7 @@ describe('SseMCPTransport', () => {
         headers: {
           'Content-Type': 'application/json',
           'Custom-Header': 'test-value',
+          'x-mcp-client-id': expect.stringMatching(/^cubicler_\w+_\w+$/),
         },
         data: mockRequest,
       });

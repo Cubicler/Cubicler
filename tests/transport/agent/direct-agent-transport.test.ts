@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { AgentRequest, AgentResponse } from '../../../src/model/dispatch.js';
-import type { Agent, DirectTransportConfig } from '../../../src/model/agents.js';
+import type { DirectAgentConfig } from '../../../src/model/agents.js';
 import type { MCPHandling } from '../../../src/interface/mcp-handling.js';
 import type { ServersProviding } from '../../../src/interface/servers-providing.js';
 import type { RequestHandler } from '@cubicler/cubicagentkit';
@@ -18,7 +18,7 @@ class TestDirectAgentTransport extends DirectAgentTransport {
     return {
       timestamp: new Date().toISOString(),
       type: 'text',
-      content: `Test response for: ${agentRequest.messages[0]?.content}`,
+      content: `Test response for: ${agentRequest.messages?.[0]?.content || 'no message'}`,
       metadata: { usedTools: 1 },
     };
   }
@@ -26,17 +26,22 @@ class TestDirectAgentTransport extends DirectAgentTransport {
 
 describe('DirectAgentTransport', () => {
   let transport: TestDirectAgentTransport;
-  let mockConfig: DirectTransportConfig;
+  let mockConfig: DirectAgentConfig;
   let mockMcpService: MCPHandling;
-  let mockAgent: Agent;
+  let mockAgent: DirectAgentConfig & { identifier: string };
   let mockServersProvider: ServersProviding;
 
   beforeEach(() => {
     vi.clearAllMocks();
 
     mockConfig = {
-      provider: 'test',
-    } as unknown as DirectTransportConfig;
+      name: 'Test Agent',
+      description: 'Test agent for unit tests',
+      transport: 'direct',
+      provider: 'openai',
+      apiKey: 'test-key',
+      prompt: 'You are a test agent',
+    } as DirectAgentConfig; // minimal valid direct agent config
 
     mockMcpService = {
       initialize: vi.fn().mockResolvedValue(undefined),
@@ -46,10 +51,12 @@ describe('DirectAgentTransport', () => {
     mockAgent = {
       identifier: 'test-agent',
       name: 'Test Agent',
-      transport: 'direct',
       description: 'Test agent for unit tests',
+      transport: 'direct',
+      provider: 'openai',
+      apiKey: 'test-key',
       prompt: 'You are a test agent',
-    } as Agent;
+    } as DirectAgentConfig & { identifier: string };
 
     mockServersProvider = {
       getServers: vi.fn().mockResolvedValue([]),

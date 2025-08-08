@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "openweather-integration": {
+      "name": "OpenWeather MCP Integration Test",
+      "description": "Weather MCP server for integration testing",
+      "command": "npx",
+      "args": ["-y", "mcp-weather-demo"],
+      "env": {
+        "OPENWEATHER_API_KEY": "${OPENWEATHER_API_KEY}"
+      }
+    }
+  },
+  "restServers": {}
+}

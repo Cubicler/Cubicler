@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { HttpAgentTransport } from '../../../src/transport/agent/http-agent-transport.js';
 import type { AgentRequest, AgentResponse } from '../../../src/model/dispatch.js';
-import type { HttpTransportConfig } from '../../../src/model/agents.js';
+import type { HttpAgentConfig } from '../../../src/model/agents.js';
 import * as fetchHelper from '../../../src/utils/fetch-helper.js';
 import * as jwtHelper from '../../../src/utils/jwt-helper.js';
 
@@ -10,7 +10,10 @@ vi.mock('../../../src/utils/fetch-helper.js');
 vi.mock('../../../src/utils/jwt-helper.js');
 
 describe('HttpAgentTransport', () => {
-  const mockConfig: HttpTransportConfig = {
+  const mockConfig: HttpAgentConfig = {
+    transport: 'http',
+    name: 'Test HTTP Agent',
+    description: 'Test HTTP agent description',
     url: 'http://localhost:3000/agent',
   };
   let transport: HttpAgentTransport;
@@ -28,9 +31,15 @@ describe('HttpAgentTransport', () => {
     });
 
     it('should throw error for empty URL', () => {
-      expect(() => new HttpAgentTransport({ url: '' })).toThrow(
-        'Agent URL must be a non-empty string'
-      );
+      expect(
+        () =>
+          new HttpAgentTransport({
+            transport: 'http',
+            name: 'Bad',
+            description: 'Bad',
+            url: '',
+          } as HttpAgentConfig)
+      ).toThrow('Agent URL must be a non-empty string');
     });
 
     it('should throw error for invalid config', () => {
@@ -120,7 +129,10 @@ describe('HttpAgentTransport', () => {
     });
 
     it('should include JWT token in Authorization header when configured', async () => {
-      const jwtConfig: HttpTransportConfig = {
+      const jwtConfig: HttpAgentConfig = {
+        transport: 'http',
+        name: 'JWT HTTP Agent',
+        description: 'JWT test',
         url: 'http://localhost:3000/agent',
         auth: {
           type: 'jwt',
@@ -155,7 +167,10 @@ describe('HttpAgentTransport', () => {
     });
 
     it('should handle JWT token fetch errors', async () => {
-      const jwtConfig: HttpTransportConfig = {
+      const jwtConfig: HttpAgentConfig = {
+        transport: 'http',
+        name: 'JWT HTTP Agent',
+        description: 'JWT test',
         url: 'http://localhost:3000/agent',
         auth: {
           type: 'jwt',

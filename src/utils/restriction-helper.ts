@@ -61,31 +61,43 @@ export async function isToolAllowed(
     originalToolName = parsed.functionName;
 
     // Find server identifier from hash using the mandatory servers provider
+    try {
+      // Get all servers and find one with matching hash
+      const serversResponse = await serversProvider.getAvailableServers();
+      let matchingServer: ServerInfo | undefined;
 
-    // Get all servers and find one with matching hash
-    const serversResponse = await serversProvider.getAvailableServers();
-    let matchingServer: ServerInfo | undefined;
-
-    for (const server of serversResponse.servers) {
-      try {
-        const hash = await serversProvider.getServerHash(server.identifier);
-        if (hash === serverHash) {
-          matchingServer = server;
-          break;
+      for (const server of serversResponse.servers) {
+        try {
+          const hash = await serversProvider.getServerHash(server.identifier);
+          if (hash === serverHash) {
+            matchingServer = server;
+            break;
+          }
+        } catch {
+          // Skip if can't get hash
+          continue;
         }
-      } catch {
-        // Skip if can't get hash
-        continue;
       }
-    }
 
-    if (!matchingServer) {
-      return false; // Unknown server
-    }
+      if (!matchingServer) {
+        return false; // Unknown server
+      }
 
-    serverIdentifier = matchingServer.identifier;
+      serverIdentifier = matchingServer.identifier;
+    } catch {
+      // Server provider errors (getAvailableServers or getServerHash failures)
+      return false;
+    }
   } catch {
     // Invalid tool name format or parsing error
+
+    // If there are no restrictions defined (no allowedTools and no restrictedTools),
+    // allow the tool even if it doesn't match the expected format.
+    // This handles cases where tools come with simple names instead of hashed format.
+    if (!agent.allowedTools && !agent.restrictedTools) {
+      return true;
+    }
+
     return false;
   }
 

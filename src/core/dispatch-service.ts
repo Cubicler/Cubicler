@@ -17,6 +17,7 @@ import { filterAllowedServers, filterAllowedTools } from '../utils/restriction-h
 import type { ServersProviding } from '../interface/servers-providing.js';
 import { SseAgentTransport } from '../transport/agent/sse-agent-transport.js';
 import sseAgentService from './sse-agent-service.js';
+import { withInvocationContext } from '../utils/prompt-context.js';
 
 /**
  * Dispatch Service for Cubicler
@@ -193,12 +194,15 @@ export class DispatchService implements DispatchHandling {
     cubiclerTools: ToolDefinition[],
     messages: Message[]
   ): AgentRequest {
+    // Augment prompt with invocation context (message dispatch)
+    const contextualPrompt = withInvocationContext(prompt, { type: 'message' });
+
     return {
       agent: {
         identifier: agentInfo.identifier,
         name: agentInfo.name,
         description: agentInfo.description,
-        prompt,
+        prompt: contextualPrompt,
       },
       tools: cubiclerTools,
       servers: serversInfo,

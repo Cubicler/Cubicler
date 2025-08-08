@@ -3,7 +3,7 @@ import { DispatchService } from '../../src/core/dispatch-service.js';
 import type { AgentsProviding } from '../../src/interface/agents-providing.js';
 import type { MCPHandling } from '../../src/interface/mcp-handling.js';
 import type { ServersProviding } from '../../src/interface/servers-providing.js';
-import type { Agent, AgentInfo } from '../../src/model/agents.js';
+import type { AgentInfo, HttpAgentConfig } from '../../src/model/agents.js';
 import type { MCPRequest, MCPResponse } from '../../src/model/types.js';
 
 // Mock the AgentTransportFactory
@@ -80,14 +80,12 @@ describe('Dispatch Service', () => {
         description: 'Advanced AI agent',
       };
 
-      const mockAgent: Agent = {
+      const mockAgent: HttpAgentConfig & { identifier: string } = {
         identifier: 'gpt_4o',
         name: 'GPT-4O Agent',
-        transport: 'http',
-        config: {
-          url: 'http://localhost:3000/agent',
-        },
         description: 'Advanced AI agent',
+        transport: 'http',
+        url: 'http://localhost:3000/agent',
       };
 
       // Mock agent provider responses
@@ -190,14 +188,12 @@ describe('Dispatch Service', () => {
         description: 'Creative and analytical agent',
       };
 
-      const mockAgent: Agent = {
+      const mockAgent: HttpAgentConfig & { identifier: string } = {
         identifier: 'claude_3_5',
         name: 'Claude 3.5 Agent',
-        transport: 'http',
-        config: {
-          url: 'http://localhost:3001/agent',
-        },
         description: 'Creative and analytical agent',
+        transport: 'http',
+        url: 'http://localhost:3001/agent',
       };
 
       vi.mocked(mockAgentProvider.getAgentInfo).mockResolvedValue(mockAgentInfo);
@@ -240,14 +236,12 @@ describe('Dispatch Service', () => {
         description: 'Test',
       };
 
-      const mockAgent: Agent = {
+      const mockAgent: HttpAgentConfig & { identifier: string } = {
         identifier: 'test_agent',
         name: 'Test Agent',
-        transport: 'http',
-        config: {
-          url: 'http://localhost:3000/agent',
-        },
         description: 'Test',
+        transport: 'http',
+        url: 'http://localhost:3000/agent',
       };
 
       vi.mocked(mockAgentProvider.getAgentInfo).mockResolvedValue(mockAgentInfo);
@@ -285,14 +279,12 @@ describe('Dispatch Service', () => {
         description: 'Test',
       };
 
-      const mockAgent: Agent = {
+      const mockAgent: HttpAgentConfig & { identifier: string } = {
         identifier: 'test_agent',
         name: 'Test Agent',
-        transport: 'http',
-        config: {
-          url: 'http://localhost:3000/agent',
-        },
         description: 'Test',
+        transport: 'http',
+        url: 'http://localhost:3000/agent',
       };
 
       vi.mocked(mockAgentProvider.getAgentInfo).mockResolvedValue(mockAgentInfo);

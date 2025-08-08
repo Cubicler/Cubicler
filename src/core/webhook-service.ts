@@ -12,6 +12,7 @@ import jwtHelper from '../utils/jwt-helper.js';
 import type { AvailableServersResponse } from '../model/server.js';
 import type { JSONValue } from '../model/types.js';
 import type { ToolDefinition } from '../model/tools.js';
+import { withInvocationContext } from '../utils/prompt-context.js';
 
 /**
  * Webhook Service for Cubicler
@@ -115,7 +116,14 @@ class WebhookService {
         identifier: agentInfo.identifier,
         name: agentInfo.name,
         description: agentInfo.description,
-        prompt,
+        prompt: withInvocationContext(prompt, {
+          type: 'webhook',
+          webhook: {
+            identifier: trigger.identifier,
+            name: trigger.name,
+            triggeredAt: trigger.triggeredAt,
+          },
+        }),
       },
       tools: filteredTools,
       servers: filteredServers,

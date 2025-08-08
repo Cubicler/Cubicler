@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import jwt from 'jsonwebtoken';
 import { JwtHelper } from '../../src/utils/jwt-helper.js';
-import type { JwtAuthConfig } from '../../src/model/agents.js';
+import type { AgentAuthConfig } from '../../src/model/agents.js';
 import * as fetchHelper from '../../src/utils/fetch-helper.js';
 
 // Mock the fetch helper
@@ -18,7 +18,7 @@ describe('JwtHelper', () => {
 
   describe('getToken', () => {
     it('should return static token when provided', async () => {
-      const config: JwtAuthConfig = {
+      const config: AgentAuthConfig = {
         token: 'static-jwt-token',
       };
 
@@ -27,7 +27,7 @@ describe('JwtHelper', () => {
     });
 
     it('should fetch token from URL when tokenUrl is provided', async () => {
-      const config: JwtAuthConfig = {
+      const config: AgentAuthConfig = {
         tokenUrl: 'https://auth.example.com/token',
         clientId: 'test-client',
         clientSecret: 'test-secret',
@@ -56,7 +56,7 @@ describe('JwtHelper', () => {
     });
 
     it('should include audience in OAuth2 request when provided', async () => {
-      const config: JwtAuthConfig = {
+      const config: AgentAuthConfig = {
         tokenUrl: 'https://auth.example.com/token',
         clientId: 'test-client',
         clientSecret: 'test-secret',
@@ -85,7 +85,7 @@ describe('JwtHelper', () => {
     });
 
     it('should cache and reuse valid tokens', async () => {
-      const config: JwtAuthConfig = {
+      const config: AgentAuthConfig = {
         tokenUrl: 'https://auth.example.com/token',
         clientId: 'test-client',
         clientSecret: 'test-secret',
@@ -114,7 +114,7 @@ describe('JwtHelper', () => {
     });
 
     it('should throw error when neither token nor tokenUrl is provided', async () => {
-      const config: JwtAuthConfig = {};
+      const config: AgentAuthConfig = {};
 
       await expect(jwtHelper.getToken(config)).rejects.toThrow(
         'JWT configuration must provide either token or tokenUrl'
@@ -122,7 +122,7 @@ describe('JwtHelper', () => {
     });
 
     it('should throw error when OAuth2 credentials are missing', async () => {
-      const config: JwtAuthConfig = {
+      const config: AgentAuthConfig = {
         tokenUrl: 'https://auth.example.com/token',
       };
 
@@ -132,7 +132,7 @@ describe('JwtHelper', () => {
     });
 
     it('should throw error when token endpoint returns error', async () => {
-      const config: JwtAuthConfig = {
+      const config: AgentAuthConfig = {
         tokenUrl: 'https://auth.example.com/token',
         clientId: 'test-client',
         clientSecret: 'test-secret',
@@ -149,7 +149,7 @@ describe('JwtHelper', () => {
     });
 
     it('should throw error when token response is invalid', async () => {
-      const config: JwtAuthConfig = {
+      const config: AgentAuthConfig = {
         tokenUrl: 'https://auth.example.com/token',
         clientId: 'test-client',
         clientSecret: 'test-secret',
@@ -166,7 +166,7 @@ describe('JwtHelper', () => {
     });
 
     it('should handle network errors', async () => {
-      const config: JwtAuthConfig = {
+      const config: AgentAuthConfig = {
         tokenUrl: 'https://auth.example.com/token',
         clientId: 'test-client',
         clientSecret: 'test-secret',
@@ -183,7 +183,7 @@ describe('JwtHelper', () => {
 
   describe('clearCache', () => {
     it('should clear token cache', async () => {
-      const config: JwtAuthConfig = {
+      const config: AgentAuthConfig = {
         tokenUrl: 'https://auth.example.com/token',
         clientId: 'test-client',
         clientSecret: 'test-secret',

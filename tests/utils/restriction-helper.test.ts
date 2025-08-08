@@ -6,7 +6,7 @@ import {
   filterAllowedTools,
   validateToolAccess,
 } from '../../src/utils/restriction-helper.js';
-import type { Agent } from '../../src/model/agents.js';
+import type { HttpAgentConfig } from '../../src/model/agents.js';
 import type { ServersProviding } from '../../src/interface/servers-providing.js';
 import type { AvailableServersResponse } from '../../src/model/server.js';
 import type { ToolDefinition } from '../../src/model/tools.js';
@@ -14,7 +14,7 @@ import type { ToolDefinition } from '../../src/model/tools.js';
 describe('Restriction Helper', () => {
   let mockServersProvider: ServersProviding;
   let mockServersResponse: AvailableServersResponse;
-  let baseAgent: Agent;
+  let baseAgent: HttpAgentConfig & { identifier: string };
 
   beforeEach(() => {
     // Create mock servers provider
@@ -54,9 +54,7 @@ describe('Restriction Helper', () => {
       name: 'Test Agent',
       description: 'Test agent for restrictions',
       transport: 'http',
-      config: {
-        url: 'http://localhost:3000',
-      },
+      url: 'http://localhost:3000',
     };
 
     vi.mocked(mockServersProvider.getAvailableServers).mockResolvedValue(mockServersResponse);
@@ -69,7 +67,7 @@ describe('Restriction Helper', () => {
     });
 
     it('should allow only servers in allowedServers list', () => {
-      const agentWithAllowed: Agent = {
+      const agentWithAllowed: HttpAgentConfig & { identifier: string } = {
         ...baseAgent,
         allowedServers: ['weather_service', 'news_service'],
       };
@@ -81,7 +79,7 @@ describe('Restriction Helper', () => {
     });
 
     it('should deny servers in restrictedServers list', () => {
-      const agentWithRestricted: Agent = {
+      const agentWithRestricted: HttpAgentConfig & { identifier: string } = {
         ...baseAgent,
         restrictedServers: ['calendar_service'],
       };
@@ -92,7 +90,7 @@ describe('Restriction Helper', () => {
     });
 
     it('should apply both allowedServers and restrictedServers filters', () => {
-      const agentWithBoth: Agent = {
+      const agentWithBoth: HttpAgentConfig & { identifier: string } = {
         ...baseAgent,
         allowedServers: ['weather_service', 'calendar_service'],
         restrictedServers: ['calendar_service'],
@@ -104,7 +102,7 @@ describe('Restriction Helper', () => {
     });
 
     it('should handle empty allowedServers array as no restrictions', () => {
-      const agentWithEmpty: Agent = {
+      const agentWithEmpty: HttpAgentConfig & { identifier: string } = {
         ...baseAgent,
         allowedServers: [],
       };
@@ -142,7 +140,7 @@ describe('Restriction Helper', () => {
     });
 
     it('should deny restricted internal tools', async () => {
-      const agentWithRestrictedInternal: Agent = {
+      const agentWithRestrictedInternal: HttpAgentConfig & { identifier: string } = {
         ...baseAgent,
         restrictedTools: ['cubicler_available_servers'],
       };
@@ -161,7 +159,7 @@ describe('Restriction Helper', () => {
     });
 
     it('should deny external tools when server is not allowed', async () => {
-      const agentWithServerRestrictions: Agent = {
+      const agentWithServerRestrictions: HttpAgentConfig & { identifier: string } = {
         ...baseAgent,
         allowedServers: ['news_service'],
       };
@@ -175,7 +173,7 @@ describe('Restriction Helper', () => {
     });
 
     it('should deny external tools when server is restricted', async () => {
-      const agentWithServerRestrictions: Agent = {
+      const agentWithServerRestrictions: HttpAgentConfig & { identifier: string } = {
         ...baseAgent,
         restrictedServers: ['weather_service'],
       };
@@ -189,7 +187,7 @@ describe('Restriction Helper', () => {
     });
 
     it('should allow only tools in allowedTools list', async () => {
-      const agentWithAllowedTools: Agent = {
+      const agentWithAllowedTools: HttpAgentConfig & { identifier: string } = {
         ...baseAgent,
         allowedTools: ['weather_service.get_weather', 'news_service.get_headlines'],
       };
@@ -216,7 +214,7 @@ describe('Restriction Helper', () => {
     });
 
     it('should deny tools in restrictedTools list', async () => {
-      const agentWithRestrictedTools: Agent = {
+      const agentWithRestrictedTools: HttpAgentConfig & { identifier: string } = {
         ...baseAgent,
         restrictedTools: ['weather_service.get_forecast'],
       };
@@ -271,7 +269,7 @@ describe('Restriction Helper', () => {
     });
 
     it('should filter by allowedServers', () => {
-      const agentWithAllowed: Agent = {
+      const agentWithAllowed: HttpAgentConfig & { identifier: string } = {
         ...baseAgent,
         allowedServers: ['weather_service', 'news_service'],
       };
@@ -283,7 +281,7 @@ describe('Restriction Helper', () => {
     });
 
     it('should exclude restrictedServers', () => {
-      const agentWithRestricted: Agent = {
+      const agentWithRestricted: HttpAgentConfig & { identifier: string } = {
         ...baseAgent,
         restrictedServers: ['calendar_service'],
       };
@@ -345,7 +343,7 @@ describe('Restriction Helper', () => {
     });
 
     it('should filter by server restrictions', async () => {
-      const agentWithServerRestrictions: Agent = {
+      const agentWithServerRestrictions: HttpAgentConfig & { identifier: string } = {
         ...baseAgent,
         allowedServers: ['weather_service'],
       };
@@ -362,7 +360,7 @@ describe('Restriction Helper', () => {
     });
 
     it('should filter by tool restrictions', async () => {
-      const agentWithToolRestrictions: Agent = {
+      const agentWithToolRestrictions: HttpAgentConfig & { identifier: string } = {
         ...baseAgent,
         restrictedTools: ['cubicler_available_servers', 'weather_service.get_weather'],
       };
@@ -411,7 +409,7 @@ describe('Restriction Helper', () => {
     });
 
     it('should throw for restricted tools', async () => {
-      const agentWithRestrictions: Agent = {
+      const agentWithRestrictions: HttpAgentConfig & { identifier: string } = {
         ...baseAgent,
         restrictedTools: ['cubicler_available_servers'],
       };
@@ -422,7 +420,7 @@ describe('Restriction Helper', () => {
     });
 
     it('should throw for tools from restricted servers', async () => {
-      const agentWithServerRestrictions: Agent = {
+      const agentWithServerRestrictions: HttpAgentConfig & { identifier: string } = {
         ...baseAgent,
         restrictedServers: ['weather_service'],
       };

@@ -3,8 +3,6 @@ import { ProviderService } from '../../src/core/provider-service.js';
 
 describe('Provider Service', () => {
   let mockConfigProvider: any;
-  let mockMcpToolsProvider: any;
-  let mockRestToolsProvider: any;
   let providerService: ProviderService;
 
   beforeEach(() => {
@@ -19,23 +17,10 @@ describe('Provider Service', () => {
       updateServerToolCount: vi.fn(),
     };
 
-    // Mock MCP tools provider
-    mockMcpToolsProvider = {
-      identifier: 'weather_service',
-      toolsList: vi.fn(),
-    };
-
-    // Mock REST tools provider
-    mockRestToolsProvider = {
-      identifier: 'user_api',
-      toolsList: vi.fn(),
-    };
+    // (Removed unused individual MCP/REST tool provider mocks)
 
     // Create provider service with mocked dependencies
-    providerService = new ProviderService(mockConfigProvider, [
-      mockMcpToolsProvider,
-      mockRestToolsProvider,
-    ]);
+    providerService = new ProviderService(mockConfigProvider);
   });
 
   describe('getAvailableServers', () => {

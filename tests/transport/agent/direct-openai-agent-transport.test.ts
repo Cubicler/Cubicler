@@ -1,27 +1,24 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { AgentRequest, AgentResponse } from '../../../src/model/dispatch.js';
-import type { Agent, DirectOpenAIConfig } from '../../../src/model/agents.js';
+import type { DirectOpenAIAgentConfig } from '../../../src/model/agents.js';
 import type { MCPHandling } from '../../../src/interface/mcp-handling.js';
 import type { ServersProviding } from '../../../src/interface/servers-providing.js';
 import { DirectOpenAIAgentTransport } from '../../../src/transport/agent/direct-openai-agent-transport.js';
-import { OpenAIService } from '@cubicler/cubicagent-openai';
-import { CubicAgent } from '@cubicler/cubicagentkit';
+import { createOpenAIServiceBasic } from '@cubicler/cubicagent-openai';
 import { expandEnvVariable } from '../../../src/utils/env-helper.js';
 
 // Mock dependencies
 vi.mock('@cubicler/cubicagent-openai');
-vi.mock('@cubicler/cubicagentkit');
 vi.mock('../../../src/utils/env-helper.js');
 
-const mockedOpenAIService = vi.mocked(OpenAIService);
-const mockedCubicAgent = vi.mocked(CubicAgent);
+const mockedCreateService = vi.mocked(createOpenAIServiceBasic);
 const mockedExpandEnvVariable = vi.mocked(expandEnvVariable);
 
 describe('DirectOpenAIAgentTransport', () => {
   let transport: DirectOpenAIAgentTransport;
-  let mockConfig: DirectOpenAIConfig;
+  let mockConfig: DirectOpenAIAgentConfig;
   let mockMcpService: MCPHandling;
-  let mockAgent: Agent;
+  let mockAgent: DirectOpenAIAgentConfig & { identifier: string };
   let mockServersProvider: ServersProviding;
 
   beforeEach(() => {
@@ -29,6 +26,9 @@ describe('DirectOpenAIAgentTransport', () => {
 
     mockConfig = {
       provider: 'openai',
+      transport: 'direct',
+      name: 'Test OpenAI Config',
+      description: 'Test configuration for OpenAI direct transport',
       apiKey: 'test-api-key',
       model: 'gpt-4o',
       temperature: 0.7,
@@ -47,11 +47,13 @@ describe('DirectOpenAIAgentTransport', () => {
 
     mockAgent = {
       identifier: 'openai-agent',
-      name: 'OpenAI Agent',
       transport: 'direct',
+      provider: 'openai',
+      apiKey: 'test-api-key',
+      name: 'OpenAI Agent',
       description: 'OpenAI agent for testing',
       prompt: 'You are an OpenAI assistant',
-    } as Agent;
+    };
 
     mockServersProvider = {
       getServers: vi.fn().mockResolvedValue([]),
@@ -151,9 +153,12 @@ describe('DirectOpenAIAgentTransport', () => {
     });
 
     it('should accept valid config with defaults', () => {
-      const minimalConfig: DirectOpenAIConfig = {
+      const minimalConfig: DirectOpenAIAgentConfig = {
+        transport: 'direct',
         provider: 'openai',
         apiKey: 'test-key',
+        name: 'Minimal',
+        description: 'Minimal config',
       };
 
       expect(() => {
@@ -213,9 +218,10 @@ describe('DirectOpenAIAgentTransport', () => {
       };
 
       const mockOpenAIServiceInstance = {
+        start: vi.fn().mockResolvedValue(undefined),
         dispatch: vi.fn().mockResolvedValue(mockResponse),
       };
-      mockedOpenAIService.mockImplementation(() => mockOpenAIServiceInstance as any);
+      mockedCreateService.mockReturnValue(mockOpenAIServiceInstance as any);
 
       const agentRequest: AgentRequest = {
         agent: {
@@ -241,9 +247,9 @@ describe('DirectOpenAIAgentTransport', () => {
       const result = await transport.dispatch(agentRequest);
 
       expect(result).toBe(mockResponse);
-      expect(mockedCubicAgent).toHaveBeenCalledWith(transport, transport);
-      expect(mockedOpenAIService).toHaveBeenCalledWith(
-        expect.any(Object), // CubicAgent instance
+      expect(mockedCreateService).toHaveBeenCalledWith(
+        transport,
+        transport,
         {
           apiKey: 'test-api-key',
           model: 'gpt-4o',
@@ -264,6 +270,7 @@ describe('DirectOpenAIAgentTransport', () => {
           agentPort: 3000,
         }
       );
+      expect(mockOpenAIServiceInstance.start).toHaveBeenCalledTimes(1);
       expect(mockOpenAIServiceInstance.dispatch).toHaveBeenCalledWith(agentRequest);
       expect(consoleSpy).toHaveBeenCalledWith(
         '🤖 [DirectOpenAIAgentTransport] Creating OpenAI agent for dispatch'
@@ -271,14 +278,16 @@ describe('DirectOpenAIAgentTransport', () => {
       expect(consoleSpy).toHaveBeenCalledWith(
         '✅ [DirectOpenAIAgentTransport] OpenAI dispatch completed'
       );
-
       consoleSpy.mockRestore();
     });
 
     it('should use default config values when not provided', async () => {
-      const minimalConfig: DirectOpenAIConfig = {
+      const minimalConfig: DirectOpenAIAgentConfig = {
+        transport: 'direct',
         provider: 'openai',
         apiKey: 'test-key',
+        name: 'Minimal',
+        description: 'Minimal config',
       };
 
       transport = new DirectOpenAIAgentTransport(
@@ -289,13 +298,14 @@ describe('DirectOpenAIAgentTransport', () => {
       );
 
       const mockOpenAIServiceInstance = {
+        start: vi.fn().mockResolvedValue(undefined),
         dispatch: vi.fn().mockResolvedValue({
           timestamp: new Date().toISOString(),
           type: 'text',
           content: 'Response',
         }),
       };
-      mockedOpenAIService.mockImplementation(() => mockOpenAIServiceInstance as any);
+      mockedCreateService.mockReturnValue(mockOpenAIServiceInstance as any);
 
       const agentRequest: AgentRequest = {
         agent: {
@@ -311,8 +321,9 @@ describe('DirectOpenAIAgentTransport', () => {
 
       await transport.dispatch(agentRequest);
 
-      expect(mockedOpenAIService).toHaveBeenCalledWith(
-        expect.any(Object),
+      expect(mockedCreateService).toHaveBeenCalledWith(
+        transport,
+        transport,
         {
           apiKey: 'test-key',
           model: 'gpt-4o', // default
@@ -331,9 +342,12 @@ describe('DirectOpenAIAgentTransport', () => {
     it('should expand environment variables in apiKey', async () => {
       mockedExpandEnvVariable.mockReturnValue('expanded-api-key');
 
-      const configWithEnvVar: DirectOpenAIConfig = {
+      const configWithEnvVar: DirectOpenAIAgentConfig = {
+        transport: 'direct',
         provider: 'openai',
         apiKey: '${OPENAI_API_KEY}',
+        name: 'EnvVar',
+        description: 'Env var config',
       };
 
       transport = new DirectOpenAIAgentTransport(
@@ -342,15 +356,15 @@ describe('DirectOpenAIAgentTransport', () => {
         mockAgent,
         mockServersProvider
       );
-
       const mockOpenAIServiceInstance = {
+        start: vi.fn().mockResolvedValue(undefined),
         dispatch: vi.fn().mockResolvedValue({
           timestamp: new Date().toISOString(),
           type: 'text',
           content: 'Response',
         }),
       };
-      mockedOpenAIService.mockImplementation(() => mockOpenAIServiceInstance as any);
+      mockedCreateService.mockReturnValue(mockOpenAIServiceInstance as any);
 
       const agentRequest: AgentRequest = {
         agent: {
@@ -367,8 +381,9 @@ describe('DirectOpenAIAgentTransport', () => {
       await transport.dispatch(agentRequest);
 
       expect(mockedExpandEnvVariable).toHaveBeenCalledWith('${OPENAI_API_KEY}');
-      expect(mockedOpenAIService).toHaveBeenCalledWith(
-        expect.any(Object),
+      expect(mockedCreateService).toHaveBeenCalledWith(
+        transport,
+        transport,
         expect.objectContaining({
           apiKey: 'expanded-api-key',
         }),
@@ -379,9 +394,10 @@ describe('DirectOpenAIAgentTransport', () => {
     it('should handle OpenAI service dispatch failure', async () => {
       const error = new Error('OpenAI API error');
       const mockOpenAIServiceInstance = {
+        start: vi.fn().mockResolvedValue(undefined),
         dispatch: vi.fn().mockRejectedValue(error),
       };
-      mockedOpenAIService.mockImplementation(() => mockOpenAIServiceInstance as any);
+      mockedCreateService.mockReturnValue(mockOpenAIServiceInstance as any);
 
       const agentRequest: AgentRequest = {
         agent: {
@@ -407,15 +423,16 @@ describe('DirectOpenAIAgentTransport', () => {
       consoleErrorSpy.mockRestore();
     });
 
-    it('should create fresh CubicAgent instance for each dispatch', async () => {
+    it('should create fresh OpenAI service for each dispatch', async () => {
       const mockOpenAIServiceInstance = {
+        start: vi.fn().mockResolvedValue(undefined),
         dispatch: vi.fn().mockResolvedValue({
           timestamp: new Date().toISOString(),
           type: 'text',
           content: 'Response',
         }),
       };
-      mockedOpenAIService.mockImplementation(() => mockOpenAIServiceInstance as any);
+      mockedCreateService.mockReturnValue(mockOpenAIServiceInstance as any);
 
       const agentRequest: AgentRequest = {
         agent: {
@@ -434,8 +451,7 @@ describe('DirectOpenAIAgentTransport', () => {
       await transport.dispatch(agentRequest);
 
       // Should create two separate CubicAgent instances
-      expect(mockedCubicAgent).toHaveBeenCalledTimes(2);
-      expect(mockedOpenAIService).toHaveBeenCalledTimes(2);
+      expect(mockedCreateService).toHaveBeenCalledTimes(2);
     });
 
     it('should transform image and url messages to text for CubicAgentKit compatibility', async () => {
@@ -447,9 +463,10 @@ describe('DirectOpenAIAgentTransport', () => {
       };
 
       const mockOpenAIServiceInstance = {
+        start: vi.fn().mockResolvedValue(undefined),
         dispatch: vi.fn().mockResolvedValue(mockResponse),
       };
-      mockedOpenAIService.mockImplementation(() => mockOpenAIServiceInstance as any);
+      mockedCreateService.mockReturnValue(mockOpenAIServiceInstance as any);
 
       const agentRequest: AgentRequest = {
         agent: {
@@ -553,7 +570,7 @@ describe('DirectOpenAIAgentTransport', () => {
     });
 
     it('should pass summarizerModel to OpenAI service when provided', async () => {
-      const configWithSummarizer: DirectOpenAIConfig = {
+      const configWithSummarizer: DirectOpenAIAgentConfig = {
         ...mockConfig,
         summarizerModel: 'gpt-4o-mini',
       };
@@ -566,13 +583,14 @@ describe('DirectOpenAIAgentTransport', () => {
       );
 
       const mockOpenAIServiceInstance = {
+        start: vi.fn().mockResolvedValue(undefined),
         dispatch: vi.fn().mockResolvedValue({
           timestamp: new Date().toISOString(),
           type: 'text',
           content: 'Response with summarizer',
         }),
       };
-      mockedOpenAIService.mockImplementation(() => mockOpenAIServiceInstance as any);
+      mockedCreateService.mockReturnValue(mockOpenAIServiceInstance as any);
 
       const agentRequest: AgentRequest = {
         agent: {
@@ -589,8 +607,9 @@ describe('DirectOpenAIAgentTransport', () => {
       await transport.dispatch(agentRequest);
 
       // Verify OpenAI service was called with summarizerModel
-      expect(mockedOpenAIService).toHaveBeenCalledWith(
-        expect.any(Object), // CubicAgent instance
+      expect(mockedCreateService).toHaveBeenCalledWith(
+        transport,
+        transport,
         expect.objectContaining({
           summarizerModel: 'gpt-4o-mini',
         }),

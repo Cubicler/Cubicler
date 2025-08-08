@@ -14,6 +14,7 @@ export class SseMCPTransport implements MCPTransport {
   private server: HttpMcpServerConfig | null = null;
   private eventSource: EventSource | null = null;
   private isInitialized = false;
+  private clientId: string = '';
   private readonly pendingRequests = new Map<
     string,
     {
@@ -33,6 +34,9 @@ export class SseMCPTransport implements MCPTransport {
     this.validateServerConfig(serverId, server);
     this.serverId = serverId;
     this.server = server;
+
+    // Stable clientId per instance
+    this.clientId = `cubicler_${Math.random().toString(36).slice(2)}_${Date.now().toString(36)}`;
 
     await this.initializeEventSource();
 
@@ -126,18 +130,20 @@ export class SseMCPTransport implements MCPTransport {
       const sseUrl = this.getSseUrl();
       console.log(`🔄 [SseMCPTransport] Connecting to SSE endpoint: ${sseUrl}`);
 
-      this.eventSource = new EventSource(sseUrl, {
-        withCredentials: false,
-      });
+      const ES: any = (globalThis as any).EventSource || this.tryRequireEventSource();
+      // dynamic EventSource constructor
+      this.eventSource = new ES(sseUrl);
+
+      const es = this.eventSource as unknown as EventSource;
 
       // Handle successful connection
-      this.eventSource.onopen = () => {
+      es.onopen = () => {
         console.log(`✅ [SseMCPTransport] SSE connection opened for ${this.serverId}`);
         resolve();
       };
 
       // Handle messages (MCP responses)
-      this.eventSource.onmessage = (event) => {
+      es.onmessage = (event) => {
         try {
           const response = JSON.parse(event.data) as MCPResponse;
           this.handleResponse(response);
@@ -151,16 +157,16 @@ export class SseMCPTransport implements MCPTransport {
       };
 
       // Handle connection errors
-      this.eventSource.onerror = (error) => {
+      es.onerror = (error) => {
         console.error(`❌ [SseMCPTransport] SSE connection error for ${this.serverId}:`, error);
-        if (this.eventSource?.readyState === 2) {
+        if (es?.readyState === 2) {
           // EventSource.CLOSED = 2
           reject(new Error(`Failed to establish SSE connection to ${this.serverId}`));
         }
       };
 
       // Handle custom event types if needed
-      this.eventSource.addEventListener('mcp-response', (event) => {
+      es.addEventListener('mcp-response', (event) => {
         try {
           const response = JSON.parse(event.data) as MCPResponse;
           this.handleResponse(response);
@@ -187,6 +193,8 @@ export class SseMCPTransport implements MCPTransport {
 
     try {
       const headers = await this.buildHeaders();
+      // Correlate POST with SSE stream
+      headers['x-mcp-client-id'] = this.clientId;
       await fetchWithDefaultTimeout(postUrl, {
         method: 'POST',
         headers,
@@ -232,10 +240,15 @@ export class SseMCPTransport implements MCPTransport {
       throw new Error('Server URL not configured');
     }
 
-    // Assume SSE endpoint is at /sse or /events relative to base URL
-    // This can be customized based on the specific MCP server implementation
+    // Use dedicated MCP SSE endpoint: /mcp/sse and include clientId and optional token
     const baseUrl = this.server.url.replace(/\/$/, ''); // Remove trailing slash
-    return `${baseUrl}/sse`;
+    const url = new URL(`${baseUrl}/mcp/sse`);
+    url.searchParams.set('clientId', this.clientId);
+    const token = this.getJwtTokenSyncHint();
+    if (token) {
+      url.searchParams.set('token', token);
+    }
+    return url.toString();
   }
 
   /**
@@ -246,8 +259,6 @@ export class SseMCPTransport implements MCPTransport {
       throw new Error('Server URL not configured');
     }
 
-    // Assume POST endpoint is at /mcp or the base URL
-    // This can be customized based on the specific MCP server implementation
     const baseUrl = this.server.url.replace(/\/$/, ''); // Remove trailing slash
     return `${baseUrl}/mcp`;
   }
@@ -273,6 +284,27 @@ export class SseMCPTransport implements MCPTransport {
     }
 
     return headers;
+  }
+
+  /** Attempt to require('eventsource') at runtime if not provided globally. */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private tryRequireEventSource(): any {
+    try {
+      return require('eventsource');
+    } catch {
+      throw new Error(
+        'EventSource is not available. Install the "eventsource" package or provide a global EventSource.'
+      );
+    }
+  }
+
+  /** Best-effort token hint for SSE query (static tokens only). */
+  private getJwtTokenSyncHint(): string | null {
+    const auth = this.server?.auth;
+    if (auth?.type === 'jwt' && auth.config.token) {
+      return auth.config.token;
+    }
+    return null;
   }
 
   /**

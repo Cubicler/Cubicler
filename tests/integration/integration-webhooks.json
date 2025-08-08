@@ -1,0 +1,14 @@
+{
+  "webhooks": {
+    "test-webhook": {
+      "name": "Integration Test Webhook",
+      "description": "Test webhook for integration testing",
+      "endpoint": "/webhook/test",
+      "agent": "test-webhook-agent",
+      "events": ["test", "user_action"],
+      "authentication": {
+        "type": "none"
+      }
+    }
+  }
+}

@@ -58,6 +58,18 @@ export interface StdioAgentConfig extends BaseAgentConfig {
 }
 
 /**
+ * Bidirectional STDIO agent configuration (native format)
+ * Enables MCP callbacks over the stdio connection
+ */
+export interface BidirectionalStdioAgentConfig extends BaseAgentConfig {
+  transport: 'stdio-bidirectional';
+  command: string;
+  args?: string[];
+  env?: Record<string, string>;
+  cwd?: string;
+}
+
+/**
  * Direct agent configuration for OpenAI (native format)
  */
 export interface DirectOpenAIAgentConfig extends BaseAgentConfig {

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { SseAgentTransport } from '../../../src/transport/agent/sse-agent-transport.js';
-import type { SseTransportConfig } from '../../../src/model/agents.js';
+import type { SseAgentConfig } from '../../../src/model/agents.js';
 import type { AgentRequest, AgentResponse } from '../../../src/model/dispatch.js';
 import { Response } from 'express';
 
@@ -28,7 +28,12 @@ const createMockResponse = () => {
 };
 
 describe('SseAgentTransport', () => {
-  const mockConfig: SseTransportConfig = {};
+  const mockConfig: SseAgentConfig = {
+    transport: 'sse',
+    url: 'http://localhost:3000/agent-sse',
+    name: 'Test SSE Agent',
+    description: 'Test SSE agent description',
+  };
 
   const agentId = 'test-agent';
 
@@ -78,11 +83,33 @@ describe('SseAgentTransport', () => {
     });
 
     it('should create instance with empty url config (SSE agents connect to Cubicler)', () => {
-      expect(() => new SseAgentTransport({}, agentId)).not.toThrow();
+      expect(
+        () =>
+          new SseAgentTransport(
+            {
+              transport: 'sse',
+              url: 'http://localhost:3000/agent-sse',
+              name: 'Test SSE Agent',
+              description: 'Test SSE agent description',
+            } as SseAgentConfig,
+            agentId
+          )
+      ).not.toThrow();
     });
 
     it('should create instance with minimal config (SSE agents connect to Cubicler)', () => {
-      expect(() => new SseAgentTransport({} as SseTransportConfig, agentId)).not.toThrow();
+      expect(
+        () =>
+          new SseAgentTransport(
+            {
+              transport: 'sse',
+              url: 'http://localhost:3000/agent-sse',
+              name: 'Test SSE Agent',
+              description: 'Test SSE agent description',
+            } as SseAgentConfig,
+            agentId
+          )
+      ).not.toThrow();
     });
   });
 

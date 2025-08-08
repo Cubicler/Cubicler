@@ -1,0 +1,28 @@
+{
+  "basePrompt": "You are a helpful AI assistant for integration testing.",
+  "defaultPrompt": "You are an integration test assistant that helps validate Cubicler's functionality.",
+  "agents": {
+    "test-openai-weather": {
+      "name": "OpenAI Weather Test Agent",
+      "description": "OpenAI agent for testing weather API integration",
+      "transport": "direct",
+      "provider": "openai",
+      "apiKey": "${OPENAI_API_KEY}",
+      "model": "gpt-4o-mini",
+      "temperature": 0.3,
+      "sessionMaxTokens": 2000,
+      "prompt": "You are an AI assistant that helps users get weather information. When users ask about weather, you should:\n1. First discover available servers using cubicler_available_servers\n2. Then fetch tools from weather servers using cubicler_fetch_server_tools  \n3. Finally use the weather tools with the proper hash-based names to get weather data\n\nAlways provide helpful weather information when requested."
+    },
+    "test-webhook-agent": {
+      "name": "Webhook Test Agent", 
+      "description": "OpenAI agent for testing webhook functionality",
+      "transport": "direct",
+      "provider": "openai",
+      "apiKey": "${OPENAI_API_KEY}",
+      "model": "gpt-4o-mini",
+      "temperature": 0.2,
+      "sessionMaxTokens": 1500,
+      "prompt": "You are an AI assistant for testing webhook functionality. You should respond helpfully to webhook-triggered events and user interactions."
+    }
+  }
+}
