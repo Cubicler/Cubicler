@@ -1,4 +1,4 @@
-import type { Agent } from '../model/agents.js';
+import type { AgentConfig } from '../model/agents.js';
 import type { ServerInfo } from '../model/server.js';
 import type { ToolDefinition } from '../model/tools.js';
 import type { ServersProviding } from '../interface/servers-providing.js';
@@ -14,7 +14,7 @@ import { parseFunctionName } from './parameter-helper.js';
  * @param serverIdentifier - Server identifier to check
  * @returns true if server is allowed, false otherwise
  */
-export function isServerAllowed(agent: Agent, serverIdentifier: string): boolean {
+export function isServerAllowed(agent: AgentConfig, serverIdentifier: string): boolean {
   // Step 1: Apply allowedServers filter (if defined)
   if (agent.allowedServers && agent.allowedServers.length > 0) {
     if (!agent.allowedServers.includes(serverIdentifier)) {
@@ -38,7 +38,7 @@ export function isServerAllowed(agent: Agent, serverIdentifier: string): boolean
  * @returns true if tool is allowed, false otherwise
  */
 export async function isToolAllowed(
-  agent: Agent,
+  agent: AgentConfig,
   toolName: string,
   serversProvider: ServersProviding
 ): Promise<boolean> {
@@ -118,7 +118,7 @@ export async function isToolAllowed(
  * @param servers - Array of server info objects
  * @returns Filtered array of allowed servers
  */
-export function filterAllowedServers(agent: Agent, servers: ServerInfo[]): ServerInfo[] {
+export function filterAllowedServers(agent: AgentConfig, servers: ServerInfo[]): ServerInfo[] {
   return servers.filter((server) => isServerAllowed(agent, server.identifier));
 }
 
@@ -130,7 +130,7 @@ export function filterAllowedServers(agent: Agent, servers: ServerInfo[]): Serve
  * @returns Filtered array of allowed tools
  */
 export async function filterAllowedTools(
-  agent: Agent,
+  agent: AgentConfig,
   tools: ToolDefinition[],
   serversProvider: ServersProviding
 ): Promise<ToolDefinition[]> {
@@ -153,7 +153,7 @@ export async function filterAllowedTools(
  * @throws Error if tool is restricted
  */
 export async function validateToolAccess(
-  agent: Agent,
+  agent: AgentConfig,
   toolName: string,
   serversProvider: ServersProviding
 ): Promise<void> {

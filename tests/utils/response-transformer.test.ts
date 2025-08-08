@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { transformResponse } from '../../src/utils/response-transformer.js';
+
+// Normalization tests removed (alpha: only canonical schema supported)
 import type { ResponseTransform } from '../../src/model/providers.js';
 
 describe('Response Transformer', () => {

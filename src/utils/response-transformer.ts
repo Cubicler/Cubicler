@@ -21,6 +21,8 @@ export function transformResponse(
   return transformedData;
 }
 
+// Canonical-only schema enforced (alpha) – legacy forms removed.
+
 /**
  * Apply a single transformation to the data
  */

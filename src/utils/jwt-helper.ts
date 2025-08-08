@@ -1,5 +1,5 @@
 import jwt, { type Algorithm, type JwtPayload } from 'jsonwebtoken';
-import type { JwtAuthConfig } from '../model/agents.js';
+import type { AgentAuthConfig } from '../model/agents.js';
 import { fetchWithDefaultTimeout } from './fetch-helper.js';
 
 /**
@@ -22,7 +22,7 @@ export class JwtHelper {
    * @returns Promise that resolves to JWT token
    * @throws Error if token cannot be obtained
    */
-  async getToken(config: JwtAuthConfig): Promise<string> {
+  async getToken(config: AgentAuthConfig): Promise<string> {
     if (config.token) {
       return config.token;
     }
@@ -40,7 +40,7 @@ export class JwtHelper {
    * @returns Promise that resolves to JWT token
    * @throws Error if token request fails
    */
-  private async getTokenFromUrl(config: JwtAuthConfig): Promise<string> {
+  private async getTokenFromUrl(config: AgentAuthConfig): Promise<string> {
     if (!config.tokenUrl) {
       throw new Error('Token URL is required for OAuth2 flow');
     }
@@ -63,7 +63,7 @@ export class JwtHelper {
    * @returns Promise that resolves to JWT token with metadata
    * @throws Error if token request fails
    */
-  private async fetchNewToken(config: JwtAuthConfig): Promise<JwtToken> {
+  private async fetchNewToken(config: AgentAuthConfig): Promise<JwtToken> {
     if (!config.tokenUrl || !config.clientId || !config.clientSecret) {
       throw new Error('OAuth2 flow requires tokenUrl, clientId, and clientSecret');
     }
@@ -141,7 +141,7 @@ export class JwtHelper {
    * @param config - JWT configuration
    * @returns Cache key string
    */
-  private getCacheKey(config: JwtAuthConfig): string {
+  private getCacheKey(config: AgentAuthConfig): string {
     return `${config.tokenUrl}:${config.clientId}:${config.audience || 'default'}`;
   }
 
