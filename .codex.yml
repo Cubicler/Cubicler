@@ -1,0 +1,29 @@
+docs:
+  - AGENTS.md
+
+agent:
+  tone: concise
+  verbosity: low
+  preambles: true
+
+planning:
+  use_plan_when: multi_step
+  max_steps: 6
+
+rules:
+  tests_first: true
+  show_patch_preview: true
+  error_style: result_or_typed_error
+  function_style: pure_small
+  typing: explicit_no_any
+  security_checks: validate_and_sanitize
+
+commands:
+  build: npm run build
+  dev: npm run dev
+  unit: npm run test:run
+  unit_watch: npm test
+  lint: npm run lint
+  lint_fix: npm run lint:fix
+  check: npm run typecheck && npm run lint && npm run format:check && npm run test:run
+  check_all: npm run typecheck && npm run lint && npm run format:check && npm run test:run && npm run build
