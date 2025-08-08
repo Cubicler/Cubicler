@@ -1,4 +1,4 @@
-import type { Agent, DirectAgent, HttpAgent, SseAgent, StdioAgent } from '../model/agents.js';
+import type { AgentConfig } from '../model/agents.js';
 import type { AgentTransport } from '../interface/agent-transport.js';
 import type { MCPHandling } from '../interface/mcp-handling.js';
 import type { ServersProviding } from '../interface/servers-providing.js';
@@ -26,44 +26,53 @@ export class AgentTransportFactory {
 
   /**
    * Create appropriate transport for the given agent
+   * @param agentId - Agent identifier
    * @param agent - Agent configuration containing transport type and configuration
    * @returns AgentTransport implementation for the specified transport type
    * @throws Error if transport type is unsupported
    */
-  createTransport(agent: Agent): AgentTransport {
+  createTransport(agentId: string, agent: AgentConfig): AgentTransport {
     switch (agent.transport) {
       case 'http': {
-        const httpAgent = agent as HttpAgent;
-        return new HttpAgentTransport(httpAgent.config);
+        if (!('url' in agent)) {
+          throw new Error(`HTTP agent ${agentId} requires 'url' property`);
+        }
+        return new HttpAgentTransport(agent);
       }
       case 'sse': {
-        const sseAgent = agent as SseAgent;
-        return new SseAgentTransport(sseAgent.config, sseAgent.identifier);
+        if (!('url' in agent)) {
+          throw new Error(`SSE agent ${agentId} requires 'url' property`);
+        }
+        return new SseAgentTransport(agent, agentId);
       }
       case 'stdio': {
-        const stdioAgent = agent as StdioAgent;
-        return new StdioAgentTransport(stdioAgent.config.url);
+        if (!('command' in agent)) {
+          throw new Error(`Stdio agent ${agentId} requires 'command' property`);
+        }
+        return new StdioAgentTransport(agent);
       }
       case 'direct': {
-        const directAgent = agent as DirectAgent;
+        if (!('provider' in agent)) {
+          throw new Error(`Direct agent ${agentId} requires 'provider' property`);
+        }
 
         // Check provider and create appropriate direct transport
-        switch (directAgent.config.provider) {
+        switch (agent.provider) {
           case 'openai':
             return new DirectOpenAIAgentTransport(
-              directAgent.config,
-              this.mcpService,
               agent,
+              this.mcpService,
+              { identifier: agentId, ...agent },
               this.serversProvider
             );
           default:
             throw new Error(
-              `Unsupported direct transport provider: ${directAgent.config.provider}. Supported providers: openai`
+              `Unsupported direct transport provider: ${agent.provider}. Supported providers: openai`
             );
         }
       }
       default:
-        throw new Error(`Unsupported transport type: ${(agent as Agent).transport}`);
+        throw new Error(`Unsupported transport type: ${(agent as AgentConfig).transport}`);
     }
   }
 }

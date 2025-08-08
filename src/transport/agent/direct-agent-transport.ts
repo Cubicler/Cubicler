@@ -1,6 +1,6 @@
 import type { AgentTransport } from '../../interface/agent-transport.js';
 import type { AgentRequest, AgentResponse } from '../../model/dispatch.js';
-import type { Agent, DirectTransportConfig } from '../../model/agents.js';
+import type { DirectAgentConfig } from '../../model/agents.js';
 import type { MCPHandling } from '../../interface/mcp-handling.js';
 import type { ServersProviding } from '../../interface/servers-providing.js';
 import type {
@@ -26,11 +26,11 @@ export abstract class DirectAgentTransport implements AgentTransport, AgentClien
    */
   constructor(
     // eslint-disable-next-line no-unused-vars
-    protected readonly config: DirectTransportConfig,
+    protected readonly config: DirectAgentConfig,
     // eslint-disable-next-line no-unused-vars
     protected readonly mcpService: MCPHandling,
     // eslint-disable-next-line no-unused-vars
-    protected readonly agent: Agent,
+    protected readonly agent: DirectAgentConfig & { identifier: string },
     // eslint-disable-next-line no-unused-vars
     protected readonly serversProvider: ServersProviding
   ) {

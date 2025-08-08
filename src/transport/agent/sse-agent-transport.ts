@@ -1,6 +1,6 @@
 import type { AgentTransport } from '../../interface/agent-transport.js';
 import type { AgentRequest, AgentResponse } from '../../model/dispatch.js';
-import type { SseTransportConfig } from '../../model/agents.js';
+import type { SseAgentConfig } from '../../model/agents.js';
 import { Response } from 'express';
 
 /**
@@ -26,7 +26,7 @@ export class SseAgentTransport implements AgentTransport {
    * @param agentId - Unique identifier for this agent
    */
   constructor(
-    private readonly _config: SseTransportConfig,
+    private readonly _config: SseAgentConfig,
     agentId: string
   ) {
     // No URL validation needed - SSE agents connect TO Cubicler

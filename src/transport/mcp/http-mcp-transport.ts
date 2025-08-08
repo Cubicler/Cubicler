@@ -1,5 +1,5 @@
 import type { MCPRequest, MCPResponse } from '../../model/types.js';
-import type { MCPServer, ProviderJwtAuthConfig } from '../../model/providers.js';
+import type { HttpMcpServerConfig } from '../../model/providers.js';
 import type { MCPTransport } from '../../interface/mcp-transport.js';
 import { fetchWithDefaultTimeout } from '../../utils/fetch-helper.js';
 import jwtHelper from '../../utils/jwt-helper.js';
@@ -9,19 +9,22 @@ import jwtHelper from '../../utils/jwt-helper.js';
  * Handles MCP communication over HTTP protocol
  */
 export class HttpMCPTransport implements MCPTransport {
-  private server: MCPServer | null = null;
+  private serverId: string | null = null;
+  private server: HttpMcpServerConfig | null = null;
   private isInitialized = false;
 
   /**
    * Initialize the HTTP transport
+   * @param serverId - Server identifier
    * @param server - Server configuration
    */
-  async initialize(server: MCPServer): Promise<void> {
-    this.validateServerConfig(server);
+  async initialize(serverId: string, server: HttpMcpServerConfig): Promise<void> {
+    this.validateServerConfig(serverId, server);
+    this.serverId = serverId;
     this.server = server;
     this.isInitialized = true;
 
-    console.log(`✅ [HttpMCPTransport] Initialized HTTP transport for ${server.identifier}`);
+    console.log(`✅ [HttpMCPTransport] Initialized HTTP transport for ${serverId}`);
   }
 
   /**
@@ -34,29 +37,23 @@ export class HttpMCPTransport implements MCPTransport {
       throw new Error('HTTP transport not initialized');
     }
 
-    console.log(
-      `📡 [HttpMCPTransport] Sending HTTP request to ${this.server.identifier}:`,
-      request.method
-    );
+    console.log(`📡 [HttpMCPTransport] Sending HTTP request to ${this.serverId}:`, request.method);
 
     try {
-      if (!('url' in this.server.config) || !this.server.config.url) {
+      if (!this.server.url) {
         throw new Error('Server URL not available');
       }
       const headers = await this.buildHeaders();
-      const response = await fetchWithDefaultTimeout(this.server.config.url, {
+      const response = await fetchWithDefaultTimeout(this.server.url, {
         method: 'POST',
         headers,
         data: request,
       });
 
-      console.log(`✅ [HttpMCPTransport] HTTP request to ${this.server.identifier} successful`);
+      console.log(`✅ [HttpMCPTransport] HTTP request to ${this.serverId} successful`);
       return response.data as MCPResponse;
     } catch (error) {
-      console.error(
-        `❌ [HttpMCPTransport] HTTP request to ${this.server.identifier} failed:`,
-        error
-      );
+      console.error(`❌ [HttpMCPTransport] HTTP request to ${this.serverId} failed:`, error);
       return this.createErrorResponse(request, error);
     }
   }
@@ -66,6 +63,7 @@ export class HttpMCPTransport implements MCPTransport {
    */
   async close(): Promise<void> {
     this.isInitialized = false;
+    this.serverId = null;
     this.server = null;
     console.log('🔄 [HttpMCPTransport] HTTP transport closed');
   }
@@ -81,7 +79,7 @@ export class HttpMCPTransport implements MCPTransport {
    * Get the server identifier
    */
   getServerIdentifier(): string {
-    return this.server?.identifier || 'unknown';
+    return this.serverId || 'unknown';
   }
 
   /**
@@ -94,18 +92,13 @@ export class HttpMCPTransport implements MCPTransport {
       throw new Error('Server not configured');
     }
 
-    const config = this.server.config as {
-      headers?: Record<string, string>;
-      auth?: { type: 'jwt'; config: ProviderJwtAuthConfig };
-    };
-
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...config.headers,
+      ...this.server.headers,
     };
 
-    if (config.auth?.type === 'jwt') {
-      const token = await jwtHelper.getToken(config.auth.config);
+    if (this.server.auth?.type === 'jwt') {
+      const token = await jwtHelper.getToken(this.server.auth.config);
       headers.Authorization = `Bearer ${token}`;
     }
 
@@ -114,22 +107,19 @@ export class HttpMCPTransport implements MCPTransport {
 
   /**
    * Validate server configuration for HTTP transport
+   * @param serverId - Server identifier
    * @param server - Server configuration to validate
    * @throws Error if configuration is invalid
    */
-  private validateServerConfig(server: MCPServer): void {
-    if (server.transport !== 'http') {
-      throw new Error(`Invalid transport for HTTP transport: ${server.transport}`);
-    }
-
-    if (!server.config.url) {
-      throw new Error(`HTTP transport requires URL for server ${server.identifier}`);
+  private validateServerConfig(serverId: string, server: HttpMcpServerConfig): void {
+    if (!server.url) {
+      throw new Error(`HTTP transport requires URL for server ${serverId}`);
     }
 
     try {
-      new URL(server.config.url);
+      new URL(server.url);
     } catch {
-      throw new Error(`Invalid URL for server ${server.identifier}: ${server.config.url}`);
+      throw new Error(`Invalid URL for server ${serverId}: ${server.url}`);
     }
   }
 

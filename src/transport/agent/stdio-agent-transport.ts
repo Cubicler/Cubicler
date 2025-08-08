@@ -1,6 +1,7 @@
 import { spawn } from 'child_process';
 import type { AgentTransport } from '../../interface/agent-transport.js';
 import type { AgentRequest, AgentResponse } from '../../model/dispatch.js';
+import type { StdioAgentConfig } from '../../model/agents.js';
 import { getAgentCallTimeout } from '../../utils/env-helper.js';
 
 // Node.js globals for timeout handling
@@ -14,25 +15,18 @@ declare const clearTimeout: (_id: NodeJS.Timeout) => void;
  * Handles stdio-based communication with local agents via process spawning
  */
 export class StdioAgentTransport implements AgentTransport {
-  private readonly command: string;
-  private readonly args: string[];
+  private readonly config: StdioAgentConfig;
 
   /**
    * Creates a new StdioAgentTransport instance
-   * @param commandString - The command string (command + args) to execute the agent
+   * @param config - The stdio agent configuration
    */
-  constructor(commandString: string) {
-    if (!commandString || typeof commandString !== 'string') {
+  constructor(config: StdioAgentConfig) {
+    if (!config.command || typeof config.command !== 'string') {
       throw new Error('Agent command must be a non-empty string');
     }
 
-    const parts = commandString.trim().split(/\s+/);
-    if (parts.length === 0 || parts[0] === '') {
-      throw new Error('Agent command cannot be empty');
-    }
-
-    this.command = parts[0]!; // eslint-disable-line @typescript-eslint/no-non-null-assertion -- Safe: we just checked length > 0
-    this.args = parts.slice(1);
+    this.config = config;
   }
 
   /**
@@ -42,10 +36,12 @@ export class StdioAgentTransport implements AgentTransport {
    * @throws Error if the process fails or returns invalid response
    */
   async dispatch(agentRequest: AgentRequest): Promise<AgentResponse> {
-    console.log(`🚀 [StdioAgentTransport] Calling agent: ${this.command} ${this.args.join(' ')}`);
+    console.log(
+      `🚀 [StdioAgentTransport] Calling agent: ${this.config.command} ${(this.config.args || []).join(' ')}`
+    );
 
     return new Promise((resolve, reject) => {
-      const child = spawn(this.command, this.args, {
+      const child = spawn(this.config.command, this.config.args || [], {
         stdio: ['pipe', 'pipe', 'pipe'],
       });
 

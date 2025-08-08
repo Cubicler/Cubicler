@@ -1,6 +1,6 @@
 import type { AgentTransport } from '../../interface/agent-transport.js';
 import type { AgentRequest, AgentResponse } from '../../model/dispatch.js';
-import type { HttpTransportConfig } from '../../model/agents.js';
+import type { HttpAgentConfig } from '../../model/agents.js';
 import { fetchWithAgentTimeout } from '../../utils/fetch-helper.js';
 import jwtHelper from '../../utils/jwt-helper.js';
 
@@ -13,7 +13,7 @@ export class HttpAgentTransport implements AgentTransport {
    * Creates a new HttpAgentTransport instance
    * @param config - HTTP transport configuration
    */
-  constructor(private readonly config: HttpTransportConfig) {
+  constructor(private readonly config: HttpAgentConfig) {
     if (!config?.url || typeof config.url !== 'string') {
       throw new Error('Agent URL must be a non-empty string');
     }

@@ -1,5 +1,5 @@
 import type { AgentRequest, AgentResponse } from '../../model/dispatch.js';
-import type { Agent, DirectOpenAIConfig } from '../../model/agents.js';
+import type { DirectOpenAIAgentConfig } from '../../model/agents.js';
 import type { MCPHandling } from '../../interface/mcp-handling.js';
 import type { ServersProviding } from '../../interface/servers-providing.js';
 import { OpenAIService } from '@cubicler/cubicagent-openai';
@@ -17,9 +17,9 @@ import { expandEnvVariable } from '../../utils/env-helper.js';
  */
 export class DirectOpenAIAgentTransport extends DirectAgentTransport {
   constructor(
-    config: DirectOpenAIConfig,
+    config: DirectOpenAIAgentConfig,
     mcpService: MCPHandling,
-    agent: Agent,
+    agent: DirectOpenAIAgentConfig & { identifier: string },
     serversProvider: ServersProviding
   ) {
     super(config, mcpService, agent, serversProvider);
@@ -32,7 +32,7 @@ export class DirectOpenAIAgentTransport extends DirectAgentTransport {
   async dispatch(agentRequest: AgentRequest): Promise<AgentResponse> {
     console.log(`🤖 [DirectOpenAIAgentTransport] Creating OpenAI agent for dispatch`);
 
-    const openaiConfig = this.config as DirectOpenAIConfig;
+    const openaiConfig = this.config as DirectOpenAIAgentConfig;
 
     // Create a fresh CubicAgent instance for this request
     const cubicAgent = new CubicAgent(this, this);
@@ -116,7 +116,7 @@ export class DirectOpenAIAgentTransport extends DirectAgentTransport {
   /**
    * Validate OpenAI direct transport configuration
    */
-  private validateConfig(config: DirectOpenAIConfig): void {
+  private validateConfig(config: DirectOpenAIAgentConfig): void {
     if (!config.provider || config.provider !== 'openai') {
       throw new Error('DirectOpenAIAgentTransport requires provider to be "openai"');
     }

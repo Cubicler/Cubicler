@@ -1,6 +1,6 @@
 import { type ChildProcess, spawn } from 'child_process';
 import type { MCPRequest, MCPResponse } from '../../model/types.js';
-import type { MCPServer } from '../../model/providers.js';
+import type { StdioMcpServerConfig } from '../../model/providers.js';
 import type { MCPTransport } from '../../interface/mcp-transport.js';
 
 /**
@@ -8,7 +8,8 @@ import type { MCPTransport } from '../../interface/mcp-transport.js';
  * Handles MCP communication over stdio protocol using process spawning
  */
 export class StdioMCPTransport implements MCPTransport {
-  private server: MCPServer | null = null;
+  private serverId: string | null = null;
+  private server: StdioMcpServerConfig | null = null;
   private process: ChildProcess | null = null;
   private readonly pendingRequests = new Map<
     string,
@@ -23,15 +24,17 @@ export class StdioMCPTransport implements MCPTransport {
 
   /**
    * Initialize the stdio transport
+   * @param serverId - Server identifier
    * @param server - Server configuration
    */
-  async initialize(server: MCPServer): Promise<void> {
-    this.validateServerConfig(server);
+  async initialize(serverId: string, server: StdioMcpServerConfig): Promise<void> {
+    this.validateServerConfig(serverId, server);
+    this.serverId = serverId;
     this.server = server;
 
     await this.startProcess();
 
-    console.log(`✅ [StdioMCPTransport] Initialized stdio transport for ${server.identifier}`);
+    console.log(`✅ [StdioMCPTransport] Initialized stdio transport for ${serverId}`);
   }
 
   /**
@@ -45,7 +48,7 @@ export class StdioMCPTransport implements MCPTransport {
     }
 
     if (!this.process.stdin) {
-      throw new Error(`Stdio process for ${this.server.identifier} has no stdin`);
+      throw new Error(`Stdio process for ${this.serverId} has no stdin`);
     }
 
     return new Promise((resolve, reject) => {
@@ -62,10 +65,7 @@ export class StdioMCPTransport implements MCPTransport {
 
       // Send request
       const requestData = `${JSON.stringify(request)}\n`;
-      console.log(
-        `📡 [StdioMCPTransport] Sending request to ${this.server?.identifier}:`,
-        request.method
-      );
+      console.log(`📡 [StdioMCPTransport] Sending request to ${this.serverId}:`, request.method);
 
       if (this.process?.stdin) {
         this.process.stdin.write(requestData, (error) => {
@@ -90,6 +90,7 @@ export class StdioMCPTransport implements MCPTransport {
     if (this.process) {
       await this.stopProcess();
     }
+    this.serverId = null;
     this.server = null;
     console.log('🔄 [StdioMCPTransport] Stdio transport closed');
   }
@@ -105,7 +106,7 @@ export class StdioMCPTransport implements MCPTransport {
    * Get the server identifier
    */
   getServerIdentifier(): string {
-    return this.server?.identifier || 'unknown';
+    return this.serverId || 'unknown';
   }
 
   /**
@@ -113,7 +114,7 @@ export class StdioMCPTransport implements MCPTransport {
    */
   private async startProcess(): Promise<void> {
     if (this.process) {
-      throw new Error(`MCP server ${this.server?.identifier} is already running`);
+      throw new Error(`MCP server ${this.serverId} is already running`);
     }
 
     return new Promise((resolve, reject) => {
@@ -122,24 +123,18 @@ export class StdioMCPTransport implements MCPTransport {
         return;
       }
       const server = this.server;
-      const config = server.config as {
-        command: string;
-        args?: string[];
-        cwd?: string;
-        env?: Record<string, string>;
-      };
       console.log(
-        `🔄 [StdioMCPTransport] Starting MCP server: ${config.command} ${(config.args || []).join(' ')}`
+        `🔄 [StdioMCPTransport] Starting MCP server: ${server.command} ${(server.args || []).join(' ')}`
       );
 
-      if (!config.command) {
+      if (!server.command) {
         reject(new Error('Server command not specified'));
         return;
       }
-      this.process = spawn(config.command, config.args || [], {
+      this.process = spawn(server.command, server.args || [], {
         stdio: ['pipe', 'pipe', 'pipe'],
-        cwd: config.cwd,
-        env: { ...process.env, ...config.env },
+        cwd: server.cwd,
+        env: { ...process.env, ...server.env },
       });
 
       if (!this.process.stdout || !this.process.stdin || !this.process.stderr) {
@@ -154,20 +149,20 @@ export class StdioMCPTransport implements MCPTransport {
 
       // Handle stderr for logging
       this.process.stderr.on('data', (data: Buffer) => {
-        console.warn(`⚠️ [StdioMCPTransport] ${server.identifier} stderr:`, data.toString().trim());
+        console.warn(`⚠️ [StdioMCPTransport] ${this.serverId} stderr:`, data.toString().trim());
       });
 
       // Handle process exit
       this.process.on('exit', (code, signal) => {
         console.log(
-          `🔄 [StdioMCPTransport] ${server.identifier} process exited with code ${code}, signal ${signal}`
+          `🔄 [StdioMCPTransport] ${this.serverId} process exited with code ${code}, signal ${signal}`
         );
         this.cleanup();
       });
 
       // Handle process errors
       this.process.on('error', (error) => {
-        console.error(`❌ [StdioMCPTransport] ${server.identifier} process error:`, error);
+        console.error(`❌ [StdioMCPTransport] ${this.serverId} process error:`, error);
         this.cleanup();
         reject(error);
       });
@@ -175,10 +170,10 @@ export class StdioMCPTransport implements MCPTransport {
       // Wait a brief moment for the process to start
       globalThis.setTimeout(() => {
         if (this.process && !this.process.killed) {
-          console.log(`✅ [StdioMCPTransport] ${server.identifier} started successfully`);
+          console.log(`✅ [StdioMCPTransport] ${this.serverId} started successfully`);
           resolve();
         } else {
-          reject(new Error(`Failed to start MCP server ${server.identifier}`));
+          reject(new Error(`Failed to start MCP server ${this.serverId}`));
         }
       }, 100);
     });
@@ -211,7 +206,7 @@ export class StdioMCPTransport implements MCPTransport {
       // Force kill after 5 seconds
       globalThis.setTimeout(() => {
         if (this.process && !this.process.killed) {
-          console.warn(`⚠️ [StdioMCPTransport] Force killing ${this.server?.identifier}`);
+          console.warn(`⚠️ [StdioMCPTransport] Force killing ${this.serverId}`);
           this.process.kill('SIGKILL');
         }
       }, 5000);
@@ -236,7 +231,7 @@ export class StdioMCPTransport implements MCPTransport {
           this.handleResponse(response);
         } catch (error) {
           console.error(
-            `❌ [StdioMCPTransport] Failed to parse JSON response from ${this.server?.identifier}:`,
+            `❌ [StdioMCPTransport] Failed to parse JSON response from ${this.serverId}:`,
             line,
             error
           );
@@ -257,12 +252,12 @@ export class StdioMCPTransport implements MCPTransport {
       this.pendingRequests.delete(requestId);
 
       console.log(
-        `✅ [StdioMCPTransport] Received response for ${this.server?.identifier} request ${requestId}`
+        `✅ [StdioMCPTransport] Received response for ${this.serverId} request ${requestId}`
       );
       pending.resolve(response);
     } else {
       console.warn(
-        `⚠️ [StdioMCPTransport] Received response for unknown request ${requestId} from ${this.server?.identifier}`
+        `⚠️ [StdioMCPTransport] Received response for unknown request ${requestId} from ${this.serverId}`
       );
     }
   }
@@ -274,7 +269,7 @@ export class StdioMCPTransport implements MCPTransport {
     // Reject all pending requests
     for (const [, pending] of this.pendingRequests.entries()) {
       globalThis.clearTimeout(pending.timeout);
-      pending.reject(new Error(`Connection to ${this.server?.identifier} was closed`));
+      pending.reject(new Error(`Connection to ${this.serverId} was closed`));
     }
     this.pendingRequests.clear();
 
@@ -284,39 +279,25 @@ export class StdioMCPTransport implements MCPTransport {
 
   /**
    * Validate server configuration for stdio transport
+   * @param serverId - Server identifier
    * @param server - Server configuration to validate
    * @throws Error if configuration is invalid
    */
-  private validateServerConfig(server: MCPServer): void {
-    if (server.transport !== 'stdio') {
-      throw new Error(`Invalid transport for stdio transport: ${server.transport}`);
+  private validateServerConfig(serverId: string, server: StdioMcpServerConfig): void {
+    if (!server.command) {
+      throw new Error(`Stdio transport requires command for server ${serverId}`);
     }
 
-    if (!server.config) {
-      throw new Error(`Stdio transport requires config for server ${server.identifier}`);
+    if (typeof server.command !== 'string' || server.command.trim() === '') {
+      throw new Error(`Invalid command for server ${serverId}: must be a non-empty string`);
     }
 
-    const config = server.config as {
-      command?: string;
-      args?: string[];
-      env?: Record<string, string>;
-    };
-    if (!config.command) {
-      throw new Error(`Stdio transport requires command for server ${server.identifier}`);
+    if (server.args && !Array.isArray(server.args)) {
+      throw new Error(`Invalid args for server ${serverId}: must be an array of strings`);
     }
 
-    if (typeof config.command !== 'string' || config.command.trim() === '') {
-      throw new Error(
-        `Invalid command for server ${server.identifier}: must be a non-empty string`
-      );
-    }
-
-    if (config.args && !Array.isArray(config.args)) {
-      throw new Error(`Invalid args for server ${server.identifier}: must be an array of strings`);
-    }
-
-    if (config.env && typeof config.env !== 'object') {
-      throw new Error(`Invalid env for server ${server.identifier}: must be an object`);
+    if (server.env && typeof server.env !== 'object') {
+      throw new Error(`Invalid env for server ${serverId}: must be an object`);
     }
   }
 }

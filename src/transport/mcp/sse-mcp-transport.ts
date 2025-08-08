@@ -1,5 +1,5 @@
 import type { MCPRequest, MCPResponse } from '../../model/types.js';
-import type { MCPServer, ProviderJwtAuthConfig } from '../../model/providers.js';
+import type { HttpMcpServerConfig } from '../../model/providers.js';
 import type { MCPTransport } from '../../interface/mcp-transport.js';
 import { fetchWithDefaultTimeout } from '../../utils/fetch-helper.js';
 import jwtHelper from '../../utils/jwt-helper.js';
@@ -10,7 +10,8 @@ import jwtHelper from '../../utils/jwt-helper.js';
  * Uses POST for sending requests and SSE for receiving responses
  */
 export class SseMCPTransport implements MCPTransport {
-  private server: MCPServer | null = null;
+  private serverId: string | null = null;
+  private server: HttpMcpServerConfig | null = null;
   private eventSource: EventSource | null = null;
   private isInitialized = false;
   private readonly pendingRequests = new Map<
@@ -25,16 +26,18 @@ export class SseMCPTransport implements MCPTransport {
 
   /**
    * Initialize the SSE transport
+   * @param serverId - Server identifier
    * @param server - Server configuration
    */
-  async initialize(server: MCPServer): Promise<void> {
-    this.validateServerConfig(server);
+  async initialize(serverId: string, server: HttpMcpServerConfig): Promise<void> {
+    this.validateServerConfig(serverId, server);
+    this.serverId = serverId;
     this.server = server;
 
     await this.initializeEventSource();
 
     this.isInitialized = true;
-    console.log(`✅ [SseMCPTransport] Initialized SSE transport for ${server.identifier}`);
+    console.log(`✅ [SseMCPTransport] Initialized SSE transport for ${serverId}`);
   }
 
   /**
@@ -49,7 +52,7 @@ export class SseMCPTransport implements MCPTransport {
 
     if (!this.eventSource || this.eventSource.readyState !== 1) {
       // EventSource.OPEN = 1
-      throw new Error(`SSE connection to ${this.server.identifier} is not open`);
+      throw new Error(`SSE connection to ${this.serverId} is not open`);
     }
 
     return new Promise((resolve, reject) => {
@@ -64,10 +67,7 @@ export class SseMCPTransport implements MCPTransport {
       // Store pending request
       this.pendingRequests.set(requestId, { resolve, reject, timeout });
 
-      console.log(
-        `📡 [SseMCPTransport] Sending SSE request to ${this.server?.identifier}:`,
-        request.method
-      );
+      console.log(`📡 [SseMCPTransport] Sending SSE request to ${this.serverId}:`, request.method);
 
       // Send request via HTTP POST
       this.sendHttpRequest(request).catch((error) => {
@@ -90,11 +90,12 @@ export class SseMCPTransport implements MCPTransport {
     // Reject all pending requests
     for (const [, pending] of this.pendingRequests.entries()) {
       globalThis.clearTimeout(pending.timeout);
-      pending.reject(new Error(`Connection to ${this.server?.identifier} was closed`));
+      pending.reject(new Error(`Connection to ${this.serverId} was closed`));
     }
     this.pendingRequests.clear();
 
     this.isInitialized = false;
+    this.serverId = null;
     this.server = null;
     console.log('🔄 [SseMCPTransport] SSE transport closed');
   }
@@ -110,7 +111,7 @@ export class SseMCPTransport implements MCPTransport {
    * Get the server identifier
    */
   getServerIdentifier(): string {
-    return this.server?.identifier || 'unknown';
+    return this.serverId || 'unknown';
   }
 
   /**
@@ -131,7 +132,7 @@ export class SseMCPTransport implements MCPTransport {
 
       // Handle successful connection
       this.eventSource.onopen = () => {
-        console.log(`✅ [SseMCPTransport] SSE connection opened for ${this.server?.identifier}`);
+        console.log(`✅ [SseMCPTransport] SSE connection opened for ${this.serverId}`);
         resolve();
       };
 
@@ -142,7 +143,7 @@ export class SseMCPTransport implements MCPTransport {
           this.handleResponse(response);
         } catch (error) {
           console.error(
-            `❌ [SseMCPTransport] Failed to parse SSE message from ${this.server?.identifier}:`,
+            `❌ [SseMCPTransport] Failed to parse SSE message from ${this.serverId}:`,
             event.data,
             error
           );
@@ -151,13 +152,10 @@ export class SseMCPTransport implements MCPTransport {
 
       // Handle connection errors
       this.eventSource.onerror = (error) => {
-        console.error(
-          `❌ [SseMCPTransport] SSE connection error for ${this.server?.identifier}:`,
-          error
-        );
+        console.error(`❌ [SseMCPTransport] SSE connection error for ${this.serverId}:`, error);
         if (this.eventSource?.readyState === 2) {
           // EventSource.CLOSED = 2
-          reject(new Error(`Failed to establish SSE connection to ${this.server?.identifier}`));
+          reject(new Error(`Failed to establish SSE connection to ${this.serverId}`));
         }
       };
 
@@ -168,7 +166,7 @@ export class SseMCPTransport implements MCPTransport {
           this.handleResponse(response);
         } catch (error) {
           console.error(
-            `❌ [SseMCPTransport] Failed to parse MCP response from ${this.server?.identifier}:`,
+            `❌ [SseMCPTransport] Failed to parse MCP response from ${this.serverId}:`,
             event.data,
             error
           );
@@ -195,12 +193,9 @@ export class SseMCPTransport implements MCPTransport {
         data: request,
       });
 
-      console.log(`✅ [SseMCPTransport] HTTP request sent to ${this.server.identifier}`);
+      console.log(`✅ [SseMCPTransport] HTTP request sent to ${this.serverId}`);
     } catch (error) {
-      console.error(
-        `❌ [SseMCPTransport] Failed to send HTTP request to ${this.server.identifier}:`,
-        error
-      );
+      console.error(`❌ [SseMCPTransport] Failed to send HTTP request to ${this.serverId}:`, error);
       throw new Error(
         `Failed to send SSE request: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
@@ -219,12 +214,12 @@ export class SseMCPTransport implements MCPTransport {
       this.pendingRequests.delete(requestId);
 
       console.log(
-        `✅ [SseMCPTransport] Received SSE response for ${this.server?.identifier} request ${requestId}`
+        `✅ [SseMCPTransport] Received SSE response for ${this.serverId} request ${requestId}`
       );
       pending.resolve(response);
     } else {
       console.warn(
-        `⚠️ [SseMCPTransport] Received SSE response for unknown request ${requestId} from ${this.server?.identifier}`
+        `⚠️ [SseMCPTransport] Received SSE response for unknown request ${requestId} from ${this.serverId}`
       );
     }
   }
@@ -233,14 +228,13 @@ export class SseMCPTransport implements MCPTransport {
    * Get SSE endpoint URL for receiving responses
    */
   private getSseUrl(): string {
-    if (!this.server?.config) {
+    if (!this.server?.url) {
       throw new Error('Server URL not configured');
     }
 
     // Assume SSE endpoint is at /sse or /events relative to base URL
     // This can be customized based on the specific MCP server implementation
-    const config = this.server.config as { url: string };
-    const baseUrl = config.url.replace(/\/$/, ''); // Remove trailing slash
+    const baseUrl = this.server.url.replace(/\/$/, ''); // Remove trailing slash
     return `${baseUrl}/sse`;
   }
 
@@ -248,18 +242,13 @@ export class SseMCPTransport implements MCPTransport {
    * Get HTTP POST endpoint URL for sending requests
    */
   private getPostUrl(): string {
-    const config = this.server?.config as { url: string };
-    if (!config?.url) {
+    if (!this.server?.url) {
       throw new Error('Server URL not configured');
     }
 
     // Assume POST endpoint is at /mcp or the base URL
     // This can be customized based on the specific MCP server implementation
-    if (!this.server?.config) {
-      throw new Error('Server config not available');
-    }
-    const serverConfig = this.server.config as { url: string };
-    const baseUrl = serverConfig.url.replace(/\/$/, ''); // Remove trailing slash
+    const baseUrl = this.server.url.replace(/\/$/, ''); // Remove trailing slash
     return `${baseUrl}/mcp`;
   }
 
@@ -273,18 +262,13 @@ export class SseMCPTransport implements MCPTransport {
       throw new Error('Server not configured');
     }
 
-    const config = this.server.config as {
-      headers?: Record<string, string>;
-      auth?: { type: 'jwt'; config: ProviderJwtAuthConfig };
-    };
-
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...config.headers,
+      ...this.server.headers,
     };
 
-    if (config.auth?.type === 'jwt') {
-      const token = await jwtHelper.getToken(config.auth.config);
+    if (this.server.auth?.type === 'jwt') {
+      const token = await jwtHelper.getToken(this.server.auth.config);
       headers.Authorization = `Bearer ${token}`;
     }
 
@@ -293,27 +277,19 @@ export class SseMCPTransport implements MCPTransport {
 
   /**
    * Validate server configuration for SSE transport
+   * @param serverId - Server identifier
    * @param server - Server configuration to validate
    * @throws Error if configuration is invalid
    */
-  private validateServerConfig(server: MCPServer): void {
-    if (server.transport !== 'sse') {
-      throw new Error(`Invalid transport for SSE transport: ${server.transport}`);
-    }
-
-    if (!server.config) {
-      throw new Error(`SSE transport requires config for server ${server.identifier}`);
-    }
-
-    const config = server.config as { url?: string };
-    if (!config.url) {
-      throw new Error(`SSE transport requires URL for server ${server.identifier}`);
+  private validateServerConfig(serverId: string, server: HttpMcpServerConfig): void {
+    if (!server.url) {
+      throw new Error(`SSE transport requires URL for server ${serverId}`);
     }
 
     try {
-      new URL(config.url);
+      new URL(server.url);
     } catch {
-      throw new Error(`Invalid URL for server ${server.identifier}: ${config.url}`);
+      throw new Error(`Invalid URL for server ${serverId}: ${server.url}`);
     }
   }
 }
