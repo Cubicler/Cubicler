@@ -49,7 +49,7 @@ export class AgentTransportFactory {
         if (!('command' in agent)) {
           throw new Error(`Stdio agent ${agentId} requires 'command' property`);
         }
-        return new StdioAgentTransport(agent);
+        return new StdioAgentTransport(agent, this.mcpService);
       }
       case 'direct': {
         if (!('provider' in agent)) {

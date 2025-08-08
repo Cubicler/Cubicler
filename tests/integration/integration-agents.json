@@ -7,7 +7,7 @@
       "description": "OpenAI agent for testing weather API integration",
       "transport": "direct",
       "provider": "openai",
-      "apiKey": "${OPENAI_API_KEY}",
+      "apiKey": "{{env.OPENAI_API_KEY}}",
       "model": "gpt-4o-mini",
       "temperature": 0.3,
       "sessionMaxTokens": 2000,
@@ -18,11 +18,43 @@
       "description": "OpenAI agent for testing webhook functionality",
       "transport": "direct",
       "provider": "openai",
-      "apiKey": "${OPENAI_API_KEY}",
+      "apiKey": "{{env.OPENAI_API_KEY}}",
       "model": "gpt-4o-mini",
       "temperature": 0.2,
       "sessionMaxTokens": 1500,
       "prompt": "You are an AI assistant for testing webhook functionality. You should respond helpfully to webhook-triggered events and user interactions."
+    },
+    "test-stdio-openai-weather": {
+      "name": "Stdio OpenAI Weather Test Agent",
+      "description": "CubicAgent-OpenAI v2.5.0 stdio agent for testing weather API integration",
+      "transport": "stdio",
+      "command": "node",
+      "args": [
+        "../CubicAgent-OpenAI/dist/index.js",
+        "--model", "gpt-4o-mini",
+        "--temperature", "0.3",
+        "--max-tokens", "2000"
+      ],
+      "env": {
+        "OPENAI_API_KEY": "{{env.OPENAI_API_KEY}}"
+      },
+      "prompt": "You are an AI assistant that helps users get weather information. When users ask about weather, you should:\n1. First discover available servers using cubicler_available_servers\n2. Then fetch tools from weather servers using cubicler_fetch_server_tools  \n3. Finally use the weather tools with the proper hash-based names to get weather data\n\nAlways provide helpful weather information when requested."
+    },
+    "test-stdio-openai-basic": {
+      "name": "Stdio OpenAI Basic Test Agent",
+      "description": "CubicAgent-OpenAI v2.5.0 stdio agent for basic functionality testing",
+      "transport": "stdio",
+      "command": "node", 
+      "args": [
+        "../CubicAgent-OpenAI/dist/index.js",
+        "--model", "gpt-4o-mini",
+        "--temperature", "0.7",
+        "--max-tokens", "1500"
+      ],
+      "env": {
+        "OPENAI_API_KEY": "{{env.OPENAI_API_KEY}}"
+      },
+      "prompt": "You are a helpful AI assistant for integration testing. Respond concisely and helpfully to user queries. When testing tools, try to use available MCP tools if appropriate."
     }
   }
 }

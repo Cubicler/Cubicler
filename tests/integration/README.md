@@ -16,6 +16,7 @@ tests/integration/
 ├── mcp-sse-integration.test.ts   # MCP over SSE streaming tests
 ├── mcp-http-integration.test.ts  # MCP over HTTP API tests
 ├── webhook-integration.test.ts   # Webhook endpoint tests
+├── stdio-integration.test.ts     # Stdio agent integration tests
 └── README.md                     # This file
 ```
 
@@ -65,6 +66,16 @@ tests/integration/
 - ✅ Error handling for invalid webhook data
 - ✅ Authentication handling (if configured)
 
+### Stdio Agent Integration Tests (`stdio-integration.test.ts`)
+
+- ✅ Stdio agent listing and discovery
+- ✅ Basic request/response with CubicAgent-OpenAI v2.6.0
+- ✅ Weather API integration through stdio transport
+- ✅ MCP tool discovery through stdio agents
+- ✅ Error handling for nonexistent stdio agents
+- ✅ Malformed request handling
+- ✅ Performance comparison between stdio and direct agents
+
 ## Setup
 
 1. **Create environment file:**
@@ -108,6 +119,9 @@ npm test -- tests/integration/mcp-http-integration.test.ts --run
 
 # Run webhook tests only
 npm test -- tests/integration/webhook-integration.test.ts --run
+
+# Run stdio agent tests only
+npm test -- tests/integration/stdio-integration.test.ts --run
 ```
 
 ### Watch Mode (Development)
@@ -137,8 +151,10 @@ These integration tests follow the proper Cubicler architecture:
 
 ### Agents (`integration-agents.json`)
 
-- `test-openai-weather`: OpenAI agent configured for weather queries
-- `test-webhook-agent`: OpenAI agent for webhook processing
+- `test-openai-weather`: OpenAI agent configured for weather queries (direct transport)
+- `test-webhook-agent`: OpenAI agent for webhook processing (direct transport)
+- `test-stdio-openai-weather`: CubicAgent-OpenAI v2.6.0 stdio agent for weather queries
+- `test-stdio-openai-basic`: CubicAgent-OpenAI v2.6.0 stdio agent for basic functionality
 
 ### Providers (`integration-providers.json`)  
 

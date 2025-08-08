@@ -126,18 +126,32 @@ export class SseMCPTransport implements MCPTransport {
       throw new Error('Server not configured');
     }
 
+    const sseUrl = this.getSseUrl();
+    console.log(`🔄 [SseMCPTransport] Connecting to SSE endpoint: ${sseUrl}`);
+
+    // Resolve EventSource constructor in Node and browser environments
+    const ES: any = await this.resolveEventSourceCtor();
+
     return new Promise((resolve, reject) => {
-      const sseUrl = this.getSseUrl();
-      console.log(`🔄 [SseMCPTransport] Connecting to SSE endpoint: ${sseUrl}`);
-
-      const ES: any = (globalThis as any).EventSource || this.tryRequireEventSource();
-      // dynamic EventSource constructor
       this.eventSource = new ES(sseUrl);
-
       const es = this.eventSource as unknown as EventSource;
+
+      let opened = false;
+      const connectTimeout = globalThis.setTimeout(() => {
+        if (!opened) {
+          try {
+            es.close?.();
+          } catch {
+            // Intentionally ignore close errors during timeout cleanup
+          }
+          reject(new Error(`Failed to establish SSE connection to ${this.serverId} (timeout)`));
+        }
+      }, 2000);
 
       // Handle successful connection
       es.onopen = () => {
+        opened = true;
+        globalThis.clearTimeout(connectTimeout);
         console.log(`✅ [SseMCPTransport] SSE connection opened for ${this.serverId}`);
         resolve();
       };
@@ -159,9 +173,16 @@ export class SseMCPTransport implements MCPTransport {
       // Handle connection errors
       es.onerror = (error) => {
         console.error(`❌ [SseMCPTransport] SSE connection error for ${this.serverId}:`, error);
-        if (es?.readyState === 2) {
-          // EventSource.CLOSED = 2
+        if (!opened) {
+          // Treat initial connection error as a failure and allow fallback
+          globalThis.clearTimeout(connectTimeout);
+          try {
+            es.close?.();
+          } catch {
+            // Intentionally ignore close errors during timeout cleanup
+          }
           reject(new Error(`Failed to establish SSE connection to ${this.serverId}`));
+          return;
         }
       };
 
@@ -286,11 +307,19 @@ export class SseMCPTransport implements MCPTransport {
     return headers;
   }
 
-  /** Attempt to require('eventsource') at runtime if not provided globally. */
+  /** Resolve EventSource constructor for both ESM and CJS environments. */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private tryRequireEventSource(): any {
+  private async resolveEventSourceCtor(): Promise<any> {
+    const globalES = (globalThis as any).EventSource;
+    if (globalES) return globalES;
+
     try {
-      return require('eventsource');
+      const mod: any = await import('eventsource');
+      const ctor = mod?.default ?? mod?.EventSource ?? mod;
+      if (typeof ctor !== 'function') {
+        throw new Error('Invalid EventSource export shape');
+      }
+      return ctor;
     } catch {
       throw new Error(
         'EventSource is not available. Install the "eventsource" package or provide a global EventSource.'

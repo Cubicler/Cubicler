@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { hasRequiredIntegrationEnv } from './test-utils';
 import { resolve } from 'path';
 import { spawn, ChildProcess } from 'child_process';
 import { TextDecoder } from 'util';
@@ -7,7 +8,7 @@ import dotenv from 'dotenv';
 // Load test environment variables
 dotenv.config({ path: resolve(__dirname, '.env') });
 
-describe('SSE Integration Tests', () => {
+describe.runIf(hasRequiredIntegrationEnv())('SSE Integration Tests', () => {
   let serverProcess: ChildProcess;
   let serverUrl: string;
   const serverPort = 1504; // Use different port to avoid conflicts

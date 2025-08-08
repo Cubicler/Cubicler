@@ -110,12 +110,13 @@ describe('StdioAgentTransport', () => {
     it('should call agent successfully', async () => {
       const promise = transport.dispatch(mockAgentRequest);
 
-      // Simulate successful response in bidirectional format
+      // Simulate successful response in JSON-RPC format
       setTimeout(() => {
         const responseMessage =
           JSON.stringify({
-            type: 'agent_response',
-            data: mockAgentResponse,
+            jsonrpc: '2.0',
+            id: 1,
+            result: mockAgentResponse,
           }) + '\n';
         mockChild.stdout.emit('data', responseMessage);
         mockChild.emit('close', 0);
@@ -123,12 +124,10 @@ describe('StdioAgentTransport', () => {
 
       const result = await promise;
 
-      const expectedMessage =
-        JSON.stringify({
-          type: 'agent_request',
-          data: mockAgentRequest,
-        }) + '\n';
-      expect(mockChild.stdin.write).toHaveBeenCalledWith(expectedMessage, expect.any(Function));
+      expect(mockChild.stdin.write).toHaveBeenCalled();
+      const writtenData = (mockChild.stdin.write as any).mock.calls[0][0];
+      expect(writtenData).toContain('"jsonrpc":"2.0"');
+      expect(writtenData).toContain('"method":"dispatch"');
       expect(result).toEqual(mockAgentResponse);
     });
 
@@ -149,11 +148,12 @@ describe('StdioAgentTransport', () => {
       setTimeout(() => {
         // Send invalid JSON - this will be ignored and logged as error
         mockChild.stdout.emit('data', 'invalid json\n');
-        // Then send a valid response
+        // Then send a valid JSON-RPC response
         const responseMessage =
           JSON.stringify({
-            type: 'agent_response',
-            data: mockAgentResponse,
+            jsonrpc: '2.0',
+            id: 1,
+            result: mockAgentResponse,
           }) + '\n';
         mockChild.stdout.emit('data', responseMessage);
         mockChild.emit('close', 0);
@@ -175,8 +175,9 @@ describe('StdioAgentTransport', () => {
       setTimeout(() => {
         const responseMessage =
           JSON.stringify({
-            type: 'agent_response',
-            data: invalidResponse,
+            jsonrpc: '2.0',
+            id: 1,
+            result: invalidResponse,
           }) + '\n';
         mockChild.stdout.emit('data', responseMessage);
       }, 10);

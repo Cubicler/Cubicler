@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { hasRequiredIntegrationEnv } from './test-utils';
 import { app } from '../../src/index.js';
 import request from 'supertest';
 import { resolve } from 'path';
@@ -6,7 +7,7 @@ import dotenv from 'dotenv';
 import http from 'http';
 import mcpSseService from '../../src/core/mcp-sse-service.js';
 
-describe('MCP over SSE integration', () => {
+describe.runIf(hasRequiredIntegrationEnv())('MCP over SSE integration', () => {
   let server: http.Server;
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let baseUrl: string;

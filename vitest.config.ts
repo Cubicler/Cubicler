@@ -5,6 +5,20 @@ export default defineConfig({
     environment: 'node',
     globals: true,
     testTimeout: 10000,
+    include: [
+      'tests/**/*.test.ts',
+      'tests/**/*.spec.ts',
+    ],
+    exclude: [
+      // Default-ish excludes + integration folder
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/.{git,svn,hg}/**',
+      '**/cypress/**',
+      '**/.next/**',
+      '**/coverage/**',
+      'tests/integration/**',
+    ],
   },
   resolve: {
     alias: {

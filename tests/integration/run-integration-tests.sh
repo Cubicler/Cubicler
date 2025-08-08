@@ -54,4 +54,8 @@ echo "🔗 Running Webhook Integration Tests..."
 npm test -- tests/integration/webhook-integration.test.ts --run
 
 echo ""
+echo "📟 Running Stdio Agent Integration Tests..."
+npm test -- tests/integration/stdio-integration.test.ts --run
+
+echo ""
 echo "✅ All integration tests completed!"

@@ -10,7 +10,20 @@ export function handleDispatchError(
   const endpoint = req.params.agentId ? `/dispatch/${req.params.agentId}` : '/dispatch';
 
   console.error(`❌ [Server] POST ${endpoint} - Error: ${errorMessage}`);
-  res.status(500).json({ error: errorMessage });
+
+  // Return appropriate error status codes based on error message
+  if (errorMessage.toLowerCase().includes('not found')) {
+    res.status(404).json({ error: errorMessage });
+  } else if (errorMessage.toLowerCase().includes('not authorized')) {
+    res.status(403).json({ error: errorMessage });
+  } else if (
+    errorMessage.toLowerCase().includes('validation') ||
+    errorMessage.toLowerCase().includes('invalid')
+  ) {
+    res.status(400).json({ error: errorMessage });
+  } else {
+    res.status(500).json({ error: errorMessage });
+  }
 }
 
 export function handleMCPError(

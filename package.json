@@ -1,14 +1,15 @@
 {
   "name": "cubicler",
-  "version": "2.3.0",
+  "version": "2.6.0",
   "description": "Modular AI Orchestration Framework",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "test": "vitest",
-    "test:run": "vitest --run",
-    "test:ui": "vitest --ui",
-    "test:integration": "vitest --run tests/integration",
+    "test": "vitest --config vitest.config.ts",
+    "test:run": "vitest --run --config vitest.config.ts",
+    "test:ui": "vitest --ui --config vitest.config.ts",
+    "run-integration": "vitest --run --config vitest.integration.config.ts",
+    "test:integration": "npm run run-integration",
     "build": "tsup",
     "build:tsc": "tsc",
     "start": "node dist/index.js",
@@ -65,7 +66,7 @@
     "vitest": "^3.2.4"
   },
   "dependencies": {
-    "@cubicler/cubicagent-openai": "^2.4.0",
+    "@cubicler/cubicagent-openai": "^2.6.0",
     "axios": "^1.11.0",
     "dotenv": "^17.2.0",
     "express": "^5.1.0",
