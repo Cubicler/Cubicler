@@ -3,10 +3,9 @@
  */
 
 /**
- * Base agent configuration
+ * Base agent configuration (native format)
  */
-export interface BaseAgent {
-  identifier: string; // lowercase, no spaces, only - or _
+export interface BaseAgentConfig {
   name: string;
   description: string;
   prompt?: string; // optional agent-specific prompt
@@ -17,49 +16,52 @@ export interface BaseAgent {
 }
 
 /**
- * JWT authentication configuration
+ * Agent authentication configuration (reuse from providers)
  */
-export interface JwtAuthConfig {
-  token?: string; // Static token
-  tokenUrl?: string; // URL to fetch token
-  clientId?: string; // For OAuth2 client credentials
-  clientSecret?: string; // For OAuth2 client credentials
-  audience?: string; // JWT audience claim
-  refreshThreshold?: number; // Minutes before expiry to refresh (default: 5)
-}
+export type AgentAuthConfig = import('./providers.js').ProviderJwtAuthConfig;
 
 /**
- * HTTP transport configuration
+ * HTTP agent configuration (native format)
  */
-export interface HttpTransportConfig {
+export interface HttpAgentConfig extends BaseAgentConfig {
+  transport: 'http';
   url: string;
+  headers?: Record<string, string>;
   auth?: {
     type: 'jwt';
-    config: JwtAuthConfig;
+    config: AgentAuthConfig;
   };
 }
 
 /**
- * SSE transport configuration
+ * SSE agent configuration (native format)
  */
-export interface SseTransportConfig {
+export interface SseAgentConfig extends BaseAgentConfig {
+  transport: 'sse';
+  url: string;
+  headers?: Record<string, string>;
   auth?: {
     type: 'jwt';
-    config: JwtAuthConfig;
+    config: AgentAuthConfig;
   };
 }
 
 /**
- * Stdio transport configuration
+ * STDIO agent configuration (native format)
  */
-export interface StdioTransportConfig {
-  url: string; // command to execute
+export interface StdioAgentConfig extends BaseAgentConfig {
+  transport: 'stdio';
+  command: string;
+  args?: string[];
+  env?: Record<string, string>;
+  cwd?: string;
 }
 
 /**
- * Direct transport configuration for OpenAI
+ * Direct agent configuration for OpenAI (native format)
  */
-export interface DirectOpenAIConfig {
+export interface DirectOpenAIAgentConfig extends BaseAgentConfig {
+  transport: 'direct';
   provider: 'openai';
   apiKey: string;
   model?:
@@ -98,54 +100,44 @@ export interface DirectOpenAIConfig {
 }
 
 /**
- * Direct transport configuration (extensible for other providers)
+ * Direct agent configuration (extensible for other providers)
  */
-export type DirectTransportConfig = DirectOpenAIConfig;
+export type DirectAgentConfig = DirectOpenAIAgentConfig;
 
 /**
- * Agent configuration with HTTP transport
+ * Union type for all agent configurations (native format)
  */
-export interface HttpAgent extends BaseAgent {
-  transport: 'http';
-  config: HttpTransportConfig;
-}
+export type AgentConfig = HttpAgentConfig | SseAgentConfig | StdioAgentConfig | DirectAgentConfig;
 
 /**
- * Agent configuration with SSE transport
+ * Agents collection (native format - keyed by identifier)
  */
-export interface SseAgent extends BaseAgent {
-  transport: 'sse';
-  config: SseTransportConfig;
-}
+export type AgentsCollection = Record<string, AgentConfig>;
 
 /**
- * Agent configuration with stdio transport
- */
-export interface StdioAgent extends BaseAgent {
-  transport: 'stdio';
-  config: StdioTransportConfig;
-}
-
-/**
- * Agent configuration with direct transport
- */
-export interface DirectAgent extends BaseAgent {
-  transport: 'direct';
-  config: DirectTransportConfig;
-}
-
-/**
- * Union type for all agent configurations
- */
-export type Agent = HttpAgent | SseAgent | StdioAgent | DirectAgent;
-
-/**
- * Agents configuration (JSON format)
+ * Agents configuration (native format)
  */
 export interface AgentsConfig {
   basePrompt?: string; // optional base prompt
   defaultPrompt?: string; // optional default prompt
-  agents: Agent[];
+  agents: AgentsCollection;
+}
+
+/**
+ * @deprecated Legacy agent configuration for backward compatibility
+ * Use AgentConfig with agentId separately instead
+ */
+export interface LegacyAgent {
+  identifier: string;
+  name: string;
+  description: string;
+  transport: 'http' | 'sse' | 'stdio' | 'direct';
+  config: any; // eslint-disable-line @typescript-eslint/no-explicit-any -- legacy compatibility
+  prompt?: string;
+  allowedServers?: string[];
+  allowedTools?: string[];
+  restrictedServers?: string[];
+  restrictedTools?: string[];
 }
 
 /**

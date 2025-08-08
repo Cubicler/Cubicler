@@ -39,7 +39,7 @@ class WebhookRepository implements WebhooksConfigProviding {
       console.log(
         `⚠️ [WebhookRepository] CUBICLER_WEBHOOKS_LIST not configured, using empty configuration`
       );
-      const emptyConfig: WebhooksConfig = { webhooks: [] };
+      const emptyConfig: WebhooksConfig = {};
       this.cache.set(cacheKey, emptyConfig);
       return emptyConfig;
     }
@@ -55,16 +55,18 @@ class WebhookRepository implements WebhooksConfigProviding {
         throw new Error('Invalid webhook configuration: must be a valid JSON object');
       }
 
-      if (!Array.isArray(data.webhooks)) {
-        throw new Error('Invalid webhook configuration: missing or invalid webhooks array');
+      // Validate that data is an object (webhooks are now keyed by identifier)
+      if (typeof data !== 'object' || data === null) {
+        throw new Error('Invalid webhook configuration: must be a valid JSON object');
       }
 
       // Validate individual webhook configurations
-      for (const webhook of data.webhooks) {
-        this.validateWebhookConfig(webhook);
+      const webhookEntries = Object.entries(data);
+      for (const [webhookId, webhook] of webhookEntries) {
+        this.validateWebhookConfig(webhookId, webhook);
       }
 
-      console.log(`✅ [WebhookRepository] Loaded ${data.webhooks.length} webhook configurations`);
+      console.log(`✅ [WebhookRepository] Loaded ${webhookEntries.length} webhook configurations`);
 
       // Cache the configuration
       this.cache.set(cacheKey, data);
@@ -84,7 +86,7 @@ class WebhookRepository implements WebhooksConfigProviding {
    */
   async getWebhookConfig(identifier: string): Promise<WebhookConfig | null> {
     const config = await this.getWebhooksConfig();
-    return config.webhooks.find((webhook) => webhook.identifier === identifier) || null;
+    return config[identifier] || null;
   }
 
   /**
@@ -99,73 +101,72 @@ class WebhookRepository implements WebhooksConfigProviding {
       return false;
     }
 
-    return webhook.agents.includes(agentId);
+    return webhook.allowedAgents.includes(agentId);
   }
 
   /**
    * Validate webhook configuration structure
+   * @param webhookId - The webhook identifier
    * @param webhook - Webhook configuration to validate
    * @throws Error if configuration is invalid
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Webhook config validation requires any type
-  private validateWebhookConfig(webhook: any): asserts webhook is WebhookConfig {
+  private validateWebhookConfig(webhookId: string, webhook: any): asserts webhook is WebhookConfig {
     if (!webhook || typeof webhook !== 'object') {
-      throw new Error('Webhook configuration must be an object');
-    }
-
-    if (!webhook.identifier || typeof webhook.identifier !== 'string') {
-      throw new Error('Webhook must have a valid identifier');
+      throw new Error(`Webhook ${webhookId} configuration must be an object`);
     }
 
     if (!webhook.name || typeof webhook.name !== 'string') {
-      throw new Error(`Webhook ${webhook.identifier} must have a valid name`);
+      throw new Error(`Webhook ${webhookId} must have a valid name`);
     }
 
     if (!webhook.description || typeof webhook.description !== 'string') {
-      throw new Error(`Webhook ${webhook.identifier} must have a valid description`);
+      throw new Error(`Webhook ${webhookId} must have a valid description`);
     }
 
-    if (!Array.isArray(webhook.agents) || webhook.agents.length === 0) {
-      throw new Error(`Webhook ${webhook.identifier} must have at least one authorized agent`);
+    if (!Array.isArray(webhook.allowedAgents) || webhook.allowedAgents.length === 0) {
+      throw new Error(`Webhook ${webhookId} must have at least one authorized agent`);
     }
 
     // Validate agent identifiers
-    for (const agentId of webhook.agents) {
+    for (const agentId of webhook.allowedAgents) {
       if (typeof agentId !== 'string' || agentId.trim().length === 0) {
-        throw new Error(`Webhook ${webhook.identifier} has invalid agent identifier: ${agentId}`);
+        throw new Error(`Webhook ${webhookId} has invalid agent identifier: ${agentId}`);
       }
     }
 
-    // Validate configuration object
-    if (!webhook.config || typeof webhook.config !== 'object') {
-      throw new Error(`Webhook ${webhook.identifier} must have a valid config object`);
-    }
-
     // Validate authentication if present
-    if (webhook.config.authentication) {
-      const auth = webhook.config.authentication;
-      if (!auth.type || !['signature', 'bearer'].includes(auth.type)) {
-        throw new Error(
-          `Webhook ${webhook.identifier} has invalid authentication type: ${auth.type}`
-        );
+    if (webhook.auth) {
+      const auth = webhook.auth;
+      if (!auth.type || !['signature', 'bearer', 'jwt'].includes(auth.type)) {
+        throw new Error(`Webhook ${webhookId} has invalid authentication type: ${auth.type}`);
       }
 
       if (auth.type === 'signature' && (!auth.secret || typeof auth.secret !== 'string')) {
         throw new Error(
-          `Webhook ${webhook.identifier} with signature authentication must have a valid secret`
+          `Webhook ${webhookId} with signature authentication must have a valid secret`
         );
       }
 
       if (auth.type === 'bearer' && (!auth.token || typeof auth.token !== 'string')) {
+        throw new Error(`Webhook ${webhookId} with bearer authentication must have a valid token`);
+      }
+
+      if (auth.type === 'jwt' && (!auth.config || typeof auth.config !== 'object')) {
         throw new Error(
-          `Webhook ${webhook.identifier} with bearer authentication must have a valid token`
+          `Webhook ${webhookId} with JWT authentication must have a valid config object`
         );
       }
     }
 
     // Validate payload transformations if present
     if (webhook.payload_transform && !Array.isArray(webhook.payload_transform)) {
-      throw new Error(`Webhook ${webhook.identifier} payload_transform must be an array`);
+      throw new Error(`Webhook ${webhookId} payload_transform must be an array`);
+    }
+
+    // Validate allowed origins if present
+    if (webhook.allowedOrigins && !Array.isArray(webhook.allowedOrigins)) {
+      throw new Error(`Webhook ${webhookId} allowedOrigins must be an array`);
     }
   }
 }

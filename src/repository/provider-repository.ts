@@ -50,11 +50,13 @@ class ProviderRepository implements ProvidersConfigProviding {
     // Validate configuration structure
     validateProvidersConfig(config);
 
+    // Legacy transform normalization removed – configuration must already use canonical schema.
+
     // Cache the result
     this.providersCache.set('config', config);
 
-    const mcpCount = config.mcpServers?.length || 0;
-    const restCount = config.restServers?.length || 0;
+    const mcpCount = Object.keys(config.mcpServers || {}).length;
+    const restCount = Object.keys(config.restServers || {}).length;
     console.log(
       `✅ [ProvidersRepository] Loaded ${mcpCount} MCP servers and ${restCount} REST servers`
     );
@@ -144,20 +146,20 @@ class ProviderRepository implements ProvidersConfigProviding {
 
     // Process MCP servers first
     if (config.mcpServers) {
-      for (const mcpServer of config.mcpServers) {
-        const identifier = toSnakeCase(mcpServer.identifier); // Store as snake_case
+      for (const [serverId, mcpServer] of Object.entries(config.mcpServers)) {
+        const identifier = toSnakeCase(serverId); // Store as snake_case
 
         // Get identifier string based on transport type
         let serverIdentifierString = '';
-        if (mcpServer.transport === 'stdio') {
-          const config = mcpServer.config as { command?: string };
-          serverIdentifierString = config?.command || '';
+        if ('command' in mcpServer) {
+          // STDIO transport
+          serverIdentifierString = mcpServer.command || '';
         } else {
-          const config = mcpServer.config as { url?: string };
-          serverIdentifierString = config?.url || '';
+          // HTTP/SSE transport
+          serverIdentifierString = mcpServer.url || '';
         }
 
-        const hash = generateServerHash(mcpServer.identifier, serverIdentifierString);
+        const hash = generateServerHash(serverId, serverIdentifierString);
 
         metadata.push({
           identifier,
@@ -175,17 +177,17 @@ class ProviderRepository implements ProvidersConfigProviding {
 
     // Process REST servers next
     if (config.restServers) {
-      for (const restServer of config.restServers) {
-        const identifier = toSnakeCase(restServer.identifier); // Store as snake_case
-        const hash = generateServerHash(restServer.identifier, restServer.config.url);
+      for (const [serverId, restServer] of Object.entries(config.restServers)) {
+        const identifier = toSnakeCase(serverId); // Store as snake_case
+        const hash = generateServerHash(serverId, restServer.url);
 
         metadata.push({
           identifier,
           name: restServer.name,
           description: restServer.description,
-          url: restServer.config.url,
+          url: restServer.url,
           hash,
-          toolsCount: restServer.endPoints.length,
+          toolsCount: Object.keys(restServer.endpoints || {}).length,
           type: 'rest',
           index,
         });

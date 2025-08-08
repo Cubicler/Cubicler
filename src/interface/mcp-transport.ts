@@ -1,5 +1,5 @@
 import type { MCPRequest, MCPResponse } from '../model/types.js';
-import type { MCPServer } from '../model/providers.js';
+import type { McpServerConfig } from '../model/providers.js';
 
 /**
  * Interface for MCP transport implementations
@@ -8,9 +8,10 @@ import type { MCPServer } from '../model/providers.js';
 export interface MCPTransport {
   /**
    * Initialize the transport connection
+   * @param _serverId - Server identifier
    * @param _server - Server configuration
    */
-  initialize(_server: MCPServer): Promise<void>;
+  initialize(_serverId: string, _server: McpServerConfig): Promise<void>;
 
   /**
    * Send a request to the MCP server

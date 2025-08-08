@@ -1,4 +1,4 @@
-import { Agent, AgentInfo } from '../model/agents';
+import { AgentConfig, AgentInfo } from '../model/agents.js';
 
 /**
  * Interface for providing agent configuration and information
@@ -22,7 +22,7 @@ export interface AgentsProviding {
   /**
    * Get full agent configuration
    */
-  getAgent(_agentIdentifier?: string): Promise<Agent>;
+  getAgent(_agentIdentifier?: string): Promise<AgentConfig>;
 
   /**
    * Check if an agent exists

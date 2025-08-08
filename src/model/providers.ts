@@ -24,45 +24,17 @@ export interface ResponseTransform {
 }
 
 /**
- * HTTP transport configuration for MCP servers
+ * Base MCP Server configuration (native MCP format)
  */
-export interface McpHttpTransportConfig {
-  url: string;
-  headers?: Record<string, string>;
-  auth?: {
-    type: 'jwt';
-    config: ProviderJwtAuthConfig;
-  };
+export interface BaseMcpServerConfig {
+  name: string;
+  description: string;
 }
 
 /**
- * SSE transport configuration for MCP servers
+ * STDIO MCP Server configuration (native MCP format)
  */
-export interface McpSseTransportConfig {
-  url: string;
-  headers?: Record<string, string>;
-  auth?: {
-    type: 'jwt';
-    config: ProviderJwtAuthConfig;
-  };
-}
-
-/**
- * WebSocket transport configuration for MCP servers
- */
-export interface McpWebSocketTransportConfig {
-  url: string;
-  headers?: Record<string, string>;
-  auth?: {
-    type: 'jwt';
-    config: ProviderJwtAuthConfig;
-  };
-}
-
-/**
- * Stdio transport configuration for MCP servers
- */
-export interface McpStdioTransportConfig {
+export interface StdioMcpServerConfig extends BaseMcpServerConfig {
   command: string;
   args?: string[];
   cwd?: string;
@@ -70,66 +42,12 @@ export interface McpStdioTransportConfig {
 }
 
 /**
- * Union type for all MCP transport configurations
+ * HTTP/SSE MCP Server configuration (native MCP format)
  */
-export type McpTransportConfig =
-  | McpHttpTransportConfig
-  | McpSseTransportConfig
-  | McpWebSocketTransportConfig
-  | McpStdioTransportConfig;
-
-/**
- * Base MCP Server configuration
- */
-export interface BaseMcpServer {
-  identifier: string; // lowercase, no spaces, only - or _
-  name: string;
-  description: string;
-}
-
-/**
- * MCP Server with HTTP transport
- */
-export interface HttpMcpServer extends BaseMcpServer {
-  transport: 'http';
-  config: McpHttpTransportConfig;
-}
-
-/**
- * MCP Server with SSE transport
- */
-export interface SseMcpServer extends BaseMcpServer {
-  transport: 'sse';
-  config: McpSseTransportConfig;
-}
-
-/**
- * MCP Server with WebSocket transport
- */
-export interface WebSocketMcpServer extends BaseMcpServer {
-  transport: 'websocket';
-  config: McpWebSocketTransportConfig;
-}
-
-/**
- * MCP Server with Stdio transport
- */
-export interface StdioMcpServer extends BaseMcpServer {
-  transport: 'stdio';
-  config: McpStdioTransportConfig;
-}
-
-/**
- * Union type for all MCP server configurations
- */
-export type MCPServer = HttpMcpServer | SseMcpServer | WebSocketMcpServer | StdioMcpServer;
-
-/**
- * HTTP transport configuration for REST servers
- */
-export interface RestHttpTransportConfig {
-  url: string; // base URL
-  defaultHeaders?: Record<string, string>;
+export interface HttpMcpServerConfig extends BaseMcpServerConfig {
+  transport?: 'http' | 'sse'; // Optional, auto-detected from URL if not specified
+  url: string;
+  headers?: Record<string, string>;
   auth?: {
     type: 'jwt';
     config: ProviderJwtAuthConfig;
@@ -137,19 +55,24 @@ export interface RestHttpTransportConfig {
 }
 
 /**
- * REST endpoint configuration with OpenAI schema format
+ * Union type for MCP server configurations
+ */
+export type McpServerConfig = StdioMcpServerConfig | HttpMcpServerConfig;
+
+/**
+ * MCP Servers collection (native MCP format - keyed by identifier)
+ */
+export type MCPServers = Record<string, McpServerConfig>;
+
+/**
+ * REST endpoint configuration (native format)
  */
 export interface RESTEndpoint {
-  name: string; // lowercase, no spaces, only - or _
-  description: string; // description of what this endpoint does
+  name: string;
+  description: string;
   path: string; // relative to server URL, supports {variable} placeholders
   method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
   headers?: Record<string, string>;
-  parameters?: {
-    type: 'object';
-    properties: Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any -- OpenAI schema supports complex nested structures
-    required?: string[];
-  };
   query?: {
     type: 'object';
     properties: Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any -- OpenAI schema supports complex nested structures
@@ -160,27 +83,45 @@ export interface RESTEndpoint {
     properties: Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any -- OpenAI schema supports complex nested structures
     required?: string[];
   };
-  response_transform?: ResponseTransform[]; // Array of transformations to apply to response
-  // Support for individual path parameter definitions (e.g., userId: {type: "string"})
-  [parameterName: string]: any; // eslint-disable-line @typescript-eslint/no-explicit-any -- Allows dynamic path parameter definitions
+  response_transform?: ResponseTransform[];
 }
 
 /**
- * REST Server configuration from providers.json
+ * REST Server configuration (native format)
  */
-export interface RESTServer {
-  identifier: string; // lowercase, no spaces, only - or _
+export interface RESTServerConfig {
   name: string;
   description: string;
-  transport: 'http';
-  config: RestHttpTransportConfig;
-  endPoints: RESTEndpoint[];
+  url: string; // base URL
+  defaultHeaders?: Record<string, string>;
+  auth?: {
+    type: 'jwt';
+    config: ProviderJwtAuthConfig;
+  };
+  endpoints: Record<string, RESTEndpoint>; // keyed by endpoint identifier
 }
 
 /**
- * Providers configuration (JSON format)
+ * REST Servers collection (native format - keyed by identifier)
+ */
+export type RESTServers = Record<string, RESTServerConfig>;
+
+/**
+ * Providers configuration (native MCP format)
  */
 export interface ProvidersConfig {
-  mcpServers?: MCPServer[];
-  restServers?: RESTServer[];
+  mcpServers: MCPServers;
+  restServers: RESTServers;
+}
+
+/**
+ * @deprecated Legacy MCPServer type for backward compatibility
+ * Use McpServerConfig with serverId separately instead
+ */
+export interface MCPServer {
+  identifier: string;
+  name: string;
+  description: string;
+  transport: 'http' | 'sse' | 'websocket' | 'stdio';
+  config: any; // eslint-disable-line @typescript-eslint/no-explicit-any -- legacy compatibility
 }

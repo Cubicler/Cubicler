@@ -34,7 +34,7 @@ class AgentRepository implements AgentsConfigProviding {
     // Cache the result
     this.agentsCache.set('config', config);
 
-    console.log(`✅ [AgentRepository] Loaded ${config.agents.length} agents`);
+    console.log(`✅ [AgentRepository] Loaded ${Object.keys(config.agents).length} agents`);
 
     return config;
   }
