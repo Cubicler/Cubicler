@@ -1,122 +1,151 @@
 {
   "basePrompt": "You are a helpful AI assistant powered by Cubicler with access to various tools and services.",
   "defaultPrompt": "./prompts/default-agent.md",
-  "agents": [
-    {
-      "identifier": "gpt-4o-direct",
+  "agents": {
+    "gpt_4o_direct": {
       "name": "GPT-4o Direct Agent",
-      "transport": "direct",
-      "config": {
-        "provider": "openai",
-        "apiKey": "${OPENAI_API_KEY}",
-        "model": "gpt-4o",
-        "summarizerModel": "gpt-4o-mini",
-        "temperature": 0.7,
-        "sessionMaxTokens": 4096
-      },
       "description": "OpenAI GPT-4o powered agent running directly in Cubicler with AI summarization",
+      "transport": "direct",
+      "provider": "openai",
+      "apiKey": "${OPENAI_API_KEY}",
+      "model": "gpt-4o",
+      "summarizerModel": "gpt-4o-mini",
+      "temperature": 0.7,
+      "sessionMaxTokens": 4096,
       "prompt": "You are an advanced AI assistant powered by GPT-4o. You excel at complex reasoning, analysis, and problem-solving tasks. Always provide detailed explanations and cite your reasoning process. You have access to summarizer tools that can provide concise insights from complex tool responses when needed."
     },
-    {
-      "identifier": "claude-3-5-sonnet",
-      "name": "Claude 3.5 Sonnet",
-      "transport": "http",
-      "config": {
-        "url": "http://localhost:3001/agent"
-      },
-      "description": "Anthropic Claude 3.5 Sonnet with excellent coding and analysis skills",
-      "prompt": "https://raw.githubusercontent.com/your-org/prompts/main/claude-specialist.md"
-    },
-    {
-      "identifier": "gpt-4-turbo-direct",
-      "name": "GPT-4 Turbo Direct Agent", 
-      "transport": "direct",
-      "config": {
-        "provider": "openai",
-        "apiKey": "${OPENAI_API_KEY}",
-        "model": "gpt-4-turbo",
-        "summarizerModel": "gpt-4o-mini",
-        "temperature": 0.5,
-        "sessionMaxTokens": 8192,
-        "organization": "${OPENAI_ORG_ID}"
-      },
+    "gpt_4_turbo": {
+      "name": "GPT-4 Turbo Direct Agent",
       "description": "OpenAI GPT-4 Turbo agent for complex tasks requiring higher context with AI summarization",
+      "transport": "direct",
+      "provider": "openai",
+      "apiKey": "${OPENAI_API_KEY}",
+      "model": "gpt-4-turbo",
+      "summarizerModel": "gpt-4o-mini",
+      "temperature": 0.5,
+      "sessionMaxTokens": 8192,
+      "organization": "${OPENAI_ORG_ID}",
       "prompt": "./prompts/technical-specialist.md"
     },
-    {
-      "identifier": "claude-3-5-sonnet",
+    "gpt_35_turbo": {
+      "name": "GPT-3.5 Turbo Agent",
+      "description": "Cost-effective OpenAI GPT-3.5 Turbo agent for routine tasks",
+      "transport": "direct",
+      "provider": "openai",
+      "apiKey": "${OPENAI_API_KEY}",
+      "model": "gpt-3.5-turbo",
+      "temperature": 0.6,
+      "sessionMaxTokens": 2048,
+      "prompt": "You are a helpful AI assistant powered by GPT-3.5 Turbo. You provide clear, concise responses and help users with everyday tasks efficiently."
+    },
+    "claude_35_sonnet": {
       "name": "Claude 3.5 Sonnet",
-      "transport": "http",
-      "config": {
-        "url": "http://localhost:3001/agent"
-      },
       "description": "Anthropic Claude 3.5 Sonnet with excellent coding and analysis skills",
+      "transport": "http",
+      "url": "http://localhost:3001/agent",
       "prompt": "https://raw.githubusercontent.com/your-org/prompts/main/claude-specialist.md"
     },
-    {
-      "identifier": "secure-agent-jwt",
-      "name": "JWT Secured Agent",
+    "claude_35_haiku": {
+      "name": "Claude 3.5 Haiku",
+      "description": "Fast and efficient Claude 3.5 Haiku for quick responses",
       "transport": "http",
-      "config": {
-        "url": "https://api.example.com/agent",
-        "auth": {
-          "type": "jwt",
-          "config": {
-            "token": "${JWT_TOKEN}"
-          }
-        }
-      },
+      "url": "http://localhost:3004/agent",
+      "prompt": "You are Claude 3.5 Haiku, designed for speed and efficiency. Provide clear, direct answers and focus on being helpful while being concise."
+    },
+    "secure_jwt_agent": {
+      "name": "JWT Secured Agent",
       "description": "Agent service protected with JWT authentication (static token)",
+      "transport": "http",
+      "url": "https://api.example.com/agent",
+      "auth": {
+        "type": "jwt",
+        "config": { "token": "${JWT_TOKEN}" }
+      },
       "prompt": "You are a secure AI assistant running behind JWT authentication. You have access to sensitive operations and should handle them with appropriate care."
     },
-    {
-      "identifier": "oauth-agent",
-      "name": "OAuth2 JWT Agent",
+    "oauth_enterprise_agent": {
+      "name": "OAuth2 Enterprise Agent",
+      "description": "Enterprise agent using OAuth2 client credentials flow for JWT authentication",
       "transport": "http",
-      "config": {
-        "url": "https://secure-api.example.com/agent",
-        "auth": {
-          "type": "jwt",
-          "config": {
-            "tokenUrl": "https://auth.example.com/oauth/token",
-            "clientId": "${OAUTH_CLIENT_ID}",
-            "clientSecret": "${OAUTH_CLIENT_SECRET}",
-            "audience": "agent-api",
-            "refreshThreshold": 10
-          }
+      "url": "https://secure-api.example.com/agent",
+      "auth": {
+        "type": "jwt",
+        "config": {
+          "tokenUrl": "https://auth.example.com/oauth/token",
+          "clientId": "${OAUTH_CLIENT_ID}",
+          "clientSecret": "${OAUTH_CLIENT_SECRET}",
+          "audience": "agent-api",
+          "refreshThreshold": 10
         }
       },
-      "description": "Agent using OAuth2 client credentials flow for JWT authentication",
       "prompt": "You are an enterprise AI assistant with OAuth2 authentication. You can access corporate systems and should follow security best practices."
     },
-    {
-      "identifier": "custom-specialist",
-      "name": "Domain Specialist",
+    "coding_specialist": {
+      "name": "Coding Specialist",
+      "description": "Specialized agent for software development and code analysis",
       "transport": "http",
-      "config": {
-        "url": "http://localhost:3002/agent"
-      },
-      "description": "Specialized agent for domain-specific tasks",
-      "prompt": "You are a domain specialist with deep expertise in specific areas. You provide detailed, technical responses and always cite your reasoning. When analyzing data, you present findings in a structured format with clear conclusions and actionable insights."
+      "url": "http://localhost:3002/agent",
+      "prompt": "./prompts/coding-specialist.md"
     },
-    {
-      "identifier": "file-based-agent",
-      "name": "File-based Agent",
+    "data_analyst": {
+      "name": "Data Analytics Agent",
+      "description": "Specialized in data analysis, visualization, and statistical insights",
       "transport": "http",
-      "config": {
-        "url": "http://localhost:3003/agent"
-      },
-      "description": "Agent with prompt loaded from local file",
-      "prompt": "./prompts/specialist-agent.md"
+      "url": "http://localhost:3005/agent",
+      "prompt": "You are a data analytics specialist with expertise in statistical analysis, data visualization, and business intelligence. You provide detailed, technical responses with clear conclusions and actionable insights. Always structure your analysis with executive summaries, detailed findings, and recommendations."
     },
-    {
-      "identifier": "local-llama",
-      "name": "Local LLaMA Agent",
+    "customer_support": {
+      "name": "Customer Support Agent",
+      "description": "Friendly customer service agent for user assistance and support",
+      "transport": "http",
+      "url": "http://localhost:3006/agent",
+      "prompt": "You are a friendly customer support specialist. You're empathetic, patient, and focused on solving customer problems effectively. Always acknowledge the customer's concerns and provide step-by-step solutions when possible."
+    },
+    "local_llama_70b": {
+      "name": "Local LLaMA 70B",
+      "description": "High-performance local LLaMA 70B model for privacy-sensitive tasks",
       "transport": "stdio",
-      "config": {
-        "url": "/usr/local/bin/llama-agent --model llama2 --temperature 0.7"
-      },
-      "description": "Local LLaMA model running as a command-line process"
+      "command": "/usr/local/bin/llama-agent",
+      "args": ["--model", "llama-2-70b", "--temperature", "0.7", "--max-tokens", "4096"],
+      "env": { "CUDA_VISIBLE_DEVICES": "0,1", "MODEL_PATH": "/models/llama-2-70b" },
+      "prompt": "You are LLaMA 70B, a powerful open-source language model. You excel at reasoning, coding, and analysis while prioritizing user privacy since you run locally."
+    },
+    "local_ollama_agent": {
+      "name": "Ollama Local Agent",
+      "description": "Local agent using Ollama framework for various models",
+      "transport": "stdio",
+      "command": "ollama",
+      "args": ["run", "llama3.1:8b"],
+      "prompt": "You are a helpful AI assistant running locally via Ollama. You provide accurate, helpful responses while ensuring complete privacy since everything runs on the user's machine."
+    },
+    "research_assistant": {
+      "name": "Research Assistant",
+      "description": "Academic and business research specialist with fact-checking capabilities",
+      "transport": "http",
+      "url": "http://localhost:3007/agent",
+      "prompt": "./prompts/research-assistant.md"
+    },
+    "creative_writer": {
+      "name": "Creative Writing Agent",
+      "description": "Creative writing and content generation specialist",
+      "transport": "http",
+      "url": "http://localhost:3008/agent",
+      "prompt": "You are a creative writing specialist with expertise in storytelling, content creation, and literary analysis. You help users craft engaging content, provide writing feedback, and generate creative ideas while maintaining high literary standards."
+    },
+    "multilingual_assistant": {
+      "name": "Multilingual Assistant",
+      "description": "Multilingual support agent for global communications",
+      "transport": "http",
+      "url": "http://localhost:3009/agent",
+      "prompt": "You are a multilingual assistant capable of communicating in multiple languages. You help with translations, cross-cultural communication, and provide culturally-aware responses. Always clarify which language the user prefers for the conversation."
+    },
+    "devops_agent": {
+      "name": "DevOps Automation Agent",
+      "description": "DevOps specialist for infrastructure, CI/CD, and deployment automation",
+      "transport": "http",
+      "url": "http://localhost:3010/agent",
+      "headers": { "X-Agent-Type": "devops", "X-Security-Level": "high" },
+      "prompt": "./prompts/devops-specialist.md"
     }
-  ]
+  }
 }

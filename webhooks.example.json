@@ -1,0 +1,117 @@
+{
+  "calendar_events": {
+    "name": "Calendar Events",
+    "description": "Calendar event notifications and reminders from external calendar systems",
+    "auth": { "type": "signature", "secret": "${CALENDAR_WEBHOOK_SECRET}" },
+    "allowedOrigins": ["calendar.company.com"],
+    "allowedAgents": ["openai-gpt", "scheduler-agent"],
+    "payload_transform": [
+      { "path": "event.start_time", "transform": "date_format", "format": "YYYY-MM-DD HH:mm:ss" },
+      { "path": "event.priority", "transform": "map", "map": { "1": "Low", "2": "Medium", "3": "High", "4": "Urgent" } },
+      { "path": "event.description", "transform": "template", "template": "Event: {value}" },
+      { "path": "internal_data", "transform": "remove" }
+    ]
+  },
+  "system_monitoring": {
+    "name": "System Monitoring",
+    "description": "System alerts and monitoring notifications from infrastructure monitoring tools",
+    "auth": { "type": "bearer", "token": "${MONITORING_WEBHOOK_TOKEN}" },
+    "allowedAgents": ["alert-agent"],
+    "payload_transform": [
+      { "path": "alert.severity", "transform": "map", "map": { "0": "Info", "1": "Warning", "2": "Critical", "3": "Emergency" } },
+      { "path": "alert.timestamp", "transform": "date_format", "format": "MMM DD, YYYY HH:mm:ss" }
+    ]
+  },
+  "github_push": {
+    "name": "GitHub Push Events",
+    "description": "GitHub push events for code repositories and CI/CD pipelines",
+    "auth": { "type": "signature", "secret": "${GITHUB_WEBHOOK_SECRET}" },
+    "allowedAgents": ["devops-agent", "code-reviewer"],
+    "payload_transform": [
+      { "path": "repository.full_name", "transform": "template", "template": "Repository: {value}" },
+      { "path": "head_commit.timestamp", "transform": "date_format", "format": "MMM DD, YYYY HH:mm:ss" },
+      { "path": "sender.gravatar_id", "transform": "remove" }
+    ]
+  },
+  "github_issues": {
+    "name": "GitHub Issues",
+    "description": "GitHub issue events for automated issue triage and assignment",
+    "auth": { "type": "signature", "secret": "${GITHUB_WEBHOOK_SECRET}" },
+    "allowedAgents": ["issue-triager", "project-manager"],
+    "payload_transform": [
+      { "path": "issue.created_at", "transform": "date_format", "format": "MMM DD, YYYY HH:mm:ss" },
+      { "path": "issue.state", "transform": "map", "map": { "open": "Open", "closed": "Resolved" } }
+    ]
+  },
+  "iot_sensors": {
+    "name": "IoT Sensor Data",
+    "description": "IoT device sensor readings and alerts for smart environment control",
+    "allowedAgents": ["iot-controller", "environmental-agent"],
+    "payload_transform": [
+      { "path": "readings[].timestamp", "transform": "date_format", "format": "YYYY-MM-DD HH:mm:ss" },
+      { "path": "readings[].status", "transform": "map", "map": { "0": "Normal", "1": "Warning", "2": "Critical" } },
+      { "path": "device.internal_id", "transform": "remove" }
+    ]
+  },
+  "slack_slash_commands": {
+    "name": "Slack Slash Commands",
+    "description": "Slack slash command integrations for team productivity",
+    "auth": { "type": "signature", "secret": "${SLACK_WEBHOOK_SECRET}" },
+    "allowedAgents": ["slack-bot", "team-assistant"],
+    "payload_transform": [
+      { "path": "user_name", "transform": "template", "template": "User: {value}" },
+      { "path": "trigger_id", "transform": "remove" }
+    ]
+  },
+  "ci_cd_pipeline": {
+    "name": "CI/CD Pipeline Events",
+    "description": "Continuous integration and deployment pipeline notifications",
+    "auth": { "type": "bearer", "token": "${CICD_WEBHOOK_TOKEN}" },
+    "allowedAgents": ["devops-agent", "deployment-manager"],
+    "payload_transform": [
+      { "path": "pipeline.status", "transform": "map", "map": { "success": "✅ Success", "failure": "❌ Failed", "running": "🔄 Running", "pending": "⏳ Pending" } },
+      { "path": "pipeline.finished_at", "transform": "date_format", "format": "MMM DD, YYYY HH:mm:ss" }
+    ]
+  },
+  "customer_support": {
+    "name": "Customer Support Tickets",
+    "description": "Customer support ticket notifications for automated response and escalation",
+    "auth": {
+      "type": "jwt",
+      "config": {
+        "tokenUrl": "https://support.company.com/oauth/token",
+        "clientId": "${SUPPORT_OAUTH_CLIENT_ID}",
+        "clientSecret": "${SUPPORT_OAUTH_CLIENT_SECRET}",
+        "audience": "support-api"
+      }
+    },
+    "allowedAgents": ["support-agent", "escalation-manager"],
+    "payload_transform": [
+      { "path": "ticket.priority", "transform": "map", "map": { "1": "Low", "2": "Normal", "3": "High", "4": "Urgent" } },
+      { "path": "ticket.created_at", "transform": "date_format", "format": "MMM DD, YYYY HH:mm:ss" },
+      { "path": "customer.payment_details", "transform": "remove" }
+    ]
+  },
+  "security_alerts": {
+    "name": "Security Alerts",
+    "description": "Security monitoring and threat detection alerts",
+    "auth": { "type": "bearer", "token": "${SECURITY_WEBHOOK_TOKEN}" },
+    "allowedOrigins": ["security.company.com", "siem.company.com"],
+    "allowedAgents": ["security-analyst", "incident-responder"],
+    "payload_transform": [
+      { "path": "alert.severity", "transform": "map", "map": { "low": "🟡 Low", "medium": "🟠 Medium", "high": "🔴 High", "critical": "🚨 Critical" } },
+      { "path": "alert.detected_at", "transform": "date_format", "format": "MMM DD, YYYY HH:mm:ss" }
+    ]
+  },
+  "e_commerce_orders": {
+    "name": "E-commerce Orders",
+    "description": "Order processing and fulfillment notifications from e-commerce platforms",
+    "auth": { "type": "signature", "secret": "${ECOMMERCE_WEBHOOK_SECRET}" },
+    "allowedAgents": ["order-processor", "fulfillment-manager"],
+    "payload_transform": [
+      { "path": "order.status", "transform": "map", "map": { "pending": "⏳ Pending", "processing": "🔄 Processing", "shipped": "📦 Shipped", "delivered": "✅ Delivered", "cancelled": "❌ Cancelled" } },
+      { "path": "order.created_at", "transform": "date_format", "format": "MMM DD, YYYY HH:mm:ss" },
+      { "path": "customer.payment_details", "transform": "remove" }
+    ]
+  }
+}

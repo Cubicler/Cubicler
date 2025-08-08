@@ -1,245 +1,169 @@
 {
-  "mcpServers": [
-    {
-      "identifier": "weather_service",
-      "name": "Weather Service",
-      "description": "Provides weather information via MCP",
+  "mcpServers": {
+    "stdio_mcp": {
+      "name": "STDIO MCP",
+      "description": "MCP server transporting data via standard input/output",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-weather"]
+    },
+    "http_mcp": {
+      "name": "HTTP MCP",
+      "description": "MCP server transporting data via http",
       "transport": "http",
-      "config": {
-        "url": "http://localhost:4000/mcp",
-        "headers": {
-          "Authorization": "Bearer your-api-key"
-        }
+      "url": "http://localhost:4000/mcp",
+      "headers": {
+        "Authorization": "Bearer your-api-key"
       }
     },
-    {
-      "identifier": "secure_mcp_jwt",
-      "name": "JWT Secured MCP Server",
+    "secure_http_mcp": {
+      "name": "Secure HTTP MCP",
       "description": "MCP server protected with JWT authentication (static token)",
       "transport": "http",
-      "config": {
-        "url": "https://secure-api.example.com/mcp",
-        "auth": {
-          "type": "jwt",
-          "config": {
-            "token": "${MCP_JWT_TOKEN}"
-          }
+      "url": "https://secure-api.example.com/mcp",
+      "auth": {
+        "type": "jwt",
+        "config": {
+          "token": "${MCP_JWT_TOKEN}"
         }
       }
     },
-    {
-      "identifier": "oauth_mcp_server",
-      "name": "OAuth2 MCP Server",
+    "oauth_http_mcp": {
+      "name": "OAuth2 HTTP MCP",
       "description": "MCP server using OAuth2 client credentials for JWT",
       "transport": "sse",
-      "config": {
-        "url": "https://enterprise-api.example.com/mcp",
-        "auth": {
-          "type": "jwt",
-          "config": {
-            "tokenUrl": "https://auth.example.com/oauth/token",
-            "clientId": "${MCP_OAUTH_CLIENT_ID}",
-            "clientSecret": "${MCP_OAUTH_CLIENT_SECRET}",
-            "audience": "mcp-api",
-            "refreshThreshold": 5
-          }
+      "url": "https://enterprise-api.example.com/mcp",
+      "auth": {
+        "type": "jwt",
+        "config": {
+          "tokenUrl": "https://auth.example.com/oauth/token",
+          "clientId": "${MCP_OAUTH_CLIENT_ID}",
+          "clientSecret": "${MCP_OAUTH_CLIENT_SECRET}",
+          "audience": "mcp-api",
+          "refreshThreshold": 5
+        }
+      }
+    },
+    "sse_mcp": {
+      "name": "SSE MCP",
+      "description": "MCP server using Server-Sent Events for real-time data",
+      "transport": "sse",
+      "url": "https://sse.example.com/mcp",
+      "headers": {
+        "Authorization": "Bearer your-api-key"
+      }
+    },
+    "secure_sse_mcp": {
+      "name": "Secure SSE MCP",
+      "description": "MCP server protected with JWT authentication (static token)",
+      "transport": "sse",
+      "url": "https://secure-sse.example.com/mcp",
+      "auth": {
+        "type": "jwt",
+        "config": {
+          "token": "${MCP_JWT_TOKEN}"
+        }
+      }
+    },
+    "secure_oauth_sse_mcp": {
+      "name": "OAuth2 Secure SSE MCP",
+      "description": "MCP server using OAuth2 client credentials for JWT",
+      "transport": "sse",
+      "url": "https://secure-sse.example.com/mcp",
+      "auth": {
+        "type": "jwt",
+        "config": {
+          "tokenUrl": "https://auth.example.com/oauth/token",
+          "clientId": "${MCP_OAUTH_CLIENT_ID}",
+          "clientSecret": "${MCP_OAUTH_CLIENT_SECRET}",
+          "audience": "mcp-api",
+          "refreshThreshold": 5
         }
       }
     }
-  ],
-  "restServers": [
-    {
-      "identifier": "legacy_api",
-      "name": "Legacy API",
-      "description": "Legacy REST API without MCP",
-      "transport": "http",
-      "config": {
-        "url": "http://localhost:5000/api",
-        "defaultHeaders": {
-          "Authorization": "Bearer your-api-key"
-        }
+  },
+  "restServers": {
+    "basic_rest_api": {
+      "name": "Basic REST API",
+      "description": "Simple REST API without authentication",
+      "url": "http://localhost:5000/api",
+      "defaultHeaders": {
+        "Content-Type": "application/json"
       },
-      "endPoints": [
-        {
-          "name": "get_user_info",
-          "description": "Get user information by user ID",
-          "path": "/users/{userId}",
-          "method": "GET",
-          "headers": {
-            "X-Custom-Header": "value"
-          },
-          "userId": {
-            "type": "string"
-          },
-          "query": {
-            "type": "object",
-            "properties": {
-              "include_profile": {
-                "type": "boolean"
-              }
-            }
-          },
-          "payload": {
-            "type": "object",
-            "properties": {
-              "filters": {
-                "type": "array",
-                "items": {
-                  "type": "string"
+      "endpoints": {
+        "basic_rest_endpoint": {
+          "name": "Basic REST API",
+            "description": "Basic REST API endpoint",
+            "path": "/example/{someId}",
+            "method": "GET",
+            "query": {
+              "type": "object",
+              "properties": {
+                "someId": {
+                  "type": "string",
+                  "description": "ID of the resource"
+                }
+              },
+              "required": ["someId"]
+            },
+            "headers": {
+              "X-Custom-Header": "value"
+            },
+            "payload": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Name of the resource"
+                },
+                "value": {
+                  "type": "number",
+                  "description": "Value associated with the resource"
                 }
               }
             },
-            "required": ["filters"]
-          },
-          "response_transform": [
-            {
-              "path": "status",
-              "transform": "map",
-              "map": {
-                "0": "Offline",
-                "1": "Online",
-                "2": "Away"
-              }
-            },
-            {
-              "path": "last_login",
-              "transform": "date_format",
-              "format": "YYYY-MM-DD HH:mm:ss"
-            },
-            {
-              "path": "profile.bio",
-              "transform": "template",
-              "template": "Bio: {value}"
-            },
-            {
-              "path": "profile.description",
-              "transform": "regex_replace",
-              "pattern": "\\s+",
-              "replacement": " "
-            },
-            {
-              "path": "debug_info",
-              "transform": "remove"
-            }
-          ]
-        },
-        {
-          "name": "create_user",
-          "description": "Create a new user",
-          "path": "/users",
-          "method": "POST",
-          "payload": {
-            "type": "object",
-            "properties": {
-              "name": {"type": "string", "description": "Full name"},
-              "email": {"type": "string", "description": "Email address"},
-              "role": {"type": "string", "enum": ["admin", "user"]}
-            },
-            "required": ["name", "email"]
-          },
-          "response_transform": [
-            {
-              "path": "created_at",
-              "transform": "date_format",
-              "format": "YYYY-MM-DD HH:mm:ss"
-            },
-            {
-              "path": "permissions[]",
-              "transform": "template",
-              "template": "Permission: {value}"
-            }
-          ]
-        },
-        {
-          "name": "get_users_list",
-          "description": "Get list of users with status transformation",
-          "path": "/users",
-          "method": "GET",
-          "response_transform": [
-            {
-              "path": "_root[].status",
-              "transform": "map",
-              "map": {
-                "0": "Inactive",
-                "1": "Active",
-                "2": "Suspended"
-              }
-            },
-            {
-              "path": "_root[].profile.tags[]",
-              "transform": "template",
-              "template": "Tag: {value}"
-            },
-            {
-              "path": "_root[].internal_notes",
-              "transform": "remove"
-            }
-          ]
+            "response_transform": [
+              { "path": "status", "transform": "map", "map": { "0": "Offline", "1": "Online", "2": "Away" } },
+              { "path": "last_login", "transform": "date_format", "format": "YYYY-MM-DD HH:mm:ss" },
+              { "path": "profile.bio", "transform": "template", "template": "Bio: {value}" },
+              { "path": "profile.description", "transform": "regex_replace", "pattern": "\\s+", "replacement": " " },
+              { "path": "debug_info", "transform": "remove" }
+            ]
         }
-      ]
+      }
     },
-    {
-      "identifier": "secure_rest_api",
-      "name": "JWT Secured REST API",
-      "description": "REST API protected with JWT authentication (static token)",
-      "transport": "http",
-      "config": {
-        "url": "https://secure-api.example.com/api",
-        "auth": {
-          "type": "jwt",
-          "config": {
-            "token": "${REST_JWT_TOKEN}"
-          }
+    "secure_rest_api": {
+      "name": "Secure REST API",
+      "description": "REST API with JWT authentication",
+      "url": "https://secure-api.example.com/api",
+      "auth": {
+        "type": "jwt",
+        "config": {
+          "tokenUrl": "https://auth.example.com/oauth/token",
+          "clientId": "${REST_OAUTH_CLIENT_ID}",
+          "clientSecret": "${REST_OAUTH_CLIENT_SECRET}",
+          "audience": "rest-api",
+          "refreshThreshold": 5
         }
       },
-      "endPoints": [
-        {
-          "name": "get_secure_data",
-          "description": "Get secure data with JWT authentication",
-          "path": "/secure/data/{id}",
-          "method": "GET",
-          "id": {
-            "type": "string",
-            "description": "Data ID to retrieve"
-          }
-        }
-      ]
+      "defaultHeaders": { "Content-Type": "application/json" },
+      "endpoints": {}
     },
-    {
-      "identifier": "oauth_rest_api",
+    "oauth_rest_api": {
       "name": "OAuth2 REST API",
       "description": "REST API using OAuth2 client credentials for JWT",
-      "transport": "http",
-      "config": {
-        "url": "https://enterprise-api.example.com/api",
-        "auth": {
-          "type": "jwt",
-          "config": {
-            "tokenUrl": "https://auth.example.com/oauth/token",
-            "clientId": "${REST_OAUTH_CLIENT_ID}",
-            "clientSecret": "${REST_OAUTH_CLIENT_SECRET}",
-            "audience": "rest-api",
-            "refreshThreshold": 10
-          }
+      "url": "https://oauth-api.example.com/api",
+      "auth": {
+        "type": "jwt",
+        "config": {
+          "tokenUrl": "https://auth.example.com/oauth/token",
+          "clientId": "${OAUTH_CLIENT_ID}",
+          "clientSecret": "${OAUTH_CLIENT_SECRET}",
+          "audience": "oauth-api",
+          "refreshThreshold": 5
         }
       },
-      "endPoints": [
-        {
-          "name": "create_enterprise_resource",
-          "description": "Create a new enterprise resource with OAuth2 JWT",
-          "path": "/resources",
-          "method": "POST",
-          "payload": {
-            "type": "object",
-            "properties": {
-              "name": {"type": "string", "description": "Resource name"},
-              "type": {"type": "string", "description": "Resource type"},
-              "metadata": {"type": "object", "description": "Additional metadata"}
-            },
-            "required": ["name", "type"]
-          }
-        }
-      ]
+      "defaultHeaders": { "Content-Type": "application/json" },
+      "endpoints": {}
     }
-  ]
+  }
 }
