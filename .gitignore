@@ -141,3 +141,4 @@ vite.config.ts.timestamp-*
 
 providers.json
 agents.json
+webhooks.json

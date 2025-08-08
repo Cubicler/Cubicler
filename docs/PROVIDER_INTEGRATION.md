@@ -40,24 +40,24 @@ A **Cubicler Provider** is any external service that AI agents can use through C
 ## 🏗️ How Provider Integration Works
 
 ```text
-┌─────────────────┐   1. Register in        ┌──────────────────┐
-│   AI Agent      │   providers.json        │ Your Provider    │
-│                 │                         │ (MCP or REST)    │
-└─────────────────┘                         └──────────────────┘
-        ▲                                            │
-        │ 5. Tool Results                            │ 3. Route Requests
-        │                                            ▼
-        │                                  ┌──────────────────┐
-        │                                  │   Cubicler       │
-        │ 4. Tool Calls                    │ (Orchestrator)   │
-        │                                  └──────────────────┘
-        │                                            │
-        │                                            │ 2. Discover Tools
-        │                                            ▼
-        │                                  ┌──────────────────┐
-        └─────────────────────────────────  │ Your Services    │
-                                           │ (APIs/Databases) │
-                                           └──────────────────┘
+┌─────────────────┐   1. Register in  ┌──────────────────┐
+│   AI Agent      │   providers.json  │ Your Provider    │
+│                 │                   │ (MCP or REST)    │
+└─────────────────┘                   └──────────────────┘
+        ▲                                      │
+        │ 5. Tool Results                      │ 3. Route Requests
+        │                                      ▼
+        │                             ┌──────────────────┐
+        │                             │   Cubicler       │
+        │ 4. Tool Calls               │ (Orchestrator)   │
+        │                             └──────────────────┘
+        │                                      │
+        │                                      │ 2. Discover Tools
+        │                                      ▼
+        │                             ┌──────────────────┐
+        └─────────────────────────────│ Your Services    │
+                                      │ (APIs/Databases) │
+                                      └──────────────────┘
 ```
 
 ### Integration Flow
@@ -92,13 +92,73 @@ A **Cubicler Provider** is any external service that AI agents can use through C
 
 ## 📋 Configuration Overview
 
-### MCP Servers
+Configuration now uses an object-map structure (no identifier fields inside objects, keys are the identifiers):
 
-Register your MCP server in `providers.json` with identifier, transport type (http/sse/stdio), and URL.
+```jsonc
+{
+  "mcpServers": {
+    "weather_mcp": {
+      "name": "Weather MCP",
+      "description": "Weather information server",
+      "transport": "http",      // optional (auto attempt sse then http if omitted)
+      "url": "http://localhost:4000/mcp",
+      "headers": { "Authorization": "Bearer ${WEATHER_TOKEN}" }
+    },
+    "local_stdio_tool": {
+      "name": "Local Tool",
+      "description": "Local stdio based MCP server",
+      "command": "node",
+      "args": ["dist/mcp/local.js"],
+      "env": { "NODE_ENV": "production" }
+    }
+  },
+  "restServers": {
+    "jsonplaceholder_api": {
+      "name": "JSONPlaceholder API",
+      "description": "Public test API",
+      "url": "https://jsonplaceholder.typicode.com",
+      "defaultHeaders": { "Content-Type": "application/json" },
+      "endpoints": {
+        "getPosts": {
+          "description": "List posts",
+          "path": "/posts",
+          "method": "GET"
+        },
+        "getPostById": {
+          "description": "Get post by ID",
+          "path": "/posts/{postId}",
+          "method": "GET",
+          "postId": { "type": "number", "description": "Post ID" }
+        },
+        "createPost": {
+          "description": "Create a post",
+          "path": "/posts",
+          "method": "POST",
+          "payload": {
+            "type": "object",
+            "properties": {
+              "title": { "type": "string" },
+              "body": { "type": "string" },
+              "userId": { "type": "number" }
+            },
+            "required": ["title", "body", "userId"]
+          }
+        }
+      }
+    }
+  }
+}
+```
 
-### REST APIs
+Key changes vs legacy schema:
 
-Define your existing REST endpoints with paths, methods, and parameters in `providers.json`.
+- Arrays replaced by object maps keyed by identifier (no repeating `identifier` property inside entries)
+- `endPoints` renamed to `endpoints`
+- REST server fields flattened: no nested `config` block (top-level `url`, `defaultHeaders`, `auth` etc.)
+- MCP server fields flattened: remove `config` block; use top-level `url`, `headers`, `auth`, or `command`/`args`/`env` for stdio
+- OAuth/JWT auth stays under `auth` with `{ type: "jwt", config: { ... } }`
+
+Backward compatibility: the loader rejects array form now (throws), so update existing configs before upgrading.
 
 ---
 

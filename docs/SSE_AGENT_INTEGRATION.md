@@ -10,6 +10,15 @@ With SSE transport:
 - **Agents connect to Cubicler** via SSE to receive requests  
 - **Agents send responses** back via HTTP POST
 
+📌 Unified Endpoint Change (Updated):
+
+Previously responses were sent to `/sse/:agentId/response`. This has been simplified. Now:
+
+- `GET /sse/:agentId` establishes the SSE stream
+- `POST /sse/:agentId` submits the agent's response for a prior request
+
+This reduces endpoint surface and keeps all agent interaction scoped to a single path.
+
 ## Configuration
 
 ### agents.json
@@ -102,9 +111,9 @@ async function processRequest(agentRequest) {
 ```javascript
 async function sendResponse(requestId, response) {
   const agentId = 'my_sse_agent';
-  
+
   try {
-    const result = await fetch(`http://localhost:1503/sse/${agentId}/response`, {
+    const result = await fetch(`http://localhost:1503/sse/${agentId}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -115,11 +124,11 @@ async function sendResponse(requestId, response) {
         response
       })
     });
-    
+
     if (!result.ok) {
       throw new Error(`HTTP ${result.status}: ${result.statusText}`);
     }
-    
+
     console.log(`✅ Response sent for request ${requestId}`);
   } catch (error) {
     console.error(`❌ Failed to send response: ${error.message}`);
@@ -193,7 +202,7 @@ curl -N -H "Accept: text/event-stream" http://localhost:1503/sse/my_sse_agent
 curl http://localhost:1503/sse/status
 
 # Send test response
-curl -X POST http://localhost:1503/sse/my_sse_agent/response \
+curl -X POST http://localhost:1503/sse/my_sse_agent \
   -H "Content-Type: application/json" \
   -d '{
     "requestId": "test_123",

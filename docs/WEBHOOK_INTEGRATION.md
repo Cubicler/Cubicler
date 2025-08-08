@@ -20,82 +20,45 @@ Examples:
 
 ### Configuration
 
-Webhooks are configured in `webhooks.json`:
+Webhooks configuration now uses a flat object map (keys are webhook identifiers). Each value is a `WebhookConfig`.
 
-```json
+```jsonc
 {
-  "webhooks": [
-    {
-      "identifier": "calendar-events",
-      "name": "Calendar Events", 
-      "description": "Calendar event notifications and reminders from external calendar systems",
-      "config": {
-        "authentication": {
-          "type": "signature",
-          "secret": "cal_webhook_secret"
-        },
-        "allowedOrigins": ["calendar.company.com"]
-      },
-      "agents": ["openai-gpt", "scheduler-agent"],
-      "payload_transform": [
-        {
-          "path": "event.start_time", 
-          "transform": "date_format",
-          "format": "YYYY-MM-DD HH:mm:ss"
-        },
-        {
-          "path": "event.priority",
-          "transform": "map",
-          "map": {
-            "1": "Low",
-            "2": "Medium", 
-            "3": "High",
-            "4": "Urgent"
-          }
-        },
-        {
-          "path": "event.description",
-          "transform": "template",
-          "template": "Event: {value}"
-        },
-        {
-          "path": "internal_data",
-          "transform": "remove"
-        }
-      ]
-    },
-    {
-      "identifier": "monitoring",
-      "name": "System Monitoring",
-      "description": "System alerts and monitoring notifications from infrastructure monitoring tools",
-      "config": {
-        "authentication": {
-          "type": "bearer",
-          "token": "monitoring_token"
-        }
-      },
-      "agents": ["alert-agent"],
-      "payload_transform": [
-        {
-          "path": "alert.severity",
-          "transform": "map", 
-          "map": {
-            "0": "Info",
-            "1": "Warning",
-            "2": "Critical",
-            "3": "Emergency"
-          }
-        },
-        {
-          "path": "alert.timestamp",
-          "transform": "date_format",
-          "format": "MMM DD, YYYY HH:mm:ss"
-        }
-      ]
-    }
-  ]
+  "calendar_events": {
+    "name": "Calendar Events",
+    "description": "Calendar event notifications and reminders from external calendar systems",
+    "auth": { "type": "signature", "secret": "cal_webhook_secret" },
+    "allowedOrigins": ["calendar.company.com"],
+    "allowedAgents": ["openai-gpt", "scheduler-agent"],
+    "payload_transform": [
+      { "path": "event.start_time", "transform": "date_format", "format": "YYYY-MM-DD HH:mm:ss" },
+      { "path": "event.priority", "transform": "map", "map": { "1": "Low", "2": "Medium", "3": "High", "4": "Urgent" } },
+      { "path": "event.description", "transform": "template", "template": "Event: {value}" },
+      { "path": "internal_data", "transform": "remove" }
+    ]
+  },
+  "system_monitoring": {
+    "name": "System Monitoring",
+    "description": "System alerts and monitoring notifications from infrastructure monitoring tools",
+    "auth": { "type": "bearer", "token": "monitoring_token" },
+    "allowedAgents": ["alert-agent"],
+    "payload_transform": [
+      { "path": "alert.severity", "transform": "map", "map": { "0": "Info", "1": "Warning", "2": "Critical", "3": "Emergency" } },
+      { "path": "alert.timestamp", "transform": "date_format", "format": "MMM DD, YYYY HH:mm:ss" }
+    ]
+  }
 }
 ```
+
+Key changes vs legacy schema:
+
+- Replaced top-level `webhooks` array with direct object map.
+- `identifier` property removed (identifier is now the key: `calendar_events`).
+- `agents` renamed to `allowedAgents` for clarity.
+- Flattened auth: former `config.authentication` -> `auth`.
+- Removed wrapping `config` object; `allowedOrigins` and `auth` sit at webhook root.
+
+Legacy array style is no longer accepted by the loader.
 
 ## Agent Request Structure
 
@@ -239,16 +202,17 @@ Webhooks support the same powerful transformation engine used by REST endpoints:
 
 ### Agent Authorization
 
-Only agents listed in the `agents` array can receive webhook calls:
+Only agents listed in `allowedAgents` can receive webhook calls:
 
-```json
+```jsonc
 {
-  "identifier": "calendar-events",
-  "agents": ["openai-gpt", "scheduler-agent"]
+  "calendar_events": {
+    "allowedAgents": ["openai-gpt", "scheduler-agent"]
+  }
 }
 ```
 
-Calling `/webhook/calendar-events/unauthorized-agent` will return a 403 Forbidden error.
+Calling `/webhook/calendar_events/unauthorized-agent` returns 403 Forbidden.
 
 ## Use Cases
 
