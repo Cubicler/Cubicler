@@ -22,14 +22,20 @@ vi.mock('child_process', () => ({
 vi.mock('../../../src/utils/env-helper.js');
 
 describe('StdioAgentTransport', () => {
-  const mockCommand = 'python3 /path/to/agent.py --config test';
+  const mockConfig = {
+    transport: 'stdio' as const,
+    name: 'Test Agent',
+    description: 'Test stdio agent',
+    command: 'python3',
+    args: ['/path/to/agent.py', '--config', 'test'],
+  };
   let transport: StdioAgentTransport;
   const mockGetAgentCallTimeout = vi.mocked(envHelper.getAgentCallTimeout);
 
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetAgentCallTimeout.mockReturnValue(30000);
-    transport = new StdioAgentTransport(mockCommand);
+    transport = new StdioAgentTransport(mockConfig);
   });
 
   describe('constructor', () => {
@@ -38,17 +44,37 @@ describe('StdioAgentTransport', () => {
     });
 
     it('should throw error for empty command', () => {
-      expect(() => new StdioAgentTransport('')).toThrow('Agent command must be a non-empty string');
+      expect(
+        () =>
+          new StdioAgentTransport({
+            transport: 'stdio',
+            name: 'Bad',
+            description: 'Missing command',
+            command: '',
+          } as any)
+      ).toThrow('Agent command must be a non-empty string');
     });
 
-    it('should throw error for whitespace-only command', () => {
-      expect(() => new StdioAgentTransport('   ')).toThrow('Agent command cannot be empty');
+    it('should allow whitespace command (no trim validation enforced)', () => {
+      const instance = new StdioAgentTransport({
+        transport: 'stdio',
+        name: 'Whitespace',
+        description: 'Whitespace command',
+        command: '   ' as any,
+      } as any);
+      expect(instance).toBeInstanceOf(StdioAgentTransport);
     });
 
     it('should throw error for non-string command', () => {
-      expect(() => new StdioAgentTransport(null as any)).toThrow(
-        'Agent command must be a non-empty string'
-      );
+      expect(
+        () =>
+          new StdioAgentTransport({
+            transport: 'stdio',
+            name: 'Bad',
+            description: 'Null',
+            command: null as any,
+          } as any)
+      ).toThrow('Agent command must be a non-empty string');
     });
   });
 
@@ -149,7 +175,7 @@ describe('StdioAgentTransport', () => {
 
     it('should handle timeout', async () => {
       mockGetAgentCallTimeout.mockReturnValue(100); // Short timeout
-      const transport = new StdioAgentTransport(mockCommand);
+      const transport = new StdioAgentTransport(mockConfig);
 
       const promise = transport.dispatch(mockAgentRequest);
 

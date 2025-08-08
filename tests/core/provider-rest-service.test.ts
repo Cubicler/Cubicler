@@ -2,7 +2,7 @@ import { beforeEach, describe, it, expect, vi, type MockedFunction } from 'vites
 import { ProviderRESTService } from '../../src/core/provider-rest-service.js';
 import type { ProvidersConfigProviding } from '../../src/interface/providers-config-providing.js';
 import type { ServersProviding } from '../../src/interface/servers-providing.js';
-import type { ProvidersConfig, RESTServer } from '../../src/model/providers.js';
+import type { ProvidersConfig, RESTServerConfig } from '../../src/model/providers.js';
 import type { AxiosResponse } from 'axios';
 import * as fetchHelper from '../../src/utils/fetch-helper.js';
 import jwtHelper from '../../src/utils/jwt-helper.js';
@@ -35,71 +35,67 @@ describe('ProviderRESTService', () => {
   let mockFetch: MockedFunction<typeof fetchHelper.fetchWithDefaultTimeout>;
   let mockJwtHelper: MockedFunction<typeof jwtHelper.getToken>;
 
-  const mockRestServer: RESTServer = {
-    identifier: 'user_api',
-    name: 'User API',
-    description: 'Legacy REST API for user management',
-    config: {
-      url: 'http://localhost:5000/api',
-      defaultHeaders: {
-        Authorization: 'Bearer api-token',
-      },
-    },
-    endPoints: [
-      {
-        name: 'get_user',
-        description: 'Get user information by ID',
-        path: '/users/{userId}',
-        method: 'GET',
-        parameters: {
-          type: 'object',
-          properties: {
-            include_profile: { type: 'boolean' },
-          },
-        },
-      },
-      {
-        name: 'create_user',
-        description: 'Create a new user',
-        path: '/users',
-        method: 'POST',
-        payload: {
-          type: 'object',
-          properties: {
-            name: { type: 'string' },
-            email: { type: 'string' },
-          },
-          required: ['name', 'email'],
-        },
-      },
-      {
-        name: 'update_user',
-        description: 'Update user with path and query parameters',
-        path: '/users/{userId}/profile',
-        method: 'PUT',
-        headers: {
-          'X-Custom-Header': 'custom-value',
-        },
-        parameters: {
-          type: 'object',
-          properties: {
-            notify: { type: 'boolean' },
-          },
-        },
-        payload: {
-          type: 'object',
-          properties: {
-            bio: { type: 'string' },
-          },
-        },
-      },
-    ],
-    transport: 'http',
-  };
-
   const mockProvidersConfig: ProvidersConfig = {
-    mcpServers: [],
-    restServers: [mockRestServer],
+    mcpServers: {},
+    restServers: {
+      user_api: {
+        name: 'User API',
+        description: 'REST API for user management',
+        url: 'http://localhost:5000/api',
+        defaultHeaders: {
+          Authorization: 'Bearer api-token',
+        },
+        endpoints: {
+          get_user: {
+            name: 'get_user',
+            description: 'Get user information by ID',
+            path: '/users/{userId}',
+            method: 'GET',
+            query: {
+              type: 'object',
+              properties: {
+                include_profile: { type: 'boolean' },
+              },
+            },
+          },
+          create_user: {
+            name: 'create_user',
+            description: 'Create a new user',
+            path: '/users',
+            method: 'POST',
+            payload: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+                email: { type: 'string' },
+              },
+              required: ['name', 'email'],
+            },
+          },
+          update_user: {
+            name: 'update_user',
+            description: 'Update user with path and query parameters',
+            path: '/users/{userId}/profile',
+            method: 'PUT',
+            headers: {
+              'X-Custom-Header': 'custom-value',
+            },
+            query: {
+              type: 'object',
+              properties: {
+                notify: { type: 'boolean' },
+              },
+            },
+            payload: {
+              type: 'object',
+              properties: {
+                bio: { type: 'string' },
+              },
+            },
+          },
+        },
+      } satisfies RESTServerConfig,
+    },
   };
 
   beforeEach(() => {
@@ -115,9 +111,26 @@ describe('ProviderRESTService', () => {
 
     // Mock servers provider (assuming REST servers come after MCP servers)
     mockServersProvider = {
-      getAvailableServers: vi.fn(),
-      getServerHash: vi.fn(),
-    };
+      getAvailableServers: vi.fn().mockResolvedValue({
+        rest: Object.keys(mockProvidersConfig.restServers).map((id) => ({
+          type: 'rest',
+          identifier: id,
+          url: (mockProvidersConfig.restServers as any)[id].url,
+        })),
+        mcp: [],
+      }),
+      getServerHash: vi.fn().mockImplementation((id: string) => {
+        const server = (mockProvidersConfig.restServers as any)[id];
+        if (!server) return undefined;
+        const crypto = require('crypto');
+        const h = crypto
+          .createHash('sha256')
+          .update(id + ':' + server.url)
+          .digest('hex');
+        const n = parseInt(h.substring(0, 8), 16);
+        return n.toString(36).padStart(6, '0');
+      }),
+    } as any;
 
     providerRESTService = new ProviderRESTService(mockProviderConfig);
 
@@ -216,7 +229,10 @@ describe('ProviderRESTService', () => {
     });
 
     it('should handle empty REST servers', async () => {
-      mockProviderConfig.getProvidersConfig = vi.fn().mockResolvedValue({ restServers: [] });
+      mockProviderConfig.getProvidersConfig = vi.fn().mockResolvedValue({
+        restServers: {},
+        mcpServers: {},
+      } as ProvidersConfig);
 
       const tools = await providerRESTService.toolsList();
 
@@ -225,11 +241,13 @@ describe('ProviderRESTService', () => {
 
     it('should continue with other servers if one fails', async () => {
       const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      const failingConfig = {
-        restServers: [
-          { ...mockRestServer, identifier: 'failing_server', endPoints: undefined as any },
-          mockRestServer,
-        ],
+      const failingConfig: ProvidersConfig = {
+        mcpServers: {},
+        restServers: {
+          // Intentionally undefined to trigger error path and warning
+          failing_server: undefined as any,
+          user_api: mockProvidersConfig.restServers.user_api,
+        },
       };
       mockProviderConfig.getProvidersConfig = vi.fn().mockResolvedValue(failingConfig);
 
@@ -422,17 +440,14 @@ describe('ProviderRESTService', () => {
 
     it('should return false for MCP server identifiers', async () => {
       const mcpConfig = {
-        mcpServers: [
-          {
-            identifier: 'mcp_server',
+        mcpServers: {
+          mcp_server: {
             name: 'MCP Server',
             description: '',
-            transport: 'http' as const,
-            url: '',
           },
-        ],
-        restServers: [],
-      };
+        },
+        restServers: {},
+      } as any;
       mockProviderConfig.getProvidersConfig = vi.fn().mockResolvedValue(mcpConfig);
 
       const canHandle = await providerRESTService.canHandleRequest('mcpServer_function');
@@ -492,13 +507,12 @@ describe('ProviderRESTService', () => {
   });
 
   describe('response transformations', () => {
-    const mockRestServerWithTransforms: RESTServer = {
-      identifier: 'transform_api',
+    const mockRestServerWithTransforms: RESTServerConfig = {
       name: 'Transform API',
       description: 'API with response transformations',
-      config: { url: 'http://localhost:5000/api' },
-      endPoints: [
-        {
+      url: 'http://localhost:5000/api',
+      endpoints: {
+        get_status: {
           name: 'get_status',
           description: 'Get status with transformations',
           path: '/status',
@@ -509,25 +523,17 @@ describe('ProviderRESTService', () => {
               transform: 'map',
               map: { '0': 'Offline', '1': 'Online', '2': 'Away' },
             },
-            {
-              path: 'last_seen',
-              transform: 'date_format',
-              format: 'YYYY-MM-DD HH:mm:ss',
-            },
-            {
-              path: 'debug_info',
-              transform: 'remove',
-            },
+            { path: 'last_seen', transform: 'date_format', format: 'YYYY-MM-DD HH:mm:ss' },
+            { path: 'debug_info', transform: 'remove' },
           ],
         },
-      ],
-      transport: 'http',
+      },
     };
 
     beforeEach(() => {
-      const configWithTransforms = {
-        restServers: [mockRestServerWithTransforms],
-        mcpServers: [],
+      const configWithTransforms: ProvidersConfig = {
+        restServers: { transform_api: mockRestServerWithTransforms },
+        mcpServers: {},
       };
       mockProviderConfig.getProvidersConfig = vi.fn().mockResolvedValue(configWithTransforms);
     });
@@ -559,69 +565,57 @@ describe('ProviderRESTService', () => {
   });
 
   describe('JWT Authentication', () => {
-    const mockJwtRestServer: RESTServer = {
-      identifier: 'secure_api',
+    const mockJwtRestServer: RESTServerConfig = {
       name: 'Secure API',
       description: 'JWT secured REST API',
-      transport: 'http',
-      config: {
-        url: 'https://secure-api.example.com/api',
-        auth: {
-          type: 'jwt',
-          config: {
-            token: 'static-jwt-token',
-          },
-        },
+      url: 'https://secure-api.example.com/api',
+      auth: {
+        type: 'jwt',
+        config: { token: 'static-jwt-token' },
       },
-      endPoints: [
-        {
+      endpoints: {
+        get_secure_data: {
           name: 'get_secure_data',
           description: 'Get secure data',
           path: '/secure/data',
           method: 'GET',
         },
-      ],
+      },
     };
 
-    const mockOAuthRestServer: RESTServer = {
-      identifier: 'oauth_api',
+    const mockOAuthRestServer: RESTServerConfig = {
       name: 'OAuth API',
       description: 'OAuth2 JWT REST API',
-      transport: 'http',
-      config: {
-        url: 'https://oauth-api.example.com/api',
-        auth: {
-          type: 'jwt',
-          config: {
-            tokenUrl: 'https://auth.example.com/oauth/token',
-            clientId: 'client123',
-            clientSecret: 'secret456',
-            audience: 'api-audience',
-            refreshThreshold: 5,
-          },
+      url: 'https://oauth-api.example.com/api',
+      auth: {
+        type: 'jwt',
+        config: {
+          tokenUrl: 'https://auth.example.com/oauth/token',
+          clientId: 'client123',
+          clientSecret: 'secret456',
+          audience: 'api-audience',
+          refreshThreshold: 5,
         },
       },
-      endPoints: [
-        {
+      endpoints: {
+        create_resource: {
           name: 'create_resource',
           description: 'Create resource with OAuth JWT',
           path: '/resources',
           method: 'POST',
           payload: {
             type: 'object',
-            properties: {
-              name: { type: 'string' },
-            },
+            properties: { name: { type: 'string' } },
             required: ['name'],
           },
         },
-      ],
+      },
     };
 
     it('should include JWT token in headers for static token auth', async () => {
-      const mockConfig = {
-        restServers: [mockJwtRestServer],
-        mcpServers: [],
+      const mockConfig: ProvidersConfig = {
+        restServers: { secure_api: mockJwtRestServer },
+        mcpServers: {},
       };
       mockProviderConfig.getProvidersConfig = vi.fn().mockResolvedValue(mockConfig);
       mockJwtHelper.mockResolvedValue('test-jwt-token');
@@ -655,9 +649,9 @@ describe('ProviderRESTService', () => {
     });
 
     it('should include JWT token in headers for OAuth2 auth', async () => {
-      const mockConfig = {
-        restServers: [mockOAuthRestServer],
-        mcpServers: [],
+      const mockConfig: ProvidersConfig = {
+        restServers: { oauth_api: mockOAuthRestServer },
+        mcpServers: {},
       };
       mockProviderConfig.getProvidersConfig = vi.fn().mockResolvedValue(mockConfig);
       mockJwtHelper.mockResolvedValue('oauth-jwt-token');
@@ -698,9 +692,9 @@ describe('ProviderRESTService', () => {
     });
 
     it('should handle JWT token generation errors', async () => {
-      const mockConfig = {
-        restServers: [mockJwtRestServer],
-        mcpServers: [],
+      const mockConfig: ProvidersConfig = {
+        restServers: { secure_api: mockJwtRestServer },
+        mcpServers: {},
       };
       mockProviderConfig.getProvidersConfig = vi.fn().mockResolvedValue(mockConfig);
       mockJwtHelper.mockRejectedValue(new Error('Token generation failed'));

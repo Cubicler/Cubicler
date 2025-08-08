@@ -166,13 +166,8 @@ describe('Config Helper', () => {
   });
 
   describe('validateProvidersConfig', () => {
-    it('should validate empty config with no servers', () => {
+    it('should validate empty object config', () => {
       const config = {};
-      expect(() => validateProvidersConfig(config)).not.toThrow();
-    });
-
-    it('should validate config with empty arrays', () => {
-      const config = { mcpServers: [], restServers: [] };
       expect(() => validateProvidersConfig(config)).not.toThrow();
     });
 
@@ -191,251 +186,113 @@ describe('Config Helper', () => {
     });
 
     describe('MCP servers validation', () => {
-      it('should validate valid MCP servers', () => {
+      it('should validate valid MCP server object', () => {
         const config: ProvidersConfig = {
-          mcpServers: [
-            {
-              identifier: 'weather-service',
+          mcpServers: {
+            weather_service: {
               name: 'Weather Service',
               description: 'Weather API',
-              transport: 'http',
-              config: {
-                url: 'http://localhost:4000/mcp',
-              },
+              url: 'http://localhost:4000/mcp',
             },
-          ],
-        };
+          },
+          restServers: {},
+        } as any;
         expect(() => validateProvidersConfig(config)).not.toThrow();
       });
 
-      it('should throw error for non-array mcpServers', () => {
-        const config = { mcpServers: 'not-array' };
+      it('should throw for non-object mcpServers', () => {
+        const config = { mcpServers: 'not-object' };
         expect(() => validateProvidersConfig(config)).toThrow(
-          'Invalid providers configuration: mcpServers must be an array'
+          'Invalid providers configuration: mcpServers must be an object'
         );
       });
 
-      it('should throw error for invalid MCP server object', () => {
-        const config = { mcpServers: [null] };
+      it('should throw for invalid server shape', () => {
+        const config = { mcpServers: { test: null } };
         expect(() => validateProvidersConfig(config)).toThrow(
-          'Invalid MCP server at index 0: must be an object'
+          "Invalid MCP server 'test': must be an object"
         );
       });
 
-      it('should throw error for missing identifier', () => {
+      it('should enforce identifier format', () => {
         const config = {
-          mcpServers: [
-            {
-              name: 'Test',
-              url: 'http://localhost:4000',
-            },
-          ],
+          mcpServers: {
+            'Bad Identifier': { name: 'X', description: 'Y', url: 'http://x' },
+          },
         };
         expect(() => validateProvidersConfig(config)).toThrow(
-          'Invalid MCP server at index 0: missing or invalid identifier'
-        );
-      });
-
-      it('should throw error for missing URL', () => {
-        const config = {
-          mcpServers: [
-            {
-              identifier: 'test',
-              name: 'Test',
-              transport: 'http',
-              config: {},
-            },
-          ],
-        };
-        expect(() => validateProvidersConfig(config)).toThrow(
-          'Invalid MCP server at index 0: http transport requires config.url'
-        );
-      });
-
-      it('should throw error for invalid identifier format', () => {
-        const config = {
-          mcpServers: [
-            {
-              identifier: 'Test Server',
-              name: 'Test',
-              url: 'http://localhost:4000',
-            },
-          ],
-        };
-        expect(() => validateProvidersConfig(config)).toThrow(
-          'Invalid MCP server at index 0: identifier "Test Server" must contain only letters, numbers, hyphens, or underscores (no spaces)'
-        );
-      });
-
-      it('should accept valid identifier formats', () => {
-        const validIdentifiers = [
-          'test',
-          'test-server',
-          'test_server',
-          'test123',
-          'test-123_server',
-        ];
-
-        validIdentifiers.forEach((identifier) => {
-          const config = {
-            mcpServers: [
-              {
-                identifier,
-                name: 'Test',
-                transport: 'http',
-                config: {
-                  url: 'http://localhost:4000',
-                },
-              },
-            ],
-          };
-          expect(() => validateProvidersConfig(config)).not.toThrow();
-        });
-      });
-
-      it('should throw error for identifier length exceeding 32 characters', () => {
-        const config = {
-          mcpServers: [
-            {
-              identifier: 'this_is_a_very_long_identifier_that_exceeds_32_characters',
-              name: 'Test',
-              url: 'http://localhost:4000',
-            },
-          ],
-        };
-        expect(() => validateProvidersConfig(config)).toThrow(
-          'Invalid MCP server at index 0: identifier "this_is_a_very_long_identifier_that_exceeds_32_characters" must be 32 characters or less (current: 57)'
+          'Invalid MCP server: identifier "Bad Identifier" must contain only letters, numbers, hyphens, or underscores (no spaces)'
         );
       });
     });
 
     describe('REST servers validation', () => {
-      it('should validate valid REST servers', () => {
+      it('should validate a REST server with endpoint', () => {
         const config: ProvidersConfig = {
-          restServers: [
-            {
-              identifier: 'user-api',
+          mcpServers: {},
+          restServers: {
+            user_api: {
               name: 'User API',
               description: 'User management API',
-              config: { url: 'http://localhost:5000/api' },
-              endPoints: [],
-              transport: 'http',
+              url: 'http://localhost:5000/api',
+              endpoints: {
+                get_user: {
+                  name: 'Get User',
+                  description: 'Fetch user',
+                  path: '/users/{id}',
+                  method: 'GET',
+                },
+              },
             },
-          ],
-        };
+          },
+        } as any;
         expect(() => validateProvidersConfig(config)).not.toThrow();
       });
 
-      it('should throw error for non-array restServers', () => {
-        const config = { restServers: 'not-array' };
+      it('should error for non-object restServers', () => {
+        const config = { restServers: [] };
         expect(() => validateProvidersConfig(config)).toThrow(
-          'Invalid providers configuration: restServers must be an array'
+          'Invalid providers configuration: restServers must be an object'
         );
       });
 
-      it('should throw error for invalid REST server object', () => {
-        const config = { restServers: ['not-object'] };
+      it('should error for invalid REST server', () => {
+        const config = { restServers: { broken: null } };
         expect(() => validateProvidersConfig(config)).toThrow(
-          'Invalid REST server at index 0: must be an object'
-        );
-      });
-
-      it('should throw error for missing identifier', () => {
-        const config = {
-          restServers: [
-            {
-              name: 'Test',
-              url: 'http://localhost:5000',
-            },
-          ],
-        };
-        expect(() => validateProvidersConfig(config)).toThrow(
-          'Invalid REST server at index 0: missing or invalid identifier'
-        );
-      });
-
-      it('should throw error for missing URL', () => {
-        const config = {
-          restServers: [
-            {
-              identifier: 'test',
-              name: 'Test',
-              transport: 'http',
-              config: {},
-            },
-          ],
-        };
-        expect(() => validateProvidersConfig(config)).toThrow(
-          'Invalid REST server at index 0: config.url is required'
-        );
-      });
-
-      it('should throw error for invalid identifier format', () => {
-        const config = {
-          restServers: [
-            {
-              identifier: 'Test API',
-              name: 'Test',
-              url: 'http://localhost:5000',
-            },
-          ],
-        };
-        expect(() => validateProvidersConfig(config)).toThrow(
-          'Invalid REST server at index 0: identifier "Test API" must contain only letters, numbers, hyphens, or underscores (no spaces)'
-        );
-      });
-
-      it('should throw error for identifier length exceeding 32 characters', () => {
-        const config = {
-          restServers: [
-            {
-              identifier: 'this_is_a_very_long_identifier_that_exceeds_32_characters',
-              name: 'Test',
-              url: 'http://localhost:5000',
-            },
-          ],
-        };
-        expect(() => validateProvidersConfig(config)).toThrow(
-          'Invalid REST server at index 0: identifier "this_is_a_very_long_identifier_that_exceeds_32_characters" must be 32 characters or less (current: 57)'
+          "Invalid REST server 'broken': must be an object"
         );
       });
     });
   });
 
   describe('validateAgentsConfig', () => {
-    it('should validate valid agents config', () => {
+    it('should validate valid agents config (object)', () => {
       const config: AgentsConfig = {
         basePrompt: 'You are a helpful assistant',
         defaultPrompt: 'You have access to tools',
-        agents: [
-          {
-            identifier: 'gpt-4o',
+        agents: {
+          gpt_4o: {
             name: 'GPT-4O',
-            transport: 'http',
-            config: {
-              url: 'http://localhost:3000/agent',
-            },
             description: 'GPT-4O agent',
+            transport: 'http',
+            url: 'http://localhost:3000/agent',
           },
-        ],
-      };
+        },
+      } as any;
       expect(() => validateAgentsConfig(config)).not.toThrow();
     });
 
     it('should validate minimal agents config', () => {
       const config: AgentsConfig = {
-        agents: [
-          {
-            identifier: 'test-agent',
+        agents: {
+          test_agent: {
             name: 'Test Agent',
-            transport: 'http',
-            config: {
-              url: 'http://localhost:3000/agent',
-            },
             description: 'Test agent description',
+            transport: 'http',
+            url: 'http://localhost:3000/agent',
           },
-        ],
-      };
+        },
+      } as any;
       expect(() => validateAgentsConfig(config)).not.toThrow();
     });
 
@@ -453,222 +310,102 @@ describe('Config Helper', () => {
       );
     });
 
-    it('should throw error for non-array agents', () => {
-      const config = { agents: 'not-array' };
+    it('should throw error for agents not object', () => {
+      const config = { agents: 'not-object' };
       expect(() => validateAgentsConfig(config)).toThrow(
-        'Invalid agents configuration: agents must be an array'
+        'Invalid agents configuration: agents must be an object'
       );
     });
 
-    it('should throw error for empty agents array', () => {
-      const config = { agents: [] };
+    it('should throw error for empty agents object', () => {
+      const config = { agents: {} };
       expect(() => validateAgentsConfig(config)).toThrow(
         'Invalid agents configuration: at least one agent must be configured'
       );
     });
 
     it('should throw error for invalid agent object', () => {
-      const config = { agents: [null] };
+      const config = { agents: { broken: null } };
       expect(() => validateAgentsConfig(config)).toThrow(
-        'Invalid agent at index 0: must be an object'
-      );
-    });
-
-    it('should throw error for missing identifier', () => {
-      const config = {
-        agents: [
-          {
-            name: 'Test Agent',
-            url: 'http://localhost:3000',
-            description: 'Test description',
-          },
-        ],
-      };
-      expect(() => validateAgentsConfig(config)).toThrow(
-        'Invalid agent at index 0: missing or invalid identifier'
+        "Invalid agent 'broken': must be an object"
       );
     });
 
     it('should throw error for missing transport', () => {
-      const config = {
-        agents: [
-          {
-            identifier: 'test',
-            name: 'Test Agent',
-            description: 'Test description',
-          },
-        ],
-      };
+      const config = { agents: { test: { name: 'X', description: 'Y' } } };
       expect(() => validateAgentsConfig(config)).toThrow(
-        'Invalid agent at index 0: missing or invalid transport'
+        "Invalid agent 'test': missing or invalid transport"
       );
     });
 
     it('should throw error for missing name', () => {
-      const config = {
-        agents: [
-          {
-            identifier: 'test',
-            transport: 'http',
-            config: {
-              url: 'http://localhost:3000',
-            },
-            description: 'Test description',
-          },
-        ],
-      };
+      const config = { agents: { test: { transport: 'http', url: 'http://x', description: 'd' } } };
       expect(() => validateAgentsConfig(config)).toThrow(
-        'Invalid agent at index 0: missing or invalid name'
+        "Invalid agent 'test': missing or invalid name"
       );
     });
 
-    it('should throw error for invalid identifier format', () => {
+    it('should throw error for invalid identifier format (key)', () => {
       const config = {
-        agents: [
-          {
-            identifier: 'Test Agent',
-            name: 'Test Agent',
+        agents: {
+          'Bad Identifier': {
+            name: 'Test',
+            description: 'Desc',
             transport: 'http',
-            config: {
-              url: 'http://localhost:3000',
-            },
-            description: 'Test description',
+            url: 'http://localhost:3000',
           },
-        ],
+        },
       };
       expect(() => validateAgentsConfig(config)).toThrow(
-        'Invalid agent at index 0: identifier "Test Agent" must contain only letters, numbers, hyphens, or underscores (no spaces)'
+        'Invalid agent: identifier "Bad Identifier" must contain only letters, numbers, hyphens, or underscores (no spaces)'
       );
     });
 
-    it('should accept valid identifier formats', () => {
-      const validIdentifiers = ['test', 'test-agent', 'test_agent', 'test123', 'gpt-4o_turbo'];
-
-      validIdentifiers.forEach((identifier) => {
+    it('should accept valid identifier keys', () => {
+      const valid = ['test', 'test-agent', 'test_agent', 'test123', 'gpt-4o_turbo'];
+      valid.forEach((id) => {
         const config = {
-          agents: [
-            {
-              identifier,
-              name: 'Test Agent',
+          agents: {
+            [id]: {
+              name: 'Agent',
+              description: 'Desc',
               transport: 'http',
-              config: {
-                url: 'http://localhost:3000',
-              },
-              description: 'Test description',
+              url: 'http://localhost',
             },
-          ],
+          },
         };
         expect(() => validateAgentsConfig(config)).not.toThrow();
       });
     });
 
     it('should throw error for identifier length exceeding 32 characters', () => {
+      const longId = 'this_is_a_very_long_identifier_that_exceeds_32_characters';
       const config = {
-        agents: [
-          {
-            identifier: 'this_is_a_very_long_identifier_that_exceeds_32_characters',
-            name: 'Test Agent',
+        agents: {
+          [longId]: {
+            name: 'X',
+            description: 'Y',
             transport: 'http',
-            config: {
-              url: 'http://localhost:3000',
-            },
-            description: 'Test description',
+            url: 'http://localhost',
           },
-        ],
+        },
       };
       expect(() => validateAgentsConfig(config)).toThrow(
-        'Invalid agent at index 0: identifier "this_is_a_very_long_identifier_that_exceeds_32_characters" must be 32 characters or less (current: 57)'
-      );
-    });
-
-    it('should throw error for duplicate identifiers', () => {
-      const config = {
-        agents: [
-          {
-            identifier: 'test-agent',
-            name: 'Test Agent 1',
-            transport: 'http',
-            config: {
-              url: 'http://localhost:3000',
-            },
-            description: 'Test description 1',
-          },
-          {
-            identifier: 'test-agent',
-            name: 'Test Agent 2',
-            transport: 'http',
-            config: {
-              url: 'http://localhost:3001',
-            },
-            description: 'Test description 2',
-          },
-        ],
-      };
-      expect(() => validateAgentsConfig(config)).toThrow(
-        'Duplicate agent identifiers found: test-agent'
-      );
-    });
-
-    it('should throw error for multiple duplicate identifiers', () => {
-      const config = {
-        agents: [
-          {
-            identifier: 'agent-1',
-            name: 'Agent 1a',
-            transport: 'http',
-            config: {
-              url: 'http://localhost:3000',
-            },
-            description: 'Agent 1a description',
-          },
-          {
-            identifier: 'agent-1',
-            name: 'Agent 1b',
-            transport: 'http',
-            config: {
-              url: 'http://localhost:3001',
-            },
-            description: 'Agent 1b description',
-          },
-          {
-            identifier: 'agent-2',
-            name: 'Agent 2a',
-            transport: 'http',
-            config: {
-              url: 'http://localhost:3002',
-            },
-            description: 'Agent 2a description',
-          },
-          {
-            identifier: 'agent-2',
-            name: 'Agent 2b',
-            transport: 'http',
-            config: {
-              url: 'http://localhost:3003',
-            },
-            description: 'Agent 2b description',
-          },
-        ],
-      };
-      expect(() => validateAgentsConfig(config)).toThrow(
-        'Duplicate agent identifiers found: agent-1, agent-2'
+        `Invalid agent: identifier "${longId}" must be 32 characters or less (current: 57)`
       );
     });
 
     it('should throw error for invalid basePrompt type', () => {
       const config = {
         basePrompt: 123,
-        agents: [
-          {
-            identifier: 'test',
+        agents: {
+          test: {
             name: 'Test',
+            description: 'Desc',
             transport: 'http',
-            config: {
-              url: 'http://localhost:3000',
-            },
-            description: 'Test description',
+            url: 'http://localhost',
           },
-        ],
+        },
       };
       expect(() => validateAgentsConfig(config)).toThrow(
         'Invalid agents configuration: basePrompt must be a string'
@@ -678,17 +415,14 @@ describe('Config Helper', () => {
     it('should throw error for invalid defaultPrompt type', () => {
       const config = {
         defaultPrompt: [],
-        agents: [
-          {
-            identifier: 'test',
+        agents: {
+          test: {
             name: 'Test',
+            description: 'Desc',
             transport: 'http',
-            config: {
-              url: 'http://localhost:3000',
-            },
-            description: 'Test description',
+            url: 'http://localhost',
           },
-        ],
+        },
       };
       expect(() => validateAgentsConfig(config)).toThrow(
         'Invalid agents configuration: defaultPrompt must be a string'

@@ -1,48 +1,37 @@
 {
-  "webhooks": [
-    {
-      "identifier": "github_push",
-      "name": "GitHub Push Webhook",
-      "description": "Handle GitHub push events",
-      "config": {
-        "authentication": {
-          "type": "signature",
-          "secret": "github-webhook-secret"
-        },
-        "allowedOrigins": ["github.com"]
-      },
-      "agents": ["code_reviewer", "deployment_agent"],
-      "payload_transform": [
-        {
-          "path": "repository.name",
-          "transform": "map",
-          "value": "repo_name"
-        },
-        {
-          "path": "commits[]",
-          "transform": "map",
-          "value": "commit_list"
-        }
-      ]
+  "github_push": {
+    "name": "GitHub Push Webhook",
+    "description": "Handle GitHub push events",
+    "auth": {
+      "type": "signature",
+      "secret": "github-webhook-secret"
     },
-    {
-      "identifier": "slack_command",
-      "name": "Slack Command Webhook",
-      "description": "Handle Slack slash commands",
-      "config": {
-        "authentication": {
-          "type": "bearer",
-          "token": "slack-webhook-token"
-        }
+    "allowedOrigins": ["github.com"],
+    "allowedAgents": ["code_reviewer", "deployment_agent"],
+    "payload_transform": [
+      {
+        "path": "repository.name",
+        "transform": "template",
+        "template": "Repository: {value}"
       },
-      "agents": ["slack_bot"]
+      {
+        "path": "commits[]",
+        "transform": "remove"
+      }
+    ]
+  },
+  "slack_command": {
+    "name": "Slack Command Webhook",
+    "description": "Handle Slack slash commands",
+    "auth": {
+      "type": "bearer",
+      "token": "slack-webhook-token"
     },
-    {
-      "identifier": "internal_trigger",
-      "name": "Internal System Trigger",
-      "description": "Internal system notifications",
-      "config": {},
-      "agents": ["system_monitor", "alert_handler"]
-    }
-  ]
+    "allowedAgents": ["slack_bot"]
+  },
+  "internal_trigger": {
+    "name": "Internal System Trigger",
+    "description": "Internal system notifications",
+    "allowedAgents": ["system_monitor", "alert_handler"]
+  }
 }

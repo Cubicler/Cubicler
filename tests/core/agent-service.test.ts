@@ -30,22 +30,20 @@ describe('Agent Service', () => {
       const mockConfig: AgentsConfig = {
         basePrompt: 'You are a helpful AI assistant.',
         defaultPrompt: 'You have access to tools.',
-        agents: [
-          {
-            identifier: 'gpt_4o',
+        agents: {
+          gpt_4o: {
             name: 'GPT-4O',
-            transport: 'http',
-            config: { url: 'http://localhost:3000' },
             description: 'Advanced agent',
-          },
-          {
-            identifier: 'claude_3_5',
-            name: 'Claude',
             transport: 'http',
-            config: { url: 'http://localhost:3001' },
-            description: 'Creative agent',
+            url: 'http://localhost:3000',
           },
-        ],
+          claude_3_5: {
+            name: 'Claude',
+            description: 'Creative agent',
+            transport: 'http',
+            url: 'http://localhost:3001',
+          },
+        },
       };
 
       vi.mocked(mockAgentsConfigProvider.getAgentsConfig).mockResolvedValue(mockConfig);
@@ -63,7 +61,7 @@ describe('Agent Service', () => {
 
     it('should handle empty agents list', async () => {
       const mockConfig: AgentsConfig = {
-        agents: [],
+        agents: {},
       };
 
       vi.mocked(mockAgentsConfigProvider.getAgentsConfig).mockResolvedValue(mockConfig);
@@ -78,23 +76,21 @@ describe('Agent Service', () => {
     const mockConfig: AgentsConfig = {
       basePrompt: 'You are a helpful AI assistant.',
       defaultPrompt: 'You have access to tools.',
-      agents: [
-        {
-          identifier: 'gpt_4o',
+      agents: {
+        gpt_4o: {
           name: 'GPT-4O',
-          transport: 'http',
-          config: { url: 'http://localhost:3000' },
           description: 'Advanced agent',
+          transport: 'http',
+          url: 'http://localhost:3000',
           prompt: 'You are specialized.',
         },
-        {
-          identifier: 'claude_3_5',
+        claude_3_5: {
           name: 'Claude',
-          transport: 'http',
-          config: { url: 'http://localhost:3001' },
           description: 'Creative agent',
+          transport: 'http',
+          url: 'http://localhost:3001',
         },
-      ],
+      },
     };
 
     beforeEach(() => {
@@ -116,23 +112,21 @@ describe('Agent Service', () => {
     const mockConfig: AgentsConfig = {
       basePrompt: 'You are a helpful AI assistant.',
       defaultPrompt: 'You have access to tools.',
-      agents: [
-        {
-          identifier: 'gpt_4o',
+      agents: {
+        gpt_4o: {
           name: 'GPT-4O',
-          transport: 'http',
-          config: { url: 'http://localhost:3000' },
           description: 'Advanced agent',
+          transport: 'http',
+          url: 'http://localhost:3000',
           prompt: 'You are specialized.',
         },
-        {
-          identifier: 'claude_3_5',
+        claude_3_5: {
           name: 'Claude',
-          transport: 'http',
-          config: { url: 'http://localhost:3001' },
           description: 'Creative agent',
+          transport: 'http',
+          url: 'http://localhost:3001',
         },
-      ],
+      },
     };
 
     beforeEach(() => {
@@ -181,23 +175,21 @@ describe('Agent Service', () => {
       const mockConfig: AgentsConfig = {
         basePrompt: 'You are a helpful AI assistant.',
         defaultPrompt: 'You have access to tools.',
-        agents: [
-          {
-            identifier: 'agent_with_prompt',
+        agents: {
+          agent_with_prompt: {
             name: 'Agent With Prompt',
-            transport: 'http',
-            config: { url: 'http://localhost:3000' },
             description: 'Specialized agent',
+            transport: 'http',
+            url: 'http://localhost:3000',
             prompt: 'You are specialized in analysis.',
           },
-          {
-            identifier: 'agent_without_prompt',
+          agent_without_prompt: {
             name: 'Agent Without Prompt',
-            transport: 'http',
-            config: { url: 'http://localhost:3001' },
             description: 'General agent',
+            transport: 'http',
+            url: 'http://localhost:3001',
           },
-        ],
+        },
       };
 
       vi.mocked(mockAgentsConfigProvider.getAgentsConfig).mockResolvedValue(mockConfig);
@@ -214,15 +206,14 @@ describe('Agent Service', () => {
       const mockConfig: AgentsConfig = {
         basePrompt: 'You are a helpful AI assistant.',
         defaultPrompt: 'You have access to tools.',
-        agents: [
-          {
-            identifier: 'agent_without_prompt',
+        agents: {
+          agent_without_prompt: {
             name: 'Agent Without Prompt',
-            transport: 'http',
-            config: { url: 'http://localhost:3001' },
             description: 'General agent',
+            transport: 'http',
+            url: 'http://localhost:3001',
           },
-        ],
+        },
       };
 
       vi.mocked(mockAgentsConfigProvider.getAgentsConfig).mockResolvedValue(mockConfig);
@@ -238,16 +229,15 @@ describe('Agent Service', () => {
       const mockConfig: AgentsConfig = {
         basePrompt: 'You are a helpful AI assistant.',
         defaultPrompt: 'You have access to tools.',
-        agents: [
-          {
-            identifier: 'first_agent',
+        agents: {
+          first_agent: {
             name: 'First Agent',
-            transport: 'http',
-            config: { url: 'http://localhost:3000' },
             description: 'First agent',
+            transport: 'http',
+            url: 'http://localhost:3000',
             prompt: 'You are specialized in analysis.',
           },
-        ],
+        },
       };
 
       vi.mocked(mockAgentsConfigProvider.getAgentsConfig).mockResolvedValue(mockConfig);
@@ -261,16 +251,15 @@ describe('Agent Service', () => {
     it('should handle missing base prompt', async () => {
       const mockConfig: AgentsConfig = {
         defaultPrompt: 'You have access to tools.',
-        agents: [
-          {
-            identifier: 'test_agent',
+        agents: {
+          test_agent: {
             name: 'Test Agent',
-            transport: 'http',
-            config: { url: 'http://localhost:3000' },
             description: 'Test agent',
+            transport: 'http',
+            url: 'http://localhost:3000',
             prompt: 'You are specialized.',
           },
-        ],
+        },
       };
 
       vi.mocked(mockAgentsConfigProvider.getAgentsConfig).mockResolvedValue(mockConfig);
@@ -284,15 +273,14 @@ describe('Agent Service', () => {
     it('should handle case when servers provider fails', async () => {
       const mockConfig: AgentsConfig = {
         basePrompt: 'You are a helpful AI assistant.',
-        agents: [
-          {
-            identifier: 'test_agent',
+        agents: {
+          test_agent: {
             name: 'Test Agent',
-            transport: 'http',
-            config: { url: 'http://localhost:3000' },
             description: 'Test agent',
+            transport: 'http',
+            url: 'http://localhost:3000',
           },
-        ],
+        },
       };
 
       vi.mocked(mockAgentsConfigProvider.getAgentsConfig).mockResolvedValue(mockConfig);
@@ -308,15 +296,14 @@ describe('Agent Service', () => {
 
     it('should return minimal default when no prompts configured', async () => {
       const mockConfig: AgentsConfig = {
-        agents: [
-          {
-            identifier: 'minimal_agent',
+        agents: {
+          minimal_agent: {
             name: 'Minimal Agent',
-            transport: 'http',
-            config: { url: 'http://localhost:3000' },
             description: 'Minimal agent',
+            transport: 'http',
+            url: 'http://localhost:3000',
           },
-        ],
+        },
       };
 
       vi.mocked(mockAgentsConfigProvider.getAgentsConfig).mockResolvedValue(mockConfig);

@@ -27,61 +27,37 @@ describe('ProviderMCPService', () => {
   let mockFetch: MockedFunction<typeof fetchHelper.fetchWithDefaultTimeout>;
 
   const mockProvidersConfig: ProvidersConfig = {
-    mcpServers: [
-      {
-        identifier: 'weather_service',
+    mcpServers: {
+      weather_service: {
         name: 'Weather Service',
         description: 'Provides weather information via MCP',
-        transport: 'http',
-        config: {
-          url: 'http://localhost:4000/mcp',
-          headers: {
-            Authorization: 'Bearer test-token',
-          },
-        },
+        // HTTP MCP server uses url + optional headers
+        url: 'http://localhost:4000/mcp',
+        headers: { Authorization: 'Bearer test-token' },
       },
-      {
-        identifier: 'file_service',
+      file_service: {
         name: 'File Service',
         description: 'File management via MCP',
-        transport: 'http',
-        config: {
-          url: 'http://localhost:4001/mcp',
-        },
+        url: 'http://localhost:4001/mcp',
       },
-    ],
-    restServers: [
-      {
-        identifier: 'user_api',
+    },
+    restServers: {
+      user_api: {
         name: 'User API',
         description: 'Legacy REST API for user management',
-        transport: 'http',
-        config: {
-          url: 'http://localhost:5000/api',
-          defaultHeaders: {
-            Authorization: 'Bearer api-token',
-          },
-        },
-        endPoints: [
-          {
+        url: 'http://localhost:5000/api',
+        defaultHeaders: { Authorization: 'Bearer api-token' },
+        endpoints: {
+          get_user: {
             name: 'get_user',
             description: 'Get user information by ID',
             path: '/users/{userId}',
             method: 'GET',
-            parameters: {
-              type: 'object',
-              properties: {
-                userId: {
-                  type: 'string',
-                  description: 'User ID to fetch',
-                },
-              },
-              required: ['userId'],
-            },
+            // Path param userId will default to string in tool generation
           },
-        ],
+        },
       },
-    ],
+    },
   };
 
   beforeEach(() => {
@@ -455,9 +431,9 @@ describe('ProviderMCPService', () => {
   describe('edge cases', () => {
     it('should handle empty MCP servers list', async () => {
       mockProviderConfig.getProvidersConfig = vi.fn().mockResolvedValue({
-        mcpServers: [],
-        restServers: [],
-      });
+        mcpServers: {},
+        restServers: {},
+      } as ProvidersConfig);
 
       const tools = await providerMCPService.toolsList();
       expect(tools).toEqual([]);
@@ -465,8 +441,8 @@ describe('ProviderMCPService', () => {
 
     it('should handle missing MCP servers in config', async () => {
       mockProviderConfig.getProvidersConfig = vi.fn().mockResolvedValue({
-        restServers: [],
-      });
+        restServers: {},
+      } as ProvidersConfig);
 
       const tools = await providerMCPService.toolsList();
       expect(tools).toEqual([]);

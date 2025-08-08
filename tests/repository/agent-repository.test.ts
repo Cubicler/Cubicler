@@ -32,31 +32,28 @@ describe('AgentRepository', () => {
   const mockAgentsConfig: AgentsConfig = {
     basePrompt: 'You are a helpful AI assistant powered by Cubicler.',
     defaultPrompt: 'You have access to various tools and services through Cubicler.',
-    agents: [
-      {
-        identifier: 'gpt_4o',
+    agents: {
+      gpt_4o: {
         name: 'GPT-4O Agent',
         transport: 'http',
-        config: { url: 'http://localhost:3000/agent' },
+        url: 'http://localhost:3000/agent',
         description: 'Advanced GPT-4O agent for complex tasks',
         prompt: 'You specialize in complex reasoning and analysis.',
       },
-      {
-        identifier: 'claude_3_5',
+      claude_3_5: {
         name: 'Claude 3.5 Agent',
         transport: 'http',
-        config: { url: 'http://localhost:3001/agent' },
+        url: 'http://localhost:3001/agent',
         description: 'Claude 3.5 Sonnet for creative and analytical tasks',
       },
-      {
-        identifier: 'local_llama',
+      local_llama: {
         name: 'Local LLaMA Agent',
         transport: 'stdio',
-        config: { url: '/usr/local/bin/llama-agent' },
+        command: '/usr/local/bin/llama-agent',
         description: 'Local LLaMA model for offline processing',
         prompt: 'You are a local AI assistant optimized for privacy.',
       },
-    ],
+    },
   };
 
   beforeEach(async () => {
@@ -128,7 +125,7 @@ describe('AgentRepository', () => {
 
       // Assert
       expect(consoleSpy).toHaveBeenCalledWith(
-        `✅ [AgentRepository] Loaded ${mockAgentsConfig.agents.length} agents`
+        `✅ [AgentRepository] Loaded ${Object.keys(mockAgentsConfig.agents).length} agents`
       );
     });
 
@@ -136,15 +133,14 @@ describe('AgentRepository', () => {
       // Arrange
       const minimalConfig: AgentsConfig = {
         basePrompt: 'Base prompt only',
-        agents: [
-          {
-            identifier: 'simple_agent',
+        agents: {
+          simple_agent: {
             name: 'Simple Agent',
             transport: 'http',
-            config: { url: 'http://localhost:3000/agent' },
+            url: 'http://localhost:3000/agent',
             description: 'Simple test agent',
           },
-        ],
+        },
       };
 
       mockCache.get.mockReturnValue(undefined);
@@ -158,21 +154,20 @@ describe('AgentRepository', () => {
       expect(result).toEqual(minimalConfig);
       expect(result.basePrompt).toBe('Base prompt only');
       expect(result.defaultPrompt).toBeUndefined();
-      expect(result.agents).toHaveLength(1);
+      expect(Object.keys(result.agents)).toHaveLength(1);
     });
 
     it('should handle agents config without prompts', async () => {
       // Arrange
       const minimalConfig: AgentsConfig = {
-        agents: [
-          {
-            identifier: 'no_prompt_agent',
+        agents: {
+          no_prompt_agent: {
             name: 'No Prompt Agent',
             transport: 'http',
-            config: { url: 'http://localhost:3000/agent' },
+            url: 'http://localhost:3000/agent',
             description: 'Agent without any prompts',
           },
-        ],
+        },
       };
 
       mockCache.get.mockReturnValue(undefined);
@@ -186,28 +181,27 @@ describe('AgentRepository', () => {
       expect(result).toEqual(minimalConfig);
       expect(result.basePrompt).toBeUndefined();
       expect(result.defaultPrompt).toBeUndefined();
-      expect(result.agents[0].prompt).toBeUndefined();
+      const firstAgent = Object.values(result.agents)[0] as any; // Cast for test convenience
+      expect(firstAgent.prompt).toBeUndefined();
     });
 
     it('should handle agents with different transport types', async () => {
       // Arrange
       const multiTransportConfig: AgentsConfig = {
-        agents: [
-          {
-            identifier: 'http_agent',
+        agents: {
+          http_agent: {
             name: 'HTTP Agent',
             transport: 'http',
-            config: { url: 'http://localhost:3000/agent' },
+            url: 'http://localhost:3000/agent',
             description: 'HTTP transport agent',
           },
-          {
-            identifier: 'stdio_agent',
+          stdio_agent: {
             name: 'STDIO Agent',
             transport: 'stdio',
-            config: { url: '/usr/local/bin/stdio-agent' },
+            command: '/usr/local/bin/stdio-agent',
             description: 'STDIO transport agent',
           },
-        ],
+        },
       };
 
       mockCache.get.mockReturnValue(undefined);
@@ -219,8 +213,8 @@ describe('AgentRepository', () => {
 
       // Assert
       expect(result).toEqual(multiTransportConfig);
-      expect(result.agents[0].transport).toBe('http');
-      expect(result.agents[1].transport).toBe('stdio');
+      expect((result.agents as any).http_agent.transport).toBe('http');
+      expect((result.agents as any).stdio_agent.transport).toBe('stdio');
     });
 
     it('should propagate errors from loadConfigFromSource', async () => {
@@ -267,7 +261,7 @@ describe('AgentRepository', () => {
       const emptyConfig: AgentsConfig = {
         basePrompt: 'Base prompt',
         defaultPrompt: 'Default prompt',
-        agents: [],
+        agents: {},
       };
 
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});

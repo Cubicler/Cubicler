@@ -29,57 +29,45 @@ describe('WebhookRepository', () => {
 
   // Test data
   const mockWebhooksConfig: WebhooksConfig = {
-    webhooks: [
-      {
-        identifier: 'github_push',
-        name: 'GitHub Push Webhook',
-        description: 'Handle GitHub push events',
-        config: {
-          authentication: {
-            type: 'signature',
-            secret: 'github-webhook-secret',
-          },
-          allowedOrigins: ['github.com'],
+    github_push: {
+      name: 'GitHub Push Webhook',
+      description: 'Handle GitHub push events',
+      auth: {
+        type: 'signature',
+        secret: 'github-webhook-secret',
+      },
+      allowedOrigins: ['github.com'],
+      allowedAgents: ['code_reviewer', 'deployment_agent'],
+      payload_transform: [
+        {
+          path: 'repository.name',
+          transform: 'map',
+          map: { 'repository.name': 'repo_name' },
         },
-        agents: ['code_reviewer', 'deployment_agent'],
-        payload_transform: [
-          {
-            path: 'repository.name',
-            transform: 'map',
-            map: { 'repository.name': 'repo_name' },
-          },
-          {
-            path: 'commits[]',
-            transform: 'template',
-            template: 'Commit: {value.id}',
-          },
-        ],
-      },
-      {
-        identifier: 'slack_command',
-        name: 'Slack Command Webhook',
-        description: 'Handle Slack slash commands',
-        config: {
-          authentication: {
-            type: 'bearer',
-            token: 'slack-webhook-token',
-          },
+        {
+          path: 'commits[]',
+          transform: 'template',
+          template: 'Commit: {value.id}',
         },
-        agents: ['slack_bot'],
+      ],
+    },
+    slack_command: {
+      name: 'Slack Command Webhook',
+      description: 'Handle Slack slash commands',
+      auth: {
+        type: 'bearer',
+        token: 'slack-webhook-token',
       },
-      {
-        identifier: 'internal_trigger',
-        name: 'Internal System Trigger',
-        description: 'Internal system notifications',
-        config: {},
-        agents: ['system_monitor', 'alert_handler'],
-      },
-    ],
+      allowedAgents: ['slack_bot'],
+    },
+    internal_trigger: {
+      name: 'Internal System Trigger',
+      description: 'Internal system notifications',
+      allowedAgents: ['system_monitor', 'alert_handler'],
+    },
   };
 
-  const emptyWebhooksConfig: WebhooksConfig = {
-    webhooks: [],
-  };
+  const emptyWebhooksConfig: WebhooksConfig = {};
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -172,19 +160,6 @@ describe('WebhookRepository', () => {
       );
     });
 
-    it('should validate configuration structure - missing webhooks array', async () => {
-      process.env.CUBICLER_WEBHOOKS_LIST = './test-config.json';
-
-      mockCache.get.mockReturnValue(null);
-      mockLoadConfigFromSource.mockResolvedValue({ invalid: 'structure' });
-
-      const repository = new WebhookRepository();
-
-      await expect(repository.getWebhooksConfig()).rejects.toThrow(
-        'Failed to load webhook configuration: Invalid webhook configuration: missing or invalid webhooks array'
-      );
-    });
-
     it('should validate configuration structure - null configuration', async () => {
       process.env.CUBICLER_WEBHOOKS_LIST = './test-config.json';
 
@@ -198,28 +173,15 @@ describe('WebhookRepository', () => {
       );
     });
 
-    it('should validate individual webhook configurations', async () => {
+    it('should error when webhook entry is not an object', async () => {
       process.env.CUBICLER_WEBHOOKS_LIST = './test-config.json';
 
-      const invalidWebhookConfig = {
-        webhooks: [
-          {
-            // Missing required identifier
-            name: 'Test Webhook',
-            description: 'Test description',
-            config: {},
-            agents: ['test_agent'],
-          },
-        ],
-      };
-
+      const invalid = { test_webhook: 'not-an-object' } as any;
       mockCache.get.mockReturnValue(null);
-      mockLoadConfigFromSource.mockResolvedValue(invalidWebhookConfig);
-
+      mockLoadConfigFromSource.mockResolvedValue(invalid);
       const repository = new WebhookRepository();
-
       await expect(repository.getWebhooksConfig()).rejects.toThrow(
-        'Failed to load webhook configuration: Webhook must have a valid identifier'
+        'Failed to load webhook configuration: Webhook test_webhook configuration must be an object'
       );
     });
   });
@@ -238,7 +200,7 @@ describe('WebhookRepository', () => {
       const repository = new WebhookRepository();
       const result = await repository.getWebhookConfig('github_push');
 
-      expect(result).toEqual(mockWebhooksConfig.webhooks[0]);
+      expect(result).toEqual(mockWebhooksConfig.github_push);
     });
 
     it('should return null for non-existent webhook', async () => {
@@ -321,42 +283,14 @@ describe('WebhookRepository', () => {
       WebhookRepository = module.WebhookRepository;
     });
 
-    it('should validate webhook with missing identifier', async () => {
-      process.env.CUBICLER_WEBHOOKS_LIST = './test-config.json';
-
-      const invalidConfig = {
-        webhooks: [
-          {
-            name: 'Test Webhook',
-            description: 'Test description',
-            config: {},
-            agents: ['test_agent'],
-          },
-        ],
-      };
-
-      mockCache.get.mockReturnValue(null);
-      mockLoadConfigFromSource.mockResolvedValue(invalidConfig);
-
-      const repository = new WebhookRepository();
-
-      await expect(repository.getWebhooksConfig()).rejects.toThrow(
-        'Failed to load webhook configuration: Webhook must have a valid identifier'
-      );
-    });
-
     it('should validate webhook with missing name', async () => {
       process.env.CUBICLER_WEBHOOKS_LIST = './test-config.json';
 
       const invalidConfig = {
-        webhooks: [
-          {
-            identifier: 'test_webhook',
-            description: 'Test description',
-            config: {},
-            agents: ['test_agent'],
-          },
-        ],
+        test_webhook: {
+          description: 'Test description',
+          allowedAgents: ['test_agent'],
+        },
       };
 
       mockCache.get.mockReturnValue(null);
@@ -373,14 +307,10 @@ describe('WebhookRepository', () => {
       process.env.CUBICLER_WEBHOOKS_LIST = './test-config.json';
 
       const invalidConfig = {
-        webhooks: [
-          {
-            identifier: 'test_webhook',
-            name: 'Test Webhook',
-            config: {},
-            agents: ['test_agent'],
-          },
-        ],
+        test_webhook: {
+          name: 'Test Webhook',
+          allowedAgents: ['test_agent'],
+        },
       };
 
       mockCache.get.mockReturnValue(null);
@@ -397,15 +327,11 @@ describe('WebhookRepository', () => {
       process.env.CUBICLER_WEBHOOKS_LIST = './test-config.json';
 
       const invalidConfig = {
-        webhooks: [
-          {
-            identifier: 'test_webhook',
-            name: 'Test Webhook',
-            description: 'Test description',
-            config: {},
-            agents: [],
-          },
-        ],
+        test_webhook: {
+          name: 'Test Webhook',
+          description: 'Test description',
+          allowedAgents: [],
+        },
       };
 
       mockCache.get.mockReturnValue(null);
@@ -422,15 +348,11 @@ describe('WebhookRepository', () => {
       process.env.CUBICLER_WEBHOOKS_LIST = './test-config.json';
 
       const invalidConfig = {
-        webhooks: [
-          {
-            identifier: 'test_webhook',
-            name: 'Test Webhook',
-            description: 'Test description',
-            config: {},
-            agents: ['valid_agent', ''],
-          },
-        ],
+        test_webhook: {
+          name: 'Test Webhook',
+          description: 'Test description',
+          allowedAgents: ['valid_agent', ''],
+        },
       };
 
       mockCache.get.mockReturnValue(null);
@@ -443,47 +365,19 @@ describe('WebhookRepository', () => {
       );
     });
 
-    it('should validate webhook with missing config object', async () => {
-      process.env.CUBICLER_WEBHOOKS_LIST = './test-config.json';
-
-      const invalidConfig = {
-        webhooks: [
-          {
-            identifier: 'test_webhook',
-            name: 'Test Webhook',
-            description: 'Test description',
-            agents: ['test_agent'],
-          },
-        ],
-      };
-
-      mockCache.get.mockReturnValue(null);
-      mockLoadConfigFromSource.mockResolvedValue(invalidConfig);
-
-      const repository = new WebhookRepository();
-
-      await expect(repository.getWebhooksConfig()).rejects.toThrow(
-        'Failed to load webhook configuration: Webhook test_webhook must have a valid config object'
-      );
-    });
-
     it('should validate webhook with invalid authentication type', async () => {
       process.env.CUBICLER_WEBHOOKS_LIST = './test-config.json';
 
       const invalidConfig = {
-        webhooks: [
-          {
-            identifier: 'test_webhook',
-            name: 'Test Webhook',
-            description: 'Test description',
-            config: {
-              authentication: {
-                type: 'invalid',
-              },
-            },
-            agents: ['test_agent'],
+        test_webhook: {
+          name: 'Test Webhook',
+          description: 'Test description',
+          auth: {
+            // invalid type for test
+            type: 'invalid' as any,
           },
-        ],
+          allowedAgents: ['test_agent'],
+        },
       };
 
       mockCache.get.mockReturnValue(null);
@@ -500,19 +394,14 @@ describe('WebhookRepository', () => {
       process.env.CUBICLER_WEBHOOKS_LIST = './test-config.json';
 
       const invalidConfig = {
-        webhooks: [
-          {
-            identifier: 'test_webhook',
-            name: 'Test Webhook',
-            description: 'Test description',
-            config: {
-              authentication: {
-                type: 'signature',
-              },
-            },
-            agents: ['test_agent'],
+        test_webhook: {
+          name: 'Test Webhook',
+          description: 'Test description',
+          auth: {
+            type: 'signature',
           },
-        ],
+          allowedAgents: ['test_agent'],
+        },
       };
 
       mockCache.get.mockReturnValue(null);
@@ -529,19 +418,14 @@ describe('WebhookRepository', () => {
       process.env.CUBICLER_WEBHOOKS_LIST = './test-config.json';
 
       const invalidConfig = {
-        webhooks: [
-          {
-            identifier: 'test_webhook',
-            name: 'Test Webhook',
-            description: 'Test description',
-            config: {
-              authentication: {
-                type: 'bearer',
-              },
-            },
-            agents: ['test_agent'],
+        test_webhook: {
+          name: 'Test Webhook',
+          description: 'Test description',
+          auth: {
+            type: 'bearer',
           },
-        ],
+          allowedAgents: ['test_agent'],
+        },
       };
 
       mockCache.get.mockReturnValue(null);
@@ -558,16 +442,12 @@ describe('WebhookRepository', () => {
       process.env.CUBICLER_WEBHOOKS_LIST = './test-config.json';
 
       const invalidConfig = {
-        webhooks: [
-          {
-            identifier: 'test_webhook',
-            name: 'Test Webhook',
-            description: 'Test description',
-            config: {},
-            agents: ['test_agent'],
-            payload_transform: 'invalid',
-          },
-        ],
+        test_webhook: {
+          name: 'Test Webhook',
+          description: 'Test description',
+          allowedAgents: ['test_agent'],
+          payload_transform: 'invalid' as any,
+        },
       };
 
       mockCache.get.mockReturnValue(null);
@@ -584,27 +464,22 @@ describe('WebhookRepository', () => {
       process.env.CUBICLER_WEBHOOKS_LIST = './test-config.json';
 
       const validConfig = {
-        webhooks: [
-          {
-            identifier: 'test_webhook',
-            name: 'Test Webhook',
-            description: 'Test description',
-            config: {
-              authentication: {
-                type: 'signature',
-                secret: 'test-secret',
-              },
-            },
-            agents: ['test_agent'],
-            payload_transform: [
-              {
-                path: 'data.field',
-                transform: 'map',
-                map: { 'data.field': 'transformed_field' },
-              },
-            ],
+        test_webhook: {
+          name: 'Test Webhook',
+          description: 'Test description',
+          auth: {
+            type: 'signature',
+            secret: 'test-secret',
           },
-        ],
+          allowedAgents: ['test_agent'],
+          payload_transform: [
+            {
+              path: 'data.field',
+              transform: 'map',
+              map: { 'data.field': 'transformed_field' },
+            },
+          ],
+        },
       };
 
       mockCache.get.mockReturnValue(null);

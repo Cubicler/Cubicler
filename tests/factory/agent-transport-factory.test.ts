@@ -4,7 +4,7 @@ import { HttpAgentTransport } from '../../src/transport/agent/http-agent-transpo
 import { SseAgentTransport } from '../../src/transport/agent/sse-agent-transport.js';
 import { StdioAgentTransport } from '../../src/transport/agent/stdio-agent-transport.js';
 import { DirectOpenAIAgentTransport } from '../../src/transport/agent/direct-openai-agent-transport.js';
-import type { Agent, DirectAgent } from '../../src/model/agents.js';
+import type { AgentConfig, DirectOpenAIAgentConfig } from '../../src/model/agents.js';
 import type { MCPHandling } from '../../src/interface/mcp-handling.js';
 import type { ServersProviding } from '../../src/interface/servers-providing.js';
 
@@ -31,96 +31,75 @@ describe('AgentTransportFactory', () => {
 
   describe('createTransport', () => {
     it('should create HttpAgentTransport for http transport', () => {
-      const agent: Agent = {
-        identifier: 'test-agent',
+      const agent: AgentConfig = {
         name: 'Test Agent',
-        transport: 'http',
-        config: {
-          url: 'http://localhost:3000/agent',
-        },
         description: 'Test agent',
+        transport: 'http',
+        url: 'http://localhost:3000/agent',
       };
 
-      const transport = factory.createTransport(agent);
-
+      const transport = factory.createTransport('test-agent', agent);
       expect(transport).toBeInstanceOf(HttpAgentTransport);
     });
 
     it('should create SseAgentTransport for sse transport', () => {
-      const agent: Agent = {
-        identifier: 'test-agent',
+      const agent: AgentConfig = {
         name: 'Test Agent',
-        transport: 'sse',
-        config: {},
         description: 'Test agent',
-      };
-
-      const transport = factory.createTransport(agent);
-
+        transport: 'sse',
+        url: 'http://localhost:3001/agent',
+      } as any; // Cast as SseAgentConfig
+      const transport = factory.createTransport('test-agent', agent);
       expect(transport).toBeInstanceOf(SseAgentTransport);
     });
 
     it('should create StdioAgentTransport for stdio transport', () => {
-      const agent: Agent = {
-        identifier: 'test-agent',
+      const agent: AgentConfig = {
         name: 'Test Agent',
-        transport: 'stdio',
-        config: {
-          url: 'python3 /path/to/agent.py',
-        },
         description: 'Test agent',
-      };
-
-      const transport = factory.createTransport(agent);
-
+        transport: 'stdio',
+        command: 'python3 /path/to/agent.py',
+      } as any; // Cast as StdioAgentConfig
+      const transport = factory.createTransport('test-agent', agent);
       expect(transport).toBeInstanceOf(StdioAgentTransport);
     });
 
     it('should create DirectOpenAIAgentTransport for direct transport with OpenAI provider', () => {
-      const agent: DirectAgent = {
-        identifier: 'test-agent',
+      const agent: DirectOpenAIAgentConfig = {
         name: 'Test Agent',
-        transport: 'direct',
-        config: {
-          provider: 'openai',
-          apiKey: '${OPENAI_API_KEY}',
-          model: 'gpt-4o',
-        },
         description: 'Test agent',
+        transport: 'direct',
+        provider: 'openai',
+        apiKey: 'test-key',
+        model: 'gpt-4o',
       };
-
-      const transport = factory.createTransport(agent);
-
+      const transport = factory.createTransport('test-agent', agent);
       expect(transport).toBeInstanceOf(DirectOpenAIAgentTransport);
     });
 
     it('should throw error for direct transport with unsupported provider', () => {
-      const agent: DirectAgent = {
-        identifier: 'test-agent',
+      const agent: any = {
         name: 'Test Agent',
-        transport: 'direct',
-        config: {
-          provider: 'unsupported' as any,
-          apiKey: 'test-key',
-        },
         description: 'Test agent',
+        transport: 'direct',
+        provider: 'unsupported',
+        apiKey: 'test-key',
       };
-
-      expect(() => factory.createTransport(agent)).toThrow(
+      expect(() => factory.createTransport('test-agent', agent)).toThrow(
         'Unsupported direct transport provider: unsupported. Supported providers: openai'
       );
     });
 
     it('should throw error for unsupported transport', () => {
-      const agent = {
-        identifier: 'test-agent',
+      const agent: any = {
         name: 'Test Agent',
+        description: 'Test agent',
         transport: 'websocket',
         url: 'ws://localhost:3000',
-        description: 'Test agent',
-      } as any;
-
-      expect(() => factory.createTransport(agent)).toThrow('Unsupported transport type: websocket');
+      };
+      expect(() => factory.createTransport('test-agent', agent)).toThrow(
+        'Unsupported transport type: websocket'
+      );
     });
   });
 });

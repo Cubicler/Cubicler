@@ -3,79 +3,56 @@ import { ProviderRESTService } from '../src/core/provider-rest-service.js';
 import { ProvidersConfigProviding } from '../src/interface/providers-config-providing.js';
 import { ServersProviding } from '../src/interface/servers-providing.js';
 
-// Mock the providers config that uses query field
+// Mock the providers config that uses query field (new keyed schema)
 const mockConfig = {
-  restServers: [
-    {
-      identifier: 'open_meteo_api',
+  restServers: {
+    open_meteo_api: {
       name: 'Open-Meteo Weather API',
       description: 'Free weather API service - no API key required',
-      transport: 'http',
-      config: {
-        url: 'https://api.open-meteo.com/v1',
-        defaultHeaders: {
-          'Content-Type': 'application/json',
-        },
-      },
-      endPoints: [
-        {
-          name: 'getCurrentWeather',
+      url: 'https://api.open-meteo.com/v1',
+      defaultHeaders: { 'Content-Type': 'application/json' },
+      endpoints: {
+        get_current_weather: {
+          name: 'get_current_weather',
           description: 'Get current weather for coordinates',
           path: '/forecast',
           method: 'GET',
           query: {
             type: 'object',
             properties: {
-              latitude: {
-                type: 'number',
-                description: 'Latitude coordinate',
-              },
-              longitude: {
-                type: 'number',
-                description: 'Longitude coordinate',
-              },
+              latitude: { type: 'number', description: 'Latitude coordinate' },
+              longitude: { type: 'number', description: 'Longitude coordinate' },
               current: {
                 type: 'string',
                 description: 'Current weather parameters',
                 default:
                   'temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,wind_direction_10m',
               },
-              timezone: {
-                type: 'string',
-                description: 'Timezone',
-                default: 'auto',
-              },
+              timezone: { type: 'string', description: 'Timezone', default: 'auto' },
             },
             required: ['latitude', 'longitude'],
           },
         },
-      ],
+      },
     },
-    {
-      identifier: 'jsonplaceholder_api',
+    jsonplaceholder_api: {
       name: 'JSONPlaceholder API',
       description: 'Free fake REST API for testing and prototyping',
-      transport: 'http',
-      config: {
-        url: 'https://jsonplaceholder.typicode.com',
-        defaultHeaders: {
-          'Content-Type': 'application/json',
-        },
-      },
-      endPoints: [
-        {
-          name: 'getPostById',
+      url: 'https://jsonplaceholder.typicode.com',
+      defaultHeaders: { 'Content-Type': 'application/json' },
+      endpoints: {
+        get_post_by_id: {
+          name: 'get_post_by_id',
           description: 'Get a specific post by ID',
           path: '/posts/{postId}',
           method: 'GET',
-          postId: {
-            type: 'number',
-            description: 'Post ID',
-          },
+          // Path param definition omitted: defaults to string; specify for number
+          postId: { type: 'number', description: 'Post ID' },
         },
-      ],
+      },
     },
-  ],
+  },
+  mcpServers: {},
 };
 
 describe('ProviderRESTService Query Field Fix', () => {

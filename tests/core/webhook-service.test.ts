@@ -16,16 +16,13 @@ describe('WebhookService', () => {
 
   // Test webhook configurations
   const mockWebhookWithSignature: WebhookConfig = {
-    identifier: 'github_push',
     name: 'GitHub Push Webhook',
     description: 'Handle GitHub push events',
-    config: {
-      authentication: {
-        type: 'signature',
-        secret: 'test-secret',
-      },
+    auth: {
+      type: 'signature',
+      secret: 'test-secret',
     },
-    agents: ['code_reviewer', 'deployment_agent'],
+    allowedAgents: ['code_reviewer', 'deployment_agent'],
     payload_transform: [
       {
         path: 'repository.name',
@@ -36,24 +33,19 @@ describe('WebhookService', () => {
   };
 
   const mockWebhookWithBearer: WebhookConfig = {
-    identifier: 'slack_command',
     name: 'Slack Command Webhook',
     description: 'Handle Slack slash commands',
-    config: {
-      authentication: {
-        type: 'bearer',
-        token: 'test-token',
-      },
+    auth: {
+      type: 'bearer',
+      token: 'test-token',
     },
-    agents: ['slack_bot'],
+    allowedAgents: ['slack_bot'],
   };
 
   const mockWebhookNoAuth: WebhookConfig = {
-    identifier: 'internal_trigger',
     name: 'Internal System Trigger',
     description: 'Internal system notifications',
-    config: {},
-    agents: ['system_monitor'],
+    allowedAgents: ['system_monitor'],
   };
 
   beforeEach(() => {
@@ -71,15 +63,25 @@ describe('WebhookService', () => {
     };
 
     // Create service instance
-    webhookService = new WebhookService(mockConfigProvider);
+    webhookService = new WebhookService(
+      mockConfigProvider as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any
+    );
 
     // Default mock setup for transformResponse
     mockTransformResponse.mockImplementation((payload, transforms) => {
       // Simple mock transformation
       if (transforms && transforms.length > 0) {
-        return { ...payload, transformed: true };
+        // Ensure we always return an object for test transformation mock
+        return {
+          ...(typeof payload === 'object' && payload !== null ? payload : {}),
+          transformed: true,
+        } as any;
       }
-      return payload;
+      return payload as any;
     });
   });
 
@@ -328,11 +330,9 @@ describe('WebhookService', () => {
     it('should throw error for signature auth without secret', async () => {
       const webhookConfigNoSecret: WebhookConfig = {
         ...mockWebhookWithSignature,
-        config: {
-          authentication: {
-            type: 'signature',
-            // secret is missing
-          },
+        auth: {
+          type: 'signature',
+          // secret missing
         },
       };
 
@@ -354,11 +354,9 @@ describe('WebhookService', () => {
     it('should throw error for bearer auth without token', async () => {
       const webhookConfigNoToken: WebhookConfig = {
         ...mockWebhookWithBearer,
-        config: {
-          authentication: {
-            type: 'bearer',
-            // token is missing
-          },
+        auth: {
+          type: 'bearer',
+          // token missing
         },
       };
 
@@ -380,10 +378,9 @@ describe('WebhookService', () => {
     it('should throw error for unsupported authentication type', async () => {
       const webhookConfigInvalidAuth: WebhookConfig = {
         ...mockWebhookWithSignature,
-        config: {
-          authentication: {
-            type: 'oauth' as any, // Invalid auth type
-          },
+        auth: {
+          // @ts-expect-error invalid auth type for test
+          type: 'oauth',
         },
       };
 
@@ -409,6 +406,7 @@ describe('WebhookService', () => {
       const triggeredAt = '2025-08-07T10:30:00.000Z';
 
       const processedWebhook: ProcessedWebhook = {
+        webhookId: 'github_push',
         webhook: mockWebhookWithSignature,
         transformedPayload,
         triggeredAt,
@@ -428,6 +426,7 @@ describe('WebhookService', () => {
 
     it('should create trigger context with different webhook types', () => {
       const processedWebhook: ProcessedWebhook = {
+        webhookId: 'internal_trigger',
         webhook: mockWebhookNoAuth,
         transformedPayload: { alert: 'critical' },
         triggeredAt: '2025-08-07T11:00:00.000Z',

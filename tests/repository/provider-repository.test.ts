@@ -30,61 +30,35 @@ describe('ProviderRepository', () => {
 
   // Test data
   const mockProvidersConfig: ProvidersConfig = {
-    mcpServers: [
-      {
-        identifier: 'weather_service',
+    mcpServers: {
+      weather_service: {
         name: 'Weather Service',
         description: 'Provides weather information via MCP',
-        transport: 'http',
-        config: {
-          url: 'http://localhost:4000/mcp',
-          headers: {
-            Authorization: 'Bearer test-token',
-          },
-        },
+        url: 'http://localhost:4000/mcp',
+        headers: { Authorization: 'Bearer test-token' },
       },
-      {
-        identifier: 'file_service',
+      file_service: {
         name: 'File Service',
         description: 'File management via MCP',
-        transport: 'http',
-        config: {
-          url: 'http://localhost:4001/mcp',
-        },
+        url: 'http://localhost:4001/mcp',
       },
-    ],
-    restServers: [
-      {
-        identifier: 'user_api',
+    },
+    restServers: {
+      user_api: {
         name: 'User API',
         description: 'Legacy REST API for user management',
-        transport: 'http',
-        config: {
-          url: 'http://localhost:5000/api',
-          defaultHeaders: {
-            Authorization: 'Bearer api-token',
-          },
-        },
-        endPoints: [
-          {
+        url: 'http://localhost:5000/api',
+        defaultHeaders: { Authorization: 'Bearer api-token' },
+        endpoints: {
+          get_user: {
             name: 'get_user',
             description: 'Get user information by ID',
             path: '/users/{userId}',
             method: 'GET',
-            parameters: {
-              type: 'object',
-              properties: {
-                userId: {
-                  type: 'string',
-                  description: 'User ID to fetch',
-                },
-              },
-              required: ['userId'],
-            },
           },
-        ],
+        },
       },
-    ],
+    },
   };
 
   beforeEach(async () => {
@@ -164,6 +138,7 @@ describe('ProviderRepository', () => {
       // Arrange
       const configWithOnlyMcp: ProvidersConfig = {
         mcpServers: mockProvidersConfig.mcpServers,
+        restServers: {},
       };
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
@@ -184,6 +159,7 @@ describe('ProviderRepository', () => {
     it('should handle config with only REST servers', async () => {
       // Arrange
       const configWithOnlyRest: ProvidersConfig = {
+        mcpServers: {},
         restServers: mockProvidersConfig.restServers,
       };
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -204,7 +180,7 @@ describe('ProviderRepository', () => {
 
     it('should handle empty config', async () => {
       // Arrange
-      const emptyConfig: ProvidersConfig = {};
+      const emptyConfig: ProvidersConfig = { mcpServers: {}, restServers: {} };
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
       mockCache.get.mockReturnValue(undefined);

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { MCPRequest } from '../../../src/model/types.js';
-import type { MCPServer } from '../../../src/model/providers.js';
+import type { HttpMcpServerConfig } from '../../../src/model/providers.js';
 import { HttpMCPTransport } from '../../../src/transport/mcp/http-mcp-transport.js';
 import { fetchWithDefaultTimeout } from '../../../src/utils/fetch-helper.js';
 import jwtHelper from '../../../src/utils/jwt-helper.js';
@@ -19,22 +19,20 @@ const mockedJwtHelper = vi.mocked(jwtHelper.getToken);
 
 describe('HttpMCPTransport', () => {
   let transport: HttpMCPTransport;
-  let mockServer: MCPServer;
+  let serverId: string;
+  let mockConfig: HttpMcpServerConfig;
 
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mockServer = {
-      identifier: 'test-http-server',
+    serverId = 'test-http-server';
+    mockConfig = {
       name: 'Test HTTP Server',
       description: 'Test HTTP MCP server',
-      transport: 'http',
-      config: {
-        url: 'https://api.example.com/mcp',
-        headers: {
-          Authorization: 'Bearer test-token',
-          'Content-Type': 'application/json',
-        },
+      url: 'https://api.example.com/mcp',
+      headers: {
+        Authorization: 'Bearer test-token',
+        'Content-Type': 'application/json',
       },
     };
 
@@ -45,7 +43,7 @@ describe('HttpMCPTransport', () => {
     it('should initialize with valid HTTP server config', async () => {
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
-      await transport.initialize(mockServer);
+      await transport.initialize(serverId, mockConfig);
 
       expect(transport.isConnected()).toBe(true);
       expect(transport.getServerIdentifier()).toBe('test-http-server');
@@ -56,43 +54,29 @@ describe('HttpMCPTransport', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should throw error for invalid transport type', async () => {
-      const invalidServer = { ...mockServer, transport: 'stdio' as any };
-
-      await expect(transport.initialize(invalidServer)).rejects.toThrow(
-        'Invalid transport for HTTP transport: stdio'
-      );
-    });
+    // Transport type validation removed in new config schema
 
     it('should throw error for missing URL', async () => {
-      const invalidServer = {
-        ...mockServer,
-        config: { ...mockServer.config, url: undefined },
-      } as unknown as MCPServer;
-
-      await expect(transport.initialize(invalidServer)).rejects.toThrow(
+      const invalidConfig: any = { ...mockConfig, url: undefined };
+      await expect(transport.initialize(serverId, invalidConfig)).rejects.toThrow(
         'HTTP transport requires URL for server test-http-server'
       );
     });
 
     it('should throw error for invalid URL format', async () => {
-      const invalidServer = {
-        ...mockServer,
-        config: { ...mockServer.config, url: 'not-a-valid-url' },
-      } as MCPServer;
-
-      await expect(transport.initialize(invalidServer)).rejects.toThrow(
+      const invalidConfig = { ...mockConfig, url: 'not-a-valid-url' };
+      await expect(transport.initialize(serverId, invalidConfig)).rejects.toThrow(
         'Invalid URL for server test-http-server: not-a-valid-url'
       );
     });
 
     it('should accept server config without headers', async () => {
-      const serverWithoutHeaders = {
-        ...mockServer,
-        config: { url: (mockServer.config as any).url },
-      } as MCPServer;
-
-      await expect(transport.initialize(serverWithoutHeaders)).resolves.not.toThrow();
+      const configWithoutHeaders = {
+        name: mockConfig.name,
+        description: mockConfig.description,
+        url: mockConfig.url,
+      };
+      await expect(transport.initialize(serverId, configWithoutHeaders)).resolves.not.toThrow();
       expect(transport.isConnected()).toBe(true);
     });
 
@@ -105,10 +89,10 @@ describe('HttpMCPTransport', () => {
       ];
 
       for (const url of urlVariations) {
-        const server = { ...mockServer, url };
+        const config = { ...mockConfig, url };
         const newTransport = new HttpMCPTransport();
 
-        await expect(newTransport.initialize(server)).resolves.not.toThrow();
+        await expect(newTransport.initialize(serverId, config)).resolves.not.toThrow();
         expect(newTransport.getServerIdentifier()).toBe('test-http-server');
       }
     });
@@ -116,7 +100,7 @@ describe('HttpMCPTransport', () => {
 
   describe('sendRequest', () => {
     beforeEach(async () => {
-      await transport.initialize(mockServer);
+      await transport.initialize(serverId, mockConfig);
     });
 
     it('should send request successfully and return response', async () => {
@@ -240,19 +224,16 @@ describe('HttpMCPTransport', () => {
     });
 
     it('should include server headers in request', async () => {
-      const serverWithCustomHeaders = {
-        ...mockServer,
-        config: {
-          ...mockServer.config,
-          headers: {
-            Authorization: 'Bearer custom-token',
-            'X-Custom-Header': 'custom-value',
-            'User-Agent': 'Cubicler/1.0',
-          },
+      const configWithCustomHeaders: HttpMcpServerConfig = {
+        ...mockConfig,
+        headers: {
+          Authorization: 'Bearer custom-token',
+          'X-Custom-Header': 'custom-value',
+          'User-Agent': 'Cubicler/1.0',
         },
       };
-
-      await transport.initialize(serverWithCustomHeaders as MCPServer);
+      await transport.close();
+      await transport.initialize(serverId, configWithCustomHeaders);
 
       const mockAxiosResponse: AxiosResponse = {
         data: { jsonrpc: '2.0', id: 1, result: {} },
@@ -285,14 +266,13 @@ describe('HttpMCPTransport', () => {
     });
 
     it('should work without server headers', async () => {
-      const serverWithoutHeaders = {
-        ...mockServer,
-        config: {
-          url: (mockServer.config as any).url,
-        },
-      } as MCPServer;
-
-      await transport.initialize(serverWithoutHeaders);
+      const configWithoutHeaders: HttpMcpServerConfig = {
+        name: mockConfig.name,
+        description: mockConfig.description,
+        url: mockConfig.url,
+      };
+      await transport.close();
+      await transport.initialize(serverId, configWithoutHeaders);
 
       const mockAxiosResponse: AxiosResponse = {
         data: { jsonrpc: '2.0', id: 1, result: {} },
@@ -324,7 +304,7 @@ describe('HttpMCPTransport', () => {
 
   describe('close', () => {
     it('should close transport successfully', async () => {
-      await transport.initialize(mockServer);
+      await transport.initialize(serverId, mockConfig);
       expect(transport.isConnected()).toBe(true);
 
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -358,12 +338,12 @@ describe('HttpMCPTransport', () => {
     });
 
     it('should return true when initialized', async () => {
-      await transport.initialize(mockServer);
+      await transport.initialize(serverId, mockConfig);
       expect(transport.isConnected()).toBe(true);
     });
 
     it('should return false after close', async () => {
-      await transport.initialize(mockServer);
+      await transport.initialize(serverId, mockConfig);
       expect(transport.isConnected()).toBe(true);
 
       await transport.close();
@@ -377,12 +357,12 @@ describe('HttpMCPTransport', () => {
     });
 
     it('should return server identifier when initialized', async () => {
-      await transport.initialize(mockServer);
+      await transport.initialize(serverId, mockConfig);
       expect(transport.getServerIdentifier()).toBe('test-http-server');
     });
 
     it('should return unknown after close', async () => {
-      await transport.initialize(mockServer);
+      await transport.initialize(serverId, mockConfig);
       expect(transport.getServerIdentifier()).toBe('test-http-server');
 
       await transport.close();
@@ -392,7 +372,7 @@ describe('HttpMCPTransport', () => {
 
   describe('error handling edge cases', () => {
     beforeEach(async () => {
-      await transport.initialize(mockServer);
+      await transport.initialize(serverId, mockConfig);
     });
 
     it('should handle request with missing id', async () => {
@@ -440,42 +420,36 @@ describe('HttpMCPTransport', () => {
   });
 
   describe('JWT Authentication', () => {
-    const mockJwtServer: MCPServer = {
-      identifier: 'jwt-mcp-server',
+    const jwtServerId = 'jwt-mcp-server';
+    const jwtServerConfig: HttpMcpServerConfig = {
       name: 'JWT MCP Server',
       description: 'JWT secured MCP server',
-      transport: 'http',
-      config: {
-        url: 'https://secure-mcp.example.com/mcp',
-        auth: {
-          type: 'jwt',
-          config: {
-            token: 'static-jwt-token',
-          },
+      url: 'https://secure-mcp.example.com/mcp',
+      auth: {
+        type: 'jwt',
+        config: {
+          token: 'static-jwt-token',
         },
       },
     };
 
-    const mockOAuthServer: MCPServer = {
-      identifier: 'oauth-mcp-server',
+    const oauthServerId = 'oauth-mcp-server';
+    const oauthServerConfig: HttpMcpServerConfig = {
       name: 'OAuth MCP Server',
       description: 'OAuth2 JWT MCP server',
-      transport: 'http',
-      config: {
-        url: 'https://oauth-mcp.example.com/mcp',
-        auth: {
-          type: 'jwt',
-          config: {
-            tokenUrl: 'https://auth.example.com/oauth/token',
-            clientId: 'mcp-client',
-            clientSecret: 'mcp-secret',
-            audience: 'mcp-api',
-            refreshThreshold: 10,
-          },
+      url: 'https://oauth-mcp.example.com/mcp',
+      auth: {
+        type: 'jwt',
+        config: {
+          tokenUrl: 'https://auth.example.com/oauth/token',
+          clientId: 'mcp-client',
+          clientSecret: 'mcp-secret',
+          audience: 'mcp-api',
+          refreshThreshold: 10,
         },
-        headers: {
-          'X-API-Version': '1.0',
-        },
+      },
+      headers: {
+        'X-API-Version': '1.0',
       },
     };
 
@@ -485,7 +459,7 @@ describe('HttpMCPTransport', () => {
 
     it('should include JWT token in headers for static token auth', async () => {
       const jwtTransport = new HttpMCPTransport();
-      await jwtTransport.initialize(mockJwtServer);
+      await jwtTransport.initialize(jwtServerId, jwtServerConfig);
 
       mockedJwtHelper.mockResolvedValue('test-jwt-token');
 
@@ -528,7 +502,7 @@ describe('HttpMCPTransport', () => {
 
     it('should include JWT token in headers for OAuth2 auth with additional headers', async () => {
       const jwtTransport = new HttpMCPTransport();
-      await jwtTransport.initialize(mockOAuthServer);
+      await jwtTransport.initialize(oauthServerId, oauthServerConfig);
 
       mockedJwtHelper.mockResolvedValue('oauth-jwt-token');
 
@@ -577,7 +551,7 @@ describe('HttpMCPTransport', () => {
 
     it('should handle JWT token generation errors', async () => {
       const jwtTransport = new HttpMCPTransport();
-      await jwtTransport.initialize(mockJwtServer);
+      await jwtTransport.initialize(jwtServerId, jwtServerConfig);
 
       mockedJwtHelper.mockRejectedValue(new Error('Token expired'));
 
@@ -616,7 +590,7 @@ describe('HttpMCPTransport', () => {
 
     it('should work without JWT auth when not configured', async () => {
       const regularTransport = new HttpMCPTransport();
-      await regularTransport.initialize(mockServer);
+      await regularTransport.initialize(serverId, mockConfig);
 
       const mockAxiosResponse: AxiosResponse = {
         data: { jsonrpc: '2.0', id: 4, result: {} },

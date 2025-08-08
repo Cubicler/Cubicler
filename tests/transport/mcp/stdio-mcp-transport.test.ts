@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { MCPRequest } from '../../../src/model/types.js';
-import type { MCPServer } from '../../../src/model/providers.js';
+import type { StdioMcpServerConfig } from '../../../src/model/providers.js';
 import { StdioMCPTransport } from '../../../src/transport/mcp/stdio-mcp-transport.js';
 import { spawn } from 'child_process';
 
@@ -11,21 +11,19 @@ const mockedSpawn = vi.mocked(spawn);
 
 describe('StdioMCPTransport', () => {
   let transport: StdioMCPTransport;
-  let mockServer: MCPServer;
+  let serverId: string;
+  let mockConfig: StdioMcpServerConfig;
   let mockProcess: any;
 
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mockServer = {
-      identifier: 'test-stdio-server',
+    serverId = 'test-stdio-server';
+    mockConfig = {
       name: 'Test Stdio Server',
       description: 'Test stdio MCP server',
-      transport: 'stdio',
-      config: {
-        command: 'node',
-        args: ['server.js'],
-      },
+      command: 'node',
+      args: ['server.js'],
     };
 
     mockProcess = {
@@ -42,17 +40,13 @@ describe('StdioMCPTransport', () => {
     transport = new StdioMCPTransport();
   });
 
-  it('should throw error for invalid transport type', async () => {
-    const invalidServer = { ...mockServer, transport: 'http' as any } as MCPServer;
-    await expect(transport.initialize(invalidServer)).rejects.toThrow(
-      'Invalid transport for stdio transport: http'
-    );
-  });
+  // Transport type validation removed in new schema
 
   it('should throw error for missing command', async () => {
-    const invalidServer = { ...mockServer, config: { args: ['server.js'] } } as MCPServer;
-    await expect(transport.initialize(invalidServer)).rejects.toThrow(
-      'Stdio transport requires command'
+    const invalidConfig: any = { ...mockConfig };
+    delete invalidConfig.command;
+    await expect(transport.initialize(serverId, invalidConfig)).rejects.toThrow(
+      'Stdio transport requires command for server test-stdio-server'
     );
   });
 

@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SseMCPTransport } from '../../../src/transport/mcp/sse-mcp-transport.js';
 import type { MCPRequest, MCPResponse } from '../../../src/model/types.js';
-import type { MCPServer } from '../../../src/model/providers.js';
+import type { HttpMcpServerConfig } from '../../../src/model/providers.js';
 import * as fetchHelper from '../../../src/utils/fetch-helper.js';
 
 // Mock the fetch helper
@@ -72,15 +72,12 @@ class MockEventSource {
 (global as any).EventSource = MockEventSource;
 
 describe('SseMCPTransport', () => {
-  const mockServer: MCPServer = {
-    identifier: 'test-sse-server',
+  const serverId = 'test-sse-server';
+  const mockConfig: HttpMcpServerConfig = {
     name: 'Test SSE Server',
     description: 'Test SSE MCP Server',
-    transport: 'sse',
-    config: {
-      url: 'http://localhost:3000',
-      headers: { 'Custom-Header': 'test-value' },
-    },
+    url: 'http://localhost:3000',
+    headers: { 'Custom-Header': 'test-value' },
   };
 
   let transport: SseMCPTransport;
@@ -93,7 +90,7 @@ describe('SseMCPTransport', () => {
 
   describe('initialize', () => {
     it('should initialize SSE transport successfully', async () => {
-      await transport.initialize(mockServer);
+      await transport.initialize(serverId, mockConfig);
 
       // Wait for next tick to allow Promise.resolve() to complete
       await new Promise((resolve) => process.nextTick(resolve));
@@ -102,32 +99,19 @@ describe('SseMCPTransport', () => {
       expect(transport.getServerIdentifier()).toBe('test-sse-server');
     });
 
-    it('should throw error for invalid transport type', async () => {
-      const invalidServer = { ...mockServer, transport: 'http' as any } as MCPServer;
-
-      await expect(transport.initialize(invalidServer)).rejects.toThrow(
-        'Invalid transport for SSE transport: http'
-      );
-    });
+    // Transport type validation removed
 
     it('should throw error for missing URL', async () => {
-      const serverWithoutUrl = {
-        ...mockServer,
-        config: { headers: mockServer.config.headers },
-      } as MCPServer;
-
-      await expect(transport.initialize(serverWithoutUrl)).rejects.toThrow(
+      const invalidConfig: any = { ...mockConfig };
+      delete invalidConfig.url;
+      await expect(transport.initialize(serverId, invalidConfig)).rejects.toThrow(
         'SSE transport requires URL for server test-sse-server'
       );
     });
 
     it('should throw error for invalid URL', async () => {
-      const serverWithInvalidUrl = {
-        ...mockServer,
-        config: { ...mockServer.config, url: 'invalid-url' },
-      };
-
-      await expect(transport.initialize(serverWithInvalidUrl)).rejects.toThrow(
+      const invalidConfig = { ...mockConfig, url: 'invalid-url' };
+      await expect(transport.initialize(serverId, invalidConfig)).rejects.toThrow(
         'Invalid URL for server test-sse-server: invalid-url'
       );
     });
@@ -148,7 +132,7 @@ describe('SseMCPTransport', () => {
     };
 
     beforeEach(async () => {
-      await transport.initialize(mockServer);
+      await transport.initialize(serverId, mockConfig);
       // Wait for next tick to allow Promise.resolve() to complete
       await new Promise((resolve) => process.nextTick(resolve));
     });
@@ -222,7 +206,7 @@ describe('SseMCPTransport', () => {
 
     it('should throw error if SSE connection is not open', async () => {
       // Initialize but simulate closed connection
-      await transport.initialize(mockServer);
+      await transport.initialize(serverId, mockConfig);
       const eventSource = (transport as any).eventSource as MockEventSource;
       eventSource.readyState = 2; // CLOSED
 
@@ -243,7 +227,7 @@ describe('SseMCPTransport', () => {
 
   describe('close', () => {
     it('should close transport and clean up resources', async () => {
-      await transport.initialize(mockServer);
+      await transport.initialize(serverId, mockConfig);
       // Wait for next tick to allow Promise.resolve() to complete
       await new Promise((resolve) => process.nextTick(resolve));
       const eventSource = (transport as any).eventSource as MockEventSource;
@@ -258,7 +242,7 @@ describe('SseMCPTransport', () => {
     });
 
     it('should reject pending requests when closing', async () => {
-      await transport.initialize(mockServer);
+      await transport.initialize(serverId, mockConfig);
       // Wait for next tick to allow Promise.resolve() to complete
       await new Promise((resolve) => process.nextTick(resolve));
 
@@ -287,14 +271,14 @@ describe('SseMCPTransport', () => {
     });
 
     it('should return true when connected', async () => {
-      await transport.initialize(mockServer);
+      await transport.initialize(serverId, mockConfig);
       // Wait for next tick to allow Promise.resolve() to complete
       await new Promise((resolve) => process.nextTick(resolve));
       expect(transport.isConnected()).toBe(true);
     });
 
     it('should return false when closed', async () => {
-      await transport.initialize(mockServer);
+      await transport.initialize(serverId, mockConfig);
       await transport.close();
       expect(transport.isConnected()).toBe(false);
     });
@@ -302,7 +286,7 @@ describe('SseMCPTransport', () => {
 
   describe('error handling', () => {
     it('should handle malformed JSON responses', async () => {
-      await transport.initialize(mockServer);
+      await transport.initialize(serverId, mockConfig);
       // Wait for next tick to allow Promise.resolve() to complete
       await new Promise((resolve) => process.nextTick(resolve));
 
@@ -327,7 +311,7 @@ describe('SseMCPTransport', () => {
     });
 
     it('should handle responses for unknown requests', async () => {
-      await transport.initialize(mockServer);
+      await transport.initialize(serverId, mockConfig);
       // Wait for next tick to allow Promise.resolve() to complete
       await new Promise((resolve) => process.nextTick(resolve));
 
