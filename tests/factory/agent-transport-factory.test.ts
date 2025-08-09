@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AgentTransportFactory } from '../../src/factory/agent-transport-factory.js';
 import { HttpAgentTransport } from '../../src/transport/agent/http-agent-transport.js';
 import { SseAgentTransport } from '../../src/transport/agent/sse-agent-transport.js';
-import { StdioAgentTransport } from '../../src/transport/agent/stdio-agent-transport.js';
 import { DirectOpenAIAgentTransport } from '../../src/transport/agent/direct-openai-agent-transport.js';
+import { StdioAgentPools } from '../../src/transport/agent/stdio-agent-pools.js';
 import type { AgentConfig, DirectOpenAIAgentConfig } from '../../src/model/agents.js';
 import type { MCPHandling } from '../../src/interface/mcp-handling.js';
 import type { ServersProviding } from '../../src/interface/servers-providing.js';
@@ -53,7 +53,7 @@ describe('AgentTransportFactory', () => {
       expect(transport).toBeInstanceOf(SseAgentTransport);
     });
 
-    it('should create StdioAgentTransport for stdio transport', () => {
+    it('should create StdioAgentPools for stdio transport', () => {
       const agent: AgentConfig = {
         name: 'Test Agent',
         description: 'Test agent',
@@ -61,7 +61,7 @@ describe('AgentTransportFactory', () => {
         command: 'python3 /path/to/agent.py',
       } as any; // Cast as StdioAgentConfig
       const transport = factory.createTransport('test-agent', agent);
-      expect(transport).toBeInstanceOf(StdioAgentTransport);
+      expect(transport).toBeInstanceOf(StdioAgentPools);
     });
 
     it('should create DirectOpenAIAgentTransport for direct transport with OpenAI provider', () => {

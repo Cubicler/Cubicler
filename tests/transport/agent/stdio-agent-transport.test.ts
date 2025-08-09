@@ -112,10 +112,15 @@ describe('StdioAgentTransport', () => {
 
       // Simulate successful response in JSON-RPC format
       setTimeout(() => {
+        // Extract the request ID from what was actually written
+        const writtenData = (mockChild.stdin.write as any).mock.calls[0][0];
+        const request = JSON.parse(writtenData);
+        const requestId = request.id;
+
         const responseMessage =
           JSON.stringify({
             jsonrpc: '2.0',
-            id: 1,
+            id: requestId,
             result: mockAgentResponse,
           }) + '\n';
         mockChild.stdout.emit('data', responseMessage);
@@ -149,10 +154,14 @@ describe('StdioAgentTransport', () => {
         // Send invalid JSON - this will be ignored and logged as error
         mockChild.stdout.emit('data', 'invalid json\n');
         // Then send a valid JSON-RPC response
+        const writtenData = (mockChild.stdin.write as any).mock.calls[0][0];
+        const request = JSON.parse(writtenData);
+        const requestId = request.id;
+
         const responseMessage =
           JSON.stringify({
             jsonrpc: '2.0',
-            id: 1,
+            id: requestId,
             result: mockAgentResponse,
           }) + '\n';
         mockChild.stdout.emit('data', responseMessage);
@@ -173,10 +182,14 @@ describe('StdioAgentTransport', () => {
       const promise = transport.dispatch(mockAgentRequest);
 
       setTimeout(() => {
+        const writtenData = (mockChild.stdin.write as any).mock.calls[0][0];
+        const request = JSON.parse(writtenData);
+        const requestId = request.id;
+
         const responseMessage =
           JSON.stringify({
             jsonrpc: '2.0',
-            id: 1,
+            id: requestId,
             result: invalidResponse,
           }) + '\n';
         mockChild.stdout.emit('data', responseMessage);
@@ -194,7 +207,7 @@ describe('StdioAgentTransport', () => {
         mockChild.emit('error', new Error('Command not found'));
       }, 10);
 
-      await expect(promise).rejects.toThrow('Failed to spawn agent process: Command not found');
+      await expect(promise).rejects.toThrow('Agent process error: Command not found');
     });
 
     it('should handle timeout', async () => {
@@ -205,7 +218,7 @@ describe('StdioAgentTransport', () => {
 
       // Don't emit any events to trigger timeout
       await expect(promise).rejects.toThrow('Agent call timeout after 100ms');
-      expect(mockChild.kill).toHaveBeenCalledWith('SIGTERM');
+      // Note: timeout doesn't kill the process, it just rejects the request
     });
 
     it('should handle process killed by signal', async () => {

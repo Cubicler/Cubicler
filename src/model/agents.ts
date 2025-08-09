@@ -55,6 +55,19 @@ export interface StdioAgentConfig extends BaseAgentConfig {
   args?: string[];
   env?: Record<string, string>;
   cwd?: string;
+  /** Optional stdio pooling configuration */
+  pooling?: {
+    /** Enable the stdio agent pool */
+    enabled: boolean;
+    /** Idle timeout (ms) for pooled workers; primary never idles out. Default: 300_000 */
+    maxIdleTime?: number;
+    /** Maximum total processes (including primary). Default: 4 */
+    maxPoolSize?: number;
+    /** Queue timeout (ms) when pool is saturated. Default: 30_000 */
+    queueTimeoutMs?: number;
+    /** Maximum queue size to prevent unbounded memory. Default: 100 */
+    queueMaxSize?: number;
+  };
 }
 
 /**

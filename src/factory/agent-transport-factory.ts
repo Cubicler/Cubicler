@@ -4,8 +4,8 @@ import type { MCPHandling } from '../interface/mcp-handling.js';
 import type { ServersProviding } from '../interface/servers-providing.js';
 import { HttpAgentTransport } from '../transport/agent/http-agent-transport.js';
 import { SseAgentTransport } from '../transport/agent/sse-agent-transport.js';
-import { StdioAgentTransport } from '../transport/agent/stdio-agent-transport.js';
 import { DirectOpenAIAgentTransport } from '../transport/agent/direct-openai-agent-transport.js';
+import { StdioAgentPools } from '../transport/agent/stdio-agent-pools.js';
 
 /**
  * Factory for creating agent transport implementations
@@ -49,7 +49,9 @@ export class AgentTransportFactory {
         if (!('command' in agent)) {
           throw new Error(`Stdio agent ${agentId} requires 'command' property`);
         }
-        return new StdioAgentTransport(agent, this.mcpService);
+        // Always use StdioAgentPools for stdio agents - provides pooling when enabled,
+        // single transport when disabled, and ensures single in-flight dispatch enforcement
+        return new StdioAgentPools(agent, this.mcpService);
       }
       case 'direct': {
         if (!('provider' in agent)) {

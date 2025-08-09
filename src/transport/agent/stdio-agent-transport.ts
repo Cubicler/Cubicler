@@ -54,15 +54,27 @@ type JsonRpcMessage = AgentRpcResponse | JsonRpcRequest;
 /**
  * Stdio transport implementation for agent communication using JSON-RPC
  * Communicates with agents using JSON-RPC 2.0 protocol over stdio
+ * Maintains persistent process for multiple requests
  */
 export class StdioAgentTransport implements AgentTransport {
   private readonly config: StdioAgentConfig;
   private readonly mcpService: MCPHandling | undefined;
   private process: ChildProcess | null = null;
   private buffer = '';
-  private agentResponseResolve: ((_response: AgentResponse) => void) | null = null;
-  private agentResponseReject: ((_error: Error) => void) | null = null;
   private requestId = 1;
+  private currentRequest: {
+    id: string | number;
+    resolve: (_response: AgentResponse) => void;
+    reject: (_error: Error) => void;
+    timeout: ReturnType<typeof setTimeout>;
+  } | null = null;
+  private processStarting = false;
+  private processReady = false;
+  private shuttingDown = false;
+  private restartAttempts = 0;
+  private restartTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly maxRestartAttempts = 5;
+  private readonly restartBaseDelayMs = 500;
 
   /**
    * Creates a new StdioAgentTransport instance
@@ -79,67 +91,100 @@ export class StdioAgentTransport implements AgentTransport {
   }
 
   /**
-   * Call the agent via JSON-RPC stdio communication
+   * Call the agent via JSON-RPC stdio communication using persistent process
    * @param agentRequest - The request to send to the agent
    * @returns Promise that resolves to the agent's response
    * @throws Error if the process fails or returns invalid response
    */
   async dispatch(agentRequest: AgentRequest): Promise<AgentResponse> {
     console.log(
-      `🚀 [StdioAgentTransport] Starting JSON-RPC agent: ${this.config.command} ${(this.config.args || []).join(' ')}`
+      `🚀 [StdioAgentTransport] Dispatching to agent: ${this.config.command} ${(this.config.args || []).join(' ')}`
     );
 
+    if (this.currentRequest) {
+      throw new Error('StdioAgentTransport is busy with another request');
+    }
+
+    // Ensure process is running
+    await this.ensureProcess();
+
     return new Promise((resolve, reject) => {
-      this.agentResponseResolve = resolve;
-      this.agentResponseReject = reject;
+      const currentRequestId = this.requestId++;
 
-      // Start the agent process
-      this.startProcess()
-        .then(() => {
-          // Send JSON-RPC request
-          const rpcRequest: AgentRpcRequest = {
-            jsonrpc: '2.0',
-            id: this.requestId++,
-            method: 'dispatch',
-            params: agentRequest,
-          };
+      // Set up timeout
+      const timeoutMs = getAgentCallTimeout();
+      const timeout = setTimeout(() => {
+        if (this.currentRequest && this.currentRequest.id === currentRequestId) {
+          this.currentRequest = null;
+        }
+        reject(new Error(`Agent call timeout after ${timeoutMs}ms`));
+      }, timeoutMs);
 
-          this.sendRpcRequest(rpcRequest);
+      // Store the single in-flight request
+      this.currentRequest = {
+        id: currentRequestId,
+        resolve,
+        reject,
+        timeout,
+      };
 
-          // Set up overall timeout
-          const timeoutMs = getAgentCallTimeout();
-          const timeoutId = setTimeout(() => {
-            this.cleanup();
-            reject(new Error(`Agent call timeout after ${timeoutMs}ms`));
-          }, timeoutMs);
+      // Send JSON-RPC request
+      const rpcRequest: AgentRpcRequest = {
+        jsonrpc: '2.0',
+        id: currentRequestId,
+        method: 'dispatch',
+        params: agentRequest,
+      };
 
-          // Clean up timeout when done
-          const originalResolve = this.agentResponseResolve;
-          const originalReject = this.agentResponseReject;
-
-          this.agentResponseResolve = (response: AgentResponse) => {
-            clearTimeout(timeoutId);
-            originalResolve?.(response);
-          };
-
-          this.agentResponseReject = (error: Error) => {
-            clearTimeout(timeoutId);
-            originalReject?.(error);
-          };
-        })
-        .catch(reject);
+      try {
+        this.sendRpcRequest(rpcRequest);
+      } catch (error) {
+        if (this.currentRequest && this.currentRequest.id === currentRequestId) {
+          clearTimeout(timeout);
+          this.currentRequest = null;
+        }
+        reject(error);
+      }
     });
   }
 
   /**
-   * Start the agent process and set up communication
+   * Ensure the agent process is running and ready
    */
-  private async startProcess(): Promise<void> {
-    if (this.process) {
-      throw new Error('Agent process is already running');
+  private async ensureProcess(): Promise<void> {
+    if (this.processReady && this.process && !this.process.killed) {
+      return;
     }
 
+    if (this.processStarting) {
+      // Wait for the current startup to complete
+      while (this.processStarting) {
+        await new Promise<void>((resolve) => setTimeout(resolve, 10));
+      }
+      if (this.processReady) {
+        return;
+      }
+    }
+
+    await this.startProcess();
+  }
+
+  /**
+   * Start the agent process and set up communication (persistent)
+   */
+  private async startProcess(): Promise<void> {
+    if (this.processStarting) {
+      return;
+    }
+
+    this.processStarting = true;
+    this.processReady = false;
+
     return new Promise((resolve, reject) => {
+      console.log(
+        `🚀 [StdioAgentTransport] Starting persistent JSON-RPC agent: ${this.config.command} ${(this.config.args || []).join(' ')}`
+      );
+
       this.process = spawn(this.config.command, this.config.args || [], {
         stdio: ['pipe', 'pipe', 'pipe'],
         cwd: this.config.cwd,
@@ -147,6 +192,7 @@ export class StdioAgentTransport implements AgentTransport {
       });
 
       if (!this.process.stdout || !this.process.stdin || !this.process.stderr) {
+        this.processStarting = false;
         reject(new Error('Failed to create process streams'));
         return;
       }
@@ -166,26 +212,108 @@ export class StdioAgentTransport implements AgentTransport {
         console.log(
           `🔄 [StdioAgentTransport] Agent process exited with code ${code}, signal ${signal}`
         );
-        if (code !== 0 && this.agentResponseReject) {
-          const errorMessage = `Agent process exited with code ${code}${signal ? `, signal ${signal}` : ''}`;
-          this.agentResponseReject(new Error(errorMessage));
+
+        this.processReady = false;
+        this.processStarting = false;
+        // Clear process reference to allow clean restart on next dispatch
+        this.process = null;
+
+        // Schedule auto-restart unless we're intentionally shutting down
+        if (!this.shuttingDown) {
+          this.scheduleRestart();
         }
-        this.cleanup();
+
+        // Handle any remaining in-flight request
+        if (this.currentRequest) {
+          console.warn(`⚠️ [StdioAgentTransport] Process exited with 1 pending request`);
+
+          // Reject all pending requests with appropriate error
+          const exitError = new Error(
+            `Agent process exited with code ${code}${signal ? `, signal ${signal}` : ''}`
+          );
+
+          clearTimeout(this.currentRequest.timeout);
+          this.currentRequest.reject(exitError);
+          this.currentRequest = null;
+        } else {
+          // Process exited cleanly with no pending requests
+          if (code === 0) {
+            console.log(`✅ [StdioAgentTransport] Agent process completed successfully`);
+          } else {
+            console.warn(
+              `⚠️ [StdioAgentTransport] Agent process exited with non-zero code but no pending requests`
+            );
+          }
+        }
       });
 
       // Handle process errors
       this.process.on('error', (error) => {
         console.error(`❌ [StdioAgentTransport] Agent process error:`, error);
-        if (this.agentResponseReject) {
-          this.agentResponseReject(new Error(`Failed to spawn agent process: ${error.message}`));
+        this.processStarting = false;
+        this.processReady = false;
+        // Clear process reference; next dispatch will attempt restart
+        this.process = null;
+
+        if (!this.shuttingDown) {
+          this.scheduleRestart();
         }
-        this.cleanup();
+
+        // Reject startup and any in-flight request
+        reject(new Error(`Failed to spawn agent process: ${error.message}`));
+        const processError = new Error(`Agent process error: ${error.message}`);
+        if (this.currentRequest) {
+          clearTimeout(this.currentRequest.timeout);
+          this.currentRequest.reject(processError);
+          this.currentRequest = null;
+        }
       });
 
       // Process started successfully
-      console.log(`✅ [StdioAgentTransport] Agent process started`);
+      this.processStarting = false;
+      this.processReady = true;
+      // Reset restart state on successful start
+      this.restartAttempts = 0;
+      if (this.restartTimer) {
+        clearTimeout(this.restartTimer);
+        this.restartTimer = null;
+      }
+      console.log(`✅ [StdioAgentTransport] Agent process started and ready`);
       resolve();
     });
+  }
+
+  /**
+   * Schedule an automatic restart with exponential backoff.
+   */
+  private scheduleRestart(): void {
+    if (this.restartAttempts >= this.maxRestartAttempts) {
+      console.warn(
+        `⚠️ [StdioAgentTransport] Max restart attempts (${this.maxRestartAttempts}) reached; will restart on next dispatch.`
+      );
+      return;
+    }
+
+    const delay = Math.min(10000, this.restartBaseDelayMs * Math.pow(2, this.restartAttempts));
+    this.restartAttempts += 1;
+    console.log(
+      `🔁 [StdioAgentTransport] Scheduling restart attempt #${this.restartAttempts} in ${delay}ms`
+    );
+
+    if (this.restartTimer) {
+      clearTimeout(this.restartTimer);
+    }
+
+    this.restartTimer = setTimeout(() => {
+      // Avoid racing if process already started elsewhere
+      if (this.processReady || this.processStarting || this.shuttingDown) {
+        return;
+      }
+      void this.startProcess().catch((err) => {
+        console.warn(`⚠️ [StdioAgentTransport] Auto-restart failed: ${String(err)}`);
+        // If it fails, another attempt will be scheduled on next exit/error
+      });
+    }, delay);
   }
 
   /**
@@ -234,17 +362,27 @@ export class StdioAgentTransport implements AgentTransport {
     // Validate JSON-RPC response format
     if (rpcResponse.jsonrpc !== '2.0' || rpcResponse.id === undefined) {
       console.error(`❌ [StdioAgentTransport] Invalid JSON-RPC response format:`, rpcResponse);
-      if (this.agentResponseReject) {
-        this.agentResponseReject(new Error('Invalid JSON-RPC response format'));
-      }
       return;
     }
 
+    const requestId = rpcResponse.id;
+    const pendingRequest =
+      this.currentRequest && this.currentRequest.id === requestId ? this.currentRequest : null;
+
+    if (!pendingRequest) {
+      console.warn(
+        `⚠️ [StdioAgentTransport] Received response for unknown request ID: ${requestId}`
+      );
+      return;
+    }
+
+    // Clean up the pending request
+    clearTimeout(pendingRequest.timeout);
+    this.currentRequest = null;
+
     if (rpcResponse.error) {
       console.error(`❌ [StdioAgentTransport] Agent returned error:`, rpcResponse.error);
-      if (this.agentResponseReject) {
-        this.agentResponseReject(new Error(`Agent error: ${rpcResponse.error.message}`));
-      }
+      pendingRequest.reject(new Error(`Agent error: ${rpcResponse.error.message}`));
       return;
     }
 
@@ -252,22 +390,14 @@ export class StdioAgentTransport implements AgentTransport {
       try {
         this.validateAgentResponse(rpcResponse.result);
         console.log(`✅ [StdioAgentTransport] Agent responded successfully`);
-        if (this.agentResponseResolve) {
-          this.agentResponseResolve(rpcResponse.result);
-        }
+        pendingRequest.resolve(rpcResponse.result);
       } catch (error) {
         console.error(`❌ [StdioAgentTransport] Invalid agent response:`, error);
-        if (this.agentResponseReject) {
-          this.agentResponseReject(error as Error);
-        }
-      } finally {
-        this.cleanup();
+        pendingRequest.reject(error as Error);
       }
     } else {
       console.error(`❌ [StdioAgentTransport] No result in JSON-RPC response:`, rpcResponse);
-      if (this.agentResponseReject) {
-        this.agentResponseReject(new Error('No result in JSON-RPC response'));
-      }
+      pendingRequest.reject(new Error('No result in JSON-RPC response'));
     }
   }
 
@@ -284,16 +414,22 @@ export class StdioAgentTransport implements AgentTransport {
       this.process.stdin.write(requestData, (error) => {
         if (error) {
           console.error(`❌ [StdioAgentTransport] Failed to send JSON-RPC request:`, error);
-          if (this.agentResponseReject) {
-            this.agentResponseReject(new Error(`Failed to send request: ${error.message}`));
+          // Reject in-flight request if it matches
+          if (this.currentRequest && this.currentRequest.id === rpcRequest.id) {
+            clearTimeout(this.currentRequest.timeout);
+            this.currentRequest.reject(new Error(`Failed to send request: ${error.message}`));
+            this.currentRequest = null;
           }
         }
       });
     } catch (error) {
       const errorMsg = `Failed to write to agent process: ${error}`;
       console.error(`❌ [StdioAgentTransport] Write error:`, errorMsg);
-      if (this.agentResponseReject) {
-        this.agentResponseReject(new Error(errorMsg));
+      // Reject in-flight request if it matches
+      if (this.currentRequest && this.currentRequest.id === rpcRequest.id) {
+        clearTimeout(this.currentRequest.timeout);
+        this.currentRequest.reject(new Error(errorMsg));
+        this.currentRequest = null;
       }
     }
   }
@@ -441,24 +577,68 @@ export class StdioAgentTransport implements AgentTransport {
   }
 
   /**
-   * Clean up resources
+   * Clean up resources (only called when transport is being destroyed)
    */
   private cleanup(): void {
+    this.shuttingDown = true;
+    if (this.restartTimer) {
+      clearTimeout(this.restartTimer);
+      this.restartTimer = null;
+    }
+    // Reject in-flight request if any
+    const cleanupError = new Error('Agent transport is being cleaned up');
+    if (this.currentRequest) {
+      clearTimeout(this.currentRequest.timeout);
+      this.currentRequest.reject(cleanupError);
+      this.currentRequest = null;
+    }
+
     // Close process
     if (this.process && !this.process.killed) {
-      this.process.kill('SIGTERM');
-      // Force kill after 2 seconds
-      setTimeout(() => {
+      try {
+        // Close stdin first to signal the agent to finish
+        this.process.stdin?.end();
+
+        // Give the process 5 seconds to shut down gracefully
+        const gracefulTimeout = setTimeout(() => {
+          if (this.process && !this.process.killed) {
+            console.warn(
+              `⚠️ [StdioAgentTransport] Force killing agent process after graceful shutdown timeout`
+            );
+            this.process.kill('SIGKILL');
+          }
+        }, 5000);
+
+        // Send SIGTERM for graceful shutdown
+        this.process.kill('SIGTERM');
+
+        // Clear timeout when process exits
+        this.process.on('exit', () => {
+          clearTimeout(gracefulTimeout);
+        });
+      } catch (error) {
+        console.warn(`⚠️ [StdioAgentTransport] Error during cleanup:`, error);
+        // Force kill if graceful cleanup fails
         if (this.process && !this.process.killed) {
           this.process.kill('SIGKILL');
         }
-      }, 2000);
+      }
     }
 
     this.process = null;
     this.buffer = '';
-    this.agentResponseResolve = null;
-    this.agentResponseReject = null;
+    this.processReady = false;
+    this.processStarting = false;
+    this.shuttingDown = false;
+  }
+
+  /**
+   * Destroy the transport and clean up resources
+   * Called when the transport is no longer needed
+   */
+  destroy(): void {
+    console.log(`🧹 [StdioAgentTransport] Destroying transport and cleaning up resources`);
+    this.cleanup();
   }
 
   /**
