@@ -70,13 +70,13 @@ export async function startCubiclerServerWithHealthCheck(
         chunk.includes('EADDRINUSE') ||
         chunk.includes('Cannot find module') ||
         chunk.includes('SyntaxError') ||
-        (chunk.includes('Error:') && 
-         !chunk.includes('Warning') && 
-         !chunk.includes('Agent not found') &&
-         !chunk.includes('POST /dispatch') &&
-         !chunk.includes('Agent stderr') &&
-         !chunk.includes('Agent process error') &&
-         !chunk.includes('Write error'))
+        (chunk.includes('Error:') &&
+          !chunk.includes('Warning') &&
+          !chunk.includes('Agent not found') &&
+          !chunk.includes('POST /dispatch') &&
+          !chunk.includes('Agent stderr') &&
+          !chunk.includes('Agent process error') &&
+          !chunk.includes('Write error'))
       ) {
         clearTimeout(timeout);
         if (serverProcess) {
@@ -100,7 +100,9 @@ export async function startCubiclerServerWithHealthCheck(
     serverProcess.on('error', (error) => {
       clearTimeout(timeout);
       reject(
-        new Error(`Failed to start server: ${error.message}. Output: ${output}, Error: ${errorOutput}`)
+        new Error(
+          `Failed to start server: ${error.message}. Output: ${output}, Error: ${errorOutput}`
+        )
       );
     });
   });
@@ -109,7 +111,7 @@ export async function startCubiclerServerWithHealthCheck(
 async function pollHealthCheck(
   resolve: (serverProcess: ChildProcess) => void,
   reject: (error: Error) => void,
-  timeout: NodeJS.Timeout,
+  timeout: ReturnType<typeof setTimeout>,
   output: string,
   errorOutput: string,
   serverPort: number,
@@ -124,7 +126,7 @@ async function pollHealthCheck(
 
     try {
       const response = await fetch(`${serverUrl}/health`, {
-        signal: AbortSignal.timeout(2000), // 2 second timeout per request
+        signal: globalThis.AbortSignal.timeout(2000), // 2 second timeout per request
       });
 
       if (response.ok) {

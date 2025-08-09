@@ -252,7 +252,7 @@ export class StdioMCPTransport implements MCPTransport {
     }
     if (this.processStarting) {
       // Wait briefly for a concurrent start to finish
-      await new Promise((r) => setTimeout(r, 50));
+      await new Promise((r) => global.setTimeout(r, 50));
       if (this.process && !this.process.killed && this.process.stdin) return;
     }
     await this.startProcess();
@@ -346,7 +346,9 @@ export class StdioMCPTransport implements MCPTransport {
         return;
       }
       void this.startProcess().catch((err) => {
-        console.warn(`⚠️ [StdioMCPTransport] Auto-restart failed for ${this.serverId}: ${String(err)}`);
+        console.warn(
+          `⚠️ [StdioMCPTransport] Auto-restart failed for ${this.serverId}: ${String(err)}`
+        );
       });
     }, delay);
   }
