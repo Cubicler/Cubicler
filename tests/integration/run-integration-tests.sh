@@ -35,27 +35,27 @@ echo "✅ Environment variables loaded"
 cd ../..
 
 echo "📡 Running Dispatch Integration Tests..."
-npm test -- tests/integration/dispatch-integration.test.ts --run
+npm run -s run-integration -- tests/integration/dispatch-integration.test.ts
 
 echo ""
 echo "📡 Running SSE Integration Tests..."
-npm test -- tests/integration/sse-integration.test.ts --run
+npm run -s run-integration -- tests/integration/sse-integration.test.ts
 
 echo ""
 echo "🔗 Running MCP SSE Integration Tests..."
-npm test -- tests/integration/mcp-sse-integration.test.ts --run
+npm run -s run-integration -- tests/integration/mcp-sse-integration.test.ts
 
 echo ""
 echo "🔗 Running MCP HTTP Integration Tests..."
-npm test -- tests/integration/mcp-http-integration.test.ts --run
+npm run -s run-integration -- tests/integration/mcp-http-integration.test.ts
 
 echo ""
 echo "🔗 Running Webhook Integration Tests..."
-npm test -- tests/integration/webhook-integration.test.ts --run
+npm run -s run-integration -- tests/integration/webhook-integration.test.ts
 
 echo ""
 echo "📟 Running Stdio Agent Integration Tests..."
-npm test -- tests/integration/stdio-integration.test.ts --run
+npm run -s run-integration -- tests/integration/stdio-integration.test.ts
 
 echo ""
 echo "✅ All integration tests completed!"

@@ -13,6 +13,7 @@ import {
   MessageSender,
 } from '../model/dispatch.js';
 import { AgentTransportFactory } from '../factory/agent-transport-factory.js';
+import type { AgentTransport } from '../interface/agent-transport.js';
 import { filterAllowedServers, filterAllowedTools } from '../utils/restriction-helper.js';
 import type { ServersProviding } from '../interface/servers-providing.js';
 import { SseAgentTransport } from '../transport/agent/sse-agent-transport.js';
@@ -26,6 +27,10 @@ import { withInvocationContext } from '../utils/prompt-context.js';
  */
 export class DispatchService implements DispatchHandling {
   private readonly transportFactory: AgentTransportFactory;
+  private readonly transportCache = new Map<
+    string,
+    { transport: AgentTransport; configHash: string }
+  >();
 
   /**
    * Creates a new DispatchService instance
@@ -53,32 +58,65 @@ export class DispatchService implements DispatchHandling {
   async dispatch(agentId: string | undefined, request: DispatchRequest): Promise<DispatchResponse> {
     console.log(`📨 [DispatchService] Dispatching to agent: ${agentId || 'default'}`);
 
-    this.validateDispatchRequest(request);
-
-    // Gather all required data for the agent request
-    const agentData = await this.gatherAgentData(agentId);
-    const [agentInfo, agent, prompt, serversInfo, cubiclerTools] = agentData;
-
-    // Create sender object once for reuse
-    const sender = { id: agentInfo.identifier, name: agentInfo.name };
-
-    // Prepare and send request to agent
-    const agentRequest = this.buildAgentRequest(
-      agentInfo,
-      prompt,
-      serversInfo,
-      cubiclerTools,
-      request.messages
-    );
-
-    console.log(`🚀 [DispatchService] Calling agent ${agentInfo.name} via ${agent.transport}`);
-
+    let agentInfo: AgentInfo | undefined;
     try {
+      this.validateDispatchRequest(request);
+
+      // If no specific agent is provided, check that only one agent is configured
+      if (!agentId) {
+        const agentCount = await this.agentProvider.getAgentCount();
+        if (agentCount > 1) {
+          throw new Error(
+            'Multiple agents configured. Please specify an agent ID using /dispatch/:agentId endpoint'
+          );
+        }
+      }
+
+      // Gather all required data for the agent request
+      const agentData = await this.gatherAgentData(agentId);
+      const [agentInfoData, agent, prompt, serversInfo, cubiclerTools] = agentData;
+      agentInfo = agentInfoData;
+
+      // Create sender object once for reuse
+      const sender = { id: agentInfo.identifier, name: agentInfo.name };
+
+      // Prepare and send request to agent
+      const agentRequest = this.buildAgentRequest(
+        agentInfo,
+        prompt,
+        serversInfo,
+        cubiclerTools,
+        request.messages
+      );
+
+      console.log(`🚀 [DispatchService] Calling agent ${agentInfo.name} via ${agent.transport}`);
+
       const response = await this.callAgent(agentInfo.identifier, agent, agentRequest);
       return await this.handleAgentResponse(response, sender, agentInfo.name);
     } catch (error) {
-      console.error(`❌ [DispatchService] Agent call failed:`, error);
-      return this.createErrorResponse(sender, error);
+      console.error(`❌ [DispatchService] Agent dispatch failed:`, error);
+
+      // Re-throw "Agent not found" errors so the server can return 404
+      if (error instanceof Error && error.message.includes('Agent not found')) {
+        throw error;
+      }
+
+      // Re-throw validation errors since they occur before we have agent info
+      if (error instanceof Error && error.message.includes('Messages array is required')) {
+        throw error;
+      }
+
+      // Re-throw multiple agents configuration error
+      if (error instanceof Error && error.message.includes('Multiple agents configured')) {
+        throw error;
+      }
+
+      // Create a fallback sender for other error types (agent call failures, transport errors, etc.)
+      // Use agent info if available, otherwise fall back to original agentId
+      const fallbackId = agentInfo?.identifier || agentId || 'unknown';
+      const fallbackName = agentInfo?.name || agentId || 'Unknown Agent';
+      const fallbackSender = { id: fallbackId, name: fallbackName };
+      return this.createErrorResponse(fallbackSender, error);
     }
   }
 
@@ -122,7 +160,7 @@ export class DispatchService implements DispatchHandling {
     agent: AgentConfig,
     agentRequest: AgentRequest
   ): Promise<AgentResponse> {
-    const transport = this.transportFactory.createTransport(agentId, agent);
+    const transport = await this.getOrCreateTransport(agentId, agent);
 
     // Register SSE transports with the SSE agent service for connection management
     if (transport instanceof SseAgentTransport) {
@@ -133,15 +171,126 @@ export class DispatchService implements DispatchHandling {
   }
 
   /**
+   * Get existing transport or create new one if configuration changed
+   * @param agentId - Agent identifier
+   * @param agent - Agent configuration
+   * @returns Agent transport (cached or newly created)
+   */
+  private async getOrCreateTransport(agentId: string, agent: AgentConfig): Promise<AgentTransport> {
+    const configHash = this.generateConfigHash(agent);
+    const cached = this.transportCache.get(agentId);
+
+    // Return cached transport if configuration hasn't changed
+    if (cached && cached.configHash === configHash) {
+      return cached.transport;
+    }
+
+    // Clean up old transport if it exists
+    if (cached) {
+      console.log(
+        `🔄 [DispatchService] Agent config changed for ${agentId}, cleaning up old transport`
+      );
+      await this.cleanupTransport(cached.transport);
+    }
+
+    // Create new transport
+    console.log(`🆕 [DispatchService] Creating new transport for agent ${agentId}`);
+    const transport = this.transportFactory.createTransport(agentId, agent);
+
+    // Cache the new transport
+    this.transportCache.set(agentId, { transport, configHash });
+
+    return transport;
+  }
+
+  /**
+   * Generate a hash of agent configuration to detect changes
+   * @param agent - Agent configuration
+   * @returns Configuration hash string
+   */
+  private generateConfigHash(agent: AgentConfig): string {
+    // Create a simple hash of the relevant configuration properties
+    const configString = JSON.stringify({
+      transport: agent.transport,
+      command: 'command' in agent ? agent.command : undefined,
+      args: 'args' in agent ? agent.args : undefined,
+      env: 'env' in agent ? agent.env : undefined,
+      cwd: 'cwd' in agent ? agent.cwd : undefined,
+      url: 'url' in agent ? agent.url : undefined,
+      provider: 'provider' in agent ? agent.provider : undefined,
+      model: 'model' in agent ? agent.model : undefined,
+      temperature: 'temperature' in agent ? agent.temperature : undefined,
+      maxTokens: 'maxTokens' in agent ? agent.maxTokens : undefined,
+      pooling: 'pooling' in agent ? agent.pooling : undefined,
+    });
+
+    // Simple hash function (could use crypto.createHash for production)
+    let hash = 0;
+    for (let i = 0; i < configString.length; i++) {
+      const char = configString.charCodeAt(i);
+      hash = (hash << 5) - hash + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+
+    return hash.toString(36);
+  }
+
+  /**
+   * Clean up a transport instance
+   * @param transport - Transport to clean up
+   */
+  private async cleanupTransport(transport: AgentTransport): Promise<void> {
+    try {
+      // Check if transport has a cleanup/destroy method
+      if ('destroy' in transport && typeof transport.destroy === 'function') {
+        await transport.destroy();
+      } else if ('cleanup' in transport && typeof transport.cleanup === 'function') {
+        await (transport as { cleanup(): Promise<void> }).cleanup();
+      }
+    } catch (error) {
+      console.warn(`⚠️ [DispatchService] Error cleaning up transport:`, error);
+    }
+  }
+
+  /**
+   * Clear all cached transports (useful for testing or configuration reloads)
+   */
+  public async clearTransportCache(): Promise<void> {
+    console.log(
+      `🧹 [DispatchService] Clearing transport cache (${this.transportCache.size} transports)`
+    );
+
+    const cleanupPromises: Promise<void>[] = [];
+
+    for (const [agentId, cached] of this.transportCache.entries()) {
+      console.log(`🧹 [DispatchService] Cleaning up transport for agent ${agentId}`);
+      cleanupPromises.push(this.cleanupTransport(cached.transport));
+    }
+
+    // Wait for all cleanup operations to complete
+    await Promise.all(cleanupPromises);
+
+    // Clear the cache
+    this.transportCache.clear();
+
+    console.log(`✅ [DispatchService] Transport cache cleared successfully`);
+  }
+
+  /**
    * Gather all agent-related data in parallel for optimal performance
    */
   private async gatherAgentData(
     agentId: string | undefined
   ): Promise<[AgentInfo, AgentConfig, string, AgentServerInfo[], ToolDefinition[]]> {
-    const [agentInfo, agent, prompt, serversInfo, allTools] = await Promise.all([
+    // First check agent existence to fail fast and avoid unnecessary MCP calls
+    const [agentInfo, agent, prompt] = await Promise.all([
       this.agentProvider.getAgentInfo(agentId),
       this.agentProvider.getAgent(agentId),
       this.agentProvider.getAgentPrompt(agentId),
+    ]);
+
+    // Only make MCP calls if agent exists
+    const [serversInfo, allTools] = await Promise.all([
       // Inline servers info retrieval via MCP service
       this.mcpService
         .handleMCPRequest({
@@ -274,21 +423,29 @@ export class DispatchService implements DispatchHandling {
   async dispatchWebhook(agentId: string, agentRequest: AgentRequest): Promise<DispatchResponse> {
     console.log(`🪝 [DispatchService] Dispatching webhook to agent: ${agentId}`);
 
-    // Get agent configuration
-    const agent = await this.agentProvider.getAgent(agentId);
-    const agentInfo = await this.agentProvider.getAgentInfo(agentId);
-
-    // Create sender object for response
-    const sender = { id: agentInfo.identifier, name: agentInfo.name };
-
-    console.log(`🚀 [DispatchService] Calling agent ${agentInfo.name} via ${agent.transport}`);
-
     try {
+      // Get agent configuration
+      const agent = await this.agentProvider.getAgent(agentId);
+      const agentInfo = await this.agentProvider.getAgentInfo(agentId);
+
+      // Create sender object for response
+      const sender = { id: agentInfo.identifier, name: agentInfo.name };
+
+      console.log(`🚀 [DispatchService] Calling agent ${agentInfo.name} via ${agent.transport}`);
+
       const response = await this.callAgent(agentId, agent, agentRequest);
       return await this.handleAgentResponse(response, sender, agentInfo.name);
     } catch (error) {
-      console.error(`❌ [DispatchService] Webhook agent call failed:`, error);
-      return this.createErrorResponse(sender, error);
+      console.error(`❌ [DispatchService] Webhook dispatch failed:`, error);
+
+      // Re-throw "Agent not found" errors so the server can return 404
+      if (error instanceof Error && error.message.includes('Agent not found')) {
+        throw error;
+      }
+
+      // Create a fallback sender for other error types (validation, agent call failures, etc.)
+      const fallbackSender = { id: agentId, name: agentId };
+      return this.createErrorResponse(fallbackSender, error);
     }
   }
 }

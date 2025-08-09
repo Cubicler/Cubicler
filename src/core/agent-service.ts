@@ -114,6 +114,15 @@ export class AgentService implements AgentsProviding {
   }
 
   /**
+   * Get the number of configured agents
+   * @returns The count of configured agents
+   */
+  async getAgentCount(): Promise<number> {
+    const config = await this.agentsConfigProvider.getAgentsConfig();
+    return Object.keys(config.agents).length;
+  }
+
+  /**
    * Get agent URL for communication
    * @param agentIdentifier - Optional agent identifier. If not provided, uses default agent
    * @returns The URL endpoint for the agent

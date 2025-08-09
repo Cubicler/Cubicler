@@ -26,11 +26,11 @@
     },
     "test-stdio-openai-weather": {
       "name": "Stdio OpenAI Weather Test Agent",
-      "description": "CubicAgent-OpenAI v2.5.0 stdio agent for testing weather API integration",
+      "description": "CubicAgent-OpenAI v2.6.3 stdio agent for testing weather API integration",
       "transport": "stdio",
-      "command": "node",
+      "command": "npx",
       "args": [
-        "../CubicAgent-OpenAI/dist/index.js",
+        "@cubicler/cubicagent-openai",
         "--model", "gpt-4o-mini",
         "--temperature", "0.3",
         "--max-tokens", "2000"
@@ -42,11 +42,11 @@
     },
     "test-stdio-openai-basic": {
       "name": "Stdio OpenAI Basic Test Agent",
-      "description": "CubicAgent-OpenAI v2.5.0 stdio agent for basic functionality testing",
+      "description": "CubicAgent-OpenAI v2.6.3 stdio agent for basic functionality testing",
       "transport": "stdio",
-      "command": "node", 
+      "command": "npx", 
       "args": [
-        "../CubicAgent-OpenAI/dist/index.js",
+        "@cubicler/cubicagent-openai",
         "--model", "gpt-4o-mini",
         "--temperature", "0.7",
         "--max-tokens", "1500"
@@ -55,6 +55,29 @@
         "OPENAI_API_KEY": "{{env.OPENAI_API_KEY}}"
       },
       "prompt": "You are a helpful AI assistant for integration testing. Respond concisely and helpfully to user queries. When testing tools, try to use available MCP tools if appropriate."
+    },
+    "test-stdio-openai-pooled": {
+      "name": "Stdio OpenAI Pooled Test Agent", 
+      "description": "CubicAgent-OpenAI v2.6.3 stdio agent with pooling enabled for concurrency testing",
+      "transport": "stdio",
+      "command": "npx",
+      "args": [
+        "@cubicler/cubicagent-openai",
+        "--model", "gpt-4o-mini",
+        "--temperature", "0.7",
+        "--max-tokens", "1500"
+      ],
+      "env": {
+        "OPENAI_API_KEY": "{{env.OPENAI_API_KEY}}"
+      },
+      "pooling": {
+        "enabled": true,
+        "maxIdleTime": 10000,
+        "maxPoolSize": 3,
+        "queueTimeoutMs": 15000,
+        "queueMaxSize": 10
+      },
+      "prompt": "You are a helpful AI assistant for pool testing. Respond concisely and helpfully to user queries."
     }
   }
 }

@@ -317,4 +317,68 @@ describe('Agent Service', () => {
       expect(result).toBe('You are a helpful AI assistant powered by Cubicler.');
     });
   });
+
+  describe('getAgentCount', () => {
+    it('should return correct agent count when multiple agents exist', async () => {
+      const mockConfig: AgentsConfig = {
+        agents: {
+          agent1: {
+            name: 'Agent 1',
+            description: 'First agent',
+            transport: 'http',
+            url: 'http://localhost:3000',
+          },
+          agent2: {
+            name: 'Agent 2',
+            description: 'Second agent',
+            transport: 'http',
+            url: 'http://localhost:3001',
+          },
+          agent3: {
+            name: 'Agent 3',
+            description: 'Third agent',
+            transport: 'http',
+            url: 'http://localhost:3002',
+          },
+        },
+      };
+
+      vi.mocked(mockAgentsConfigProvider.getAgentsConfig).mockResolvedValue(mockConfig);
+
+      const result = await agentService.getAgentCount();
+
+      expect(result).toBe(3);
+    });
+
+    it('should return 1 when only one agent exists', async () => {
+      const mockConfig: AgentsConfig = {
+        agents: {
+          single_agent: {
+            name: 'Single Agent',
+            description: 'Only agent',
+            transport: 'http',
+            url: 'http://localhost:3000',
+          },
+        },
+      };
+
+      vi.mocked(mockAgentsConfigProvider.getAgentsConfig).mockResolvedValue(mockConfig);
+
+      const result = await agentService.getAgentCount();
+
+      expect(result).toBe(1);
+    });
+
+    it('should return 0 when no agents exist', async () => {
+      const mockConfig: AgentsConfig = {
+        agents: {},
+      };
+
+      vi.mocked(mockAgentsConfigProvider.getAgentsConfig).mockResolvedValue(mockConfig);
+
+      const result = await agentService.getAgentCount();
+
+      expect(result).toBe(0);
+    });
+  });
 });

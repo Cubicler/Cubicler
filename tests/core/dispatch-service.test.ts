@@ -50,6 +50,7 @@ describe('Dispatch Service', () => {
       getAgent: vi.fn(),
       hasAgent: vi.fn(),
       getAllAgents: vi.fn(),
+      getAgentCount: vi.fn(),
     };
 
     // Create mock servers provider
@@ -319,6 +320,142 @@ describe('Dispatch Service', () => {
       await expect(dispatchService.dispatch(undefined, invalidRequest)).rejects.toThrow(
         'Messages array is required and must not be empty'
       );
+    });
+
+    it('should reject /dispatch endpoint when multiple agents are configured', async () => {
+      const mockRequest = {
+        messages: [
+          {
+            sender: { id: 'user_123', name: 'John Doe' },
+            type: 'text' as const,
+            content: 'Hello',
+          },
+        ],
+      };
+
+      // Mock that there are multiple agents configured
+      vi.mocked(mockAgentProvider.getAgentCount).mockResolvedValue(2);
+
+      await expect(dispatchService.dispatch(undefined, mockRequest)).rejects.toThrow(
+        'Multiple agents configured. Please specify an agent ID using /dispatch/:agentId endpoint'
+      );
+
+      // Verify getAgentCount was called
+      expect(mockAgentProvider.getAgentCount).toHaveBeenCalled();
+    });
+
+    it('should allow /dispatch endpoint when only one agent is configured', async () => {
+      const mockRequest = {
+        messages: [
+          {
+            sender: { id: 'user_123', name: 'John Doe' },
+            type: 'text' as const,
+            content: 'Hello',
+          },
+        ],
+      };
+
+      const mockAgentInfo: AgentInfo = {
+        identifier: 'single_agent',
+        name: 'Single Agent',
+        description: 'The only agent',
+      };
+
+      const mockAgent: HttpAgentConfig & { identifier: string } = {
+        identifier: 'single_agent',
+        name: 'Single Agent',
+        description: 'The only agent',
+        transport: 'http',
+        url: 'http://localhost:3000/agent',
+      };
+
+      // Mock that there is only one agent configured
+      vi.mocked(mockAgentProvider.getAgentCount).mockResolvedValue(1);
+      vi.mocked(mockAgentProvider.getAgentInfo).mockResolvedValue(mockAgentInfo);
+      vi.mocked(mockAgentProvider.getAgent).mockResolvedValue(mockAgent);
+      vi.mocked(mockAgentProvider.getAgentPrompt).mockResolvedValue(
+        'You are a helpful AI assistant.'
+      );
+
+      // Mock MCP service responses
+      vi.mocked(mockMcpService.handleMCPRequest).mockResolvedValue({
+        jsonrpc: '2.0',
+        id: 1,
+        result: { servers: [], tools: [] },
+      });
+
+      const mockAgentResponse = {
+        timestamp: '2025-07-28T17:45:30+07:00',
+        type: 'text' as const,
+        content: 'Hello! How can I help you?',
+        metadata: { usedToken: 50, usedTools: 0 },
+      };
+
+      vi.mocked(mockTransport.dispatch).mockResolvedValue(mockAgentResponse);
+
+      const result = await dispatchService.dispatch(undefined, mockRequest);
+
+      // Verify getAgentCount was called and the request succeeded
+      expect(mockAgentProvider.getAgentCount).toHaveBeenCalled();
+      expect(result.sender.id).toBe('single_agent');
+      expect(result.content).toBe('Hello! How can I help you?');
+    });
+
+    it('should allow /dispatch/:agentId endpoint regardless of agent count', async () => {
+      const mockRequest = {
+        messages: [
+          {
+            sender: { id: 'user_123', name: 'John Doe' },
+            type: 'text' as const,
+            content: 'Hello',
+          },
+        ],
+      };
+
+      const mockAgentInfo: AgentInfo = {
+        identifier: 'specific_agent',
+        name: 'Specific Agent',
+        description: 'A specific agent',
+      };
+
+      const mockAgent: HttpAgentConfig & { identifier: string } = {
+        identifier: 'specific_agent',
+        name: 'Specific Agent',
+        description: 'A specific agent',
+        transport: 'http',
+        url: 'http://localhost:3000/agent',
+      };
+
+      // Mock multiple agents configured, but we're using a specific agent ID
+      vi.mocked(mockAgentProvider.getAgentCount).mockResolvedValue(3);
+      vi.mocked(mockAgentProvider.getAgentInfo).mockResolvedValue(mockAgentInfo);
+      vi.mocked(mockAgentProvider.getAgent).mockResolvedValue(mockAgent);
+      vi.mocked(mockAgentProvider.getAgentPrompt).mockResolvedValue(
+        'You are a helpful AI assistant.'
+      );
+
+      // Mock MCP service responses
+      vi.mocked(mockMcpService.handleMCPRequest).mockResolvedValue({
+        jsonrpc: '2.0',
+        id: 1,
+        result: { servers: [], tools: [] },
+      });
+
+      const mockAgentResponse = {
+        timestamp: '2025-07-28T17:45:30+07:00',
+        type: 'text' as const,
+        content: 'Hello from specific agent!',
+        metadata: { usedToken: 60, usedTools: 0 },
+      };
+
+      vi.mocked(mockTransport.dispatch).mockResolvedValue(mockAgentResponse);
+
+      const result = await dispatchService.dispatch('specific_agent', mockRequest);
+
+      // Verify getAgentCount was NOT called (since we provided an agentId)
+      expect(mockAgentProvider.getAgentCount).not.toHaveBeenCalled();
+      expect(result.sender.id).toBe('specific_agent');
+      expect(result.content).toBe('Hello from specific agent!');
     });
   });
 });

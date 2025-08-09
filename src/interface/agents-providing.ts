@@ -33,4 +33,9 @@ export interface AgentsProviding {
    * Get all agents with basic information
    */
   getAllAgents(): Promise<AgentInfo[]>;
+
+  /**
+   * Get the number of configured agents
+   */
+  getAgentCount(): Promise<number>;
 }
