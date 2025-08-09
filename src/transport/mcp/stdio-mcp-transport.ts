@@ -11,6 +11,12 @@ export class StdioMCPTransport implements MCPTransport {
   private serverId: string | null = null;
   private server: StdioMcpServerConfig | null = null;
   private process: ChildProcess | null = null;
+  private processStarting = false;
+  private shuttingDown = false;
+  private restartAttempts = 0;
+  private restartTimer: ReturnType<typeof globalThis.setTimeout> | null = null;
+  private readonly maxRestartAttempts = 5;
+  private readonly restartBaseDelayMs = 500;
   private readonly pendingRequests = new Map<
     string,
     {
@@ -43,12 +49,16 @@ export class StdioMCPTransport implements MCPTransport {
    * @returns Promise that resolves to MCP response
    */
   async sendRequest(request: MCPRequest): Promise<MCPResponse> {
-    if (!this.process || !this.server) {
+    if (!this.server) {
       throw new Error('Stdio transport not initialized');
     }
 
-    if (!this.process.stdin) {
-      throw new Error(`Stdio process for ${this.serverId} has no stdin`);
+    // Ensure process is running
+    if (!this.process || !this.process.stdin || this.process.killed) {
+      await this.ensureProcess();
+      if (!this.process || !this.process.stdin) {
+        throw new Error(`Stdio process for ${this.serverId} is not available`);
+      }
     }
 
     return new Promise((resolve, reject) => {
@@ -113,11 +123,12 @@ export class StdioMCPTransport implements MCPTransport {
    * Start the MCP server process
    */
   private async startProcess(): Promise<void> {
-    if (this.process) {
-      throw new Error(`MCP server ${this.serverId} is already running`);
+    if (this.processStarting || this.process) {
+      return;
     }
 
     return new Promise((resolve, reject) => {
+      this.processStarting = true;
       if (!this.server) {
         reject(new Error('Server not initialized'));
         return;
@@ -138,6 +149,7 @@ export class StdioMCPTransport implements MCPTransport {
       });
 
       if (!this.process.stdout || !this.process.stdin || !this.process.stderr) {
+        this.processStarting = false;
         reject(new Error('Failed to create process streams'));
         return;
       }
@@ -158,21 +170,36 @@ export class StdioMCPTransport implements MCPTransport {
           `🔄 [StdioMCPTransport] ${this.serverId} process exited with code ${code}, signal ${signal}`
         );
         this.cleanup();
+        if (!this.shuttingDown) {
+          this.scheduleRestart();
+        }
       });
 
       // Handle process errors
       this.process.on('error', (error) => {
         console.error(`❌ [StdioMCPTransport] ${this.serverId} process error:`, error);
         this.cleanup();
+        if (!this.shuttingDown) {
+          this.scheduleRestart();
+        }
+        this.processStarting = false;
         reject(error);
       });
 
       // Wait a brief moment for the process to start
       globalThis.setTimeout(() => {
         if (this.process && !this.process.killed) {
+          // Reset restart state on successful start
+          this.restartAttempts = 0;
+          if (this.restartTimer) {
+            globalThis.clearTimeout(this.restartTimer);
+            this.restartTimer = null;
+          }
+          this.processStarting = false;
           console.log(`✅ [StdioMCPTransport] ${this.serverId} started successfully`);
           resolve();
         } else {
+          this.processStarting = false;
           reject(new Error(`Failed to start MCP server ${this.serverId}`));
         }
       }, 100);
@@ -188,6 +215,11 @@ export class StdioMCPTransport implements MCPTransport {
     }
 
     return new Promise((resolve) => {
+      this.shuttingDown = true;
+      if (this.restartTimer) {
+        globalThis.clearTimeout(this.restartTimer);
+        this.restartTimer = null;
+      }
       const cleanup = () => {
         this.cleanup();
         resolve();
@@ -211,6 +243,19 @@ export class StdioMCPTransport implements MCPTransport {
         }
       }, 5000);
     });
+  }
+
+  /** Ensure process is running */
+  private async ensureProcess(): Promise<void> {
+    if (this.process && !this.process.killed && this.process.stdin) {
+      return;
+    }
+    if (this.processStarting) {
+      // Wait briefly for a concurrent start to finish
+      await new Promise((r) => setTimeout(r, 50));
+      if (this.process && !this.process.killed && this.process.stdin) return;
+    }
+    await this.startProcess();
   }
 
   /**
@@ -275,6 +320,35 @@ export class StdioMCPTransport implements MCPTransport {
 
     this.process = null;
     this.buffer = '';
+  }
+
+  /** Schedule automatic restart with exponential backoff */
+  private scheduleRestart(): void {
+    if (this.restartAttempts >= this.maxRestartAttempts) {
+      console.warn(
+        `⚠️ [StdioMCPTransport] Max restart attempts (${this.maxRestartAttempts}) reached for ${this.serverId}; will restart on next request.`
+      );
+      return;
+    }
+
+    const delay = Math.min(10000, this.restartBaseDelayMs * Math.pow(2, this.restartAttempts));
+    this.restartAttempts += 1;
+    console.log(
+      `🔁 [StdioMCPTransport] Scheduling restart for ${this.serverId} in ${delay}ms (attempt #${this.restartAttempts})`
+    );
+
+    if (this.restartTimer) {
+      globalThis.clearTimeout(this.restartTimer);
+    }
+
+    this.restartTimer = globalThis.setTimeout(() => {
+      if (this.process || this.processStarting || this.shuttingDown) {
+        return;
+      }
+      void this.startProcess().catch((err) => {
+        console.warn(`⚠️ [StdioMCPTransport] Auto-restart failed for ${this.serverId}: ${String(err)}`);
+      });
+    }, delay);
   }
 
   /**
