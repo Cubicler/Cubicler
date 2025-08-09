@@ -13,8 +13,8 @@ services:
       
       # Timeout configurations
       - DEFAULT_CALL_TIMEOUT=${DEFAULT_CALL_TIMEOUT:-30000}
-      - PROVIDER_CALL_TIMEOUT=${PROVIDER_CALL_TIMEOUT}
-      - AGENT_CALL_TIMEOUT=${AGENT_CALL_TIMEOUT}
+      - PROVIDER_CALL_TIMEOUT=${PROVIDER_CALL_TIMEOUT:-30000}
+      - AGENT_CALL_TIMEOUT=${AGENT_CALL_TIMEOUT:-90000}
       
       # New orchestration architecture - using example files
       - CUBICLER_PROVIDERS_LIST=/app/providers.example.json
@@ -28,6 +28,8 @@ services:
     volumes:
       # Mount source code for live development
       - ./src:/app/src:ro
+      # Mount tsup config for build
+      - ./tsup.config.ts:/app/tsup.config.ts:ro
       # Mount example configuration files
       - ./providers.example.json:/app/providers.example.json:ro
       - ./agents.example.json:/app/agents.example.json:ro

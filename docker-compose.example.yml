@@ -7,9 +7,16 @@ services:
     environment:
       - CUBICLER_PORT=${CUBICLER_PORT:-1503}
       - CUBICLER_STRICT_PARAMS=${CUBICLER_STRICT_PARAMS:-false}
+      
+      # Timeout configurations
+      - DEFAULT_CALL_TIMEOUT=${DEFAULT_CALL_TIMEOUT:-30000}
+      - PROVIDER_CALL_TIMEOUT=${PROVIDER_CALL_TIMEOUT:-30000}
+      - AGENT_CALL_TIMEOUT=${AGENT_CALL_TIMEOUT:-90000}
+      
       # Using local example files for testing
       - CUBICLER_PROVIDERS_LIST=/app/config/providers.json
       - CUBICLER_AGENTS_LIST=/app/config/agents.json
+      
       # Cache configuration
       - PROVIDERS_CACHE_ENABLED=${PROVIDERS_CACHE_ENABLED:-true}
       - PROVIDERS_CACHE_TIMEOUT=${PROVIDERS_CACHE_TIMEOUT:-600}

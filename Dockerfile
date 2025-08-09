@@ -1,8 +1,10 @@
 # Multi-stage Dockerfile for Cubicler
 
 # Base stage
-FROM node:18-alpine AS base
+FROM node:20-alpine AS base
 WORKDIR /app
+# Install build dependencies for native modules
+RUN apk add --no-cache python3 make g++
 COPY package*.json ./
 COPY tsconfig.json ./
 
@@ -25,7 +27,7 @@ COPY tsup.config.ts ./
 RUN npm run build
 
 # Production stage
-FROM node:18-alpine AS production
+FROM node:20-alpine AS production
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci --only=production && npm cache clean --force

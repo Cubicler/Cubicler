@@ -10,6 +10,7 @@
     "test:ui": "vitest --ui --config vitest.config.ts",
     "run-integration": "vitest --run --config vitest.integration.config.ts",
     "test:integration": "npm run run-integration",
+    "test:integration:shell": "tests/integration/run-integration-tests.sh",
     "build": "tsup",
     "build:tsc": "tsc",
     "start": "node dist/index.js",
@@ -27,9 +28,9 @@
     "docker:example": "docker-compose -f docker-compose.example.yml up --build",
     "docker:stop": "docker-compose down",
     "docker:logs": "docker-compose logs -f",
-    "docker:build-hub": "docker build -t cubicler/cubicler:latest -t cubicler/cubicler:2.3.0 .",
-    "docker:push-hub": "docker push cubicler/cubicler:latest && docker push cubicler/cubicler:2.3.0",
-    "docker:push": "docker push cubicler/cubicler:latest && docker push cubicler/cubicler:2.3.0",
+    "docker:build-hub": "docker build -t cubicler/cubicler:latest -t cubicler/cubicler:2.6.0 .",
+    "docker:push-hub": "docker push cubicler/cubicler:latest && docker push cubicler/cubicler:2.6.0",
+    "docker:push": "docker push cubicler/cubicler:latest && docker push cubicler/cubicler:2.6.0",
     "docker:publish": "npm run docker:build-hub && npm run docker:push"
   },
   "repository": {
@@ -66,10 +67,11 @@
     "vitest": "^3.2.4"
   },
   "dependencies": {
-    "@cubicler/cubicagent-openai": "^2.6.0",
+    "@cubicler/cubicagent-openai": "^2.6.4",
     "axios": "^1.11.0",
     "dotenv": "^17.2.0",
     "express": "^5.1.0",
-    "jsonwebtoken": "^9.0.2"
+    "jsonwebtoken": "^9.0.2",
+    "pino": "^9.8.0"
   }
 }

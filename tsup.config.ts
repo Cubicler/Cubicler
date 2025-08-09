@@ -8,7 +8,7 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   outDir: 'dist',
-  target: 'node18',
+  target: 'node20',
   bundle: false,
   minify: false,
   keepNames: true,
@@ -27,7 +27,7 @@ export default defineConfig({
     'https',
     'querystring',
     'zlib',
-    'buffer'
+    'buffer',
   ],
   esbuildOptions: (options) => {
     options.platform = 'node';
