@@ -1,7 +1,8 @@
 import type { NextFunction, Request, Response } from 'express';
 import type { Algorithm, JwtPayload } from 'jsonwebtoken';
 import jwtHelper from '../utils/jwt-helper.js';
-import { serverConfigService } from '../cubicler.js';
+// Import directly to avoid pulling the full aggregator (which triggers heavy deps in tests)
+import serverConfigService from '../core/server-config-service.js';
 import { createEndpointJwtMiddleware } from './auth-middleware.js';
 
 /**

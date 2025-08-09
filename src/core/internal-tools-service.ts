@@ -1,4 +1,5 @@
-import { JSONObject, JSONValue } from '../cubicler.js';
+// Use type-only imports to avoid runtime dependency on the aggregator
+import type { JSONObject, JSONValue } from '../model/types.js';
 import { MCPCompatible } from '../interface/mcp-compatible.js';
 import { ToolsListProviding } from '../interface/tools-list-providing.js';
 import { ServersProviding } from '../interface/servers-providing.js';
